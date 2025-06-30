@@ -1,0 +1,6 @@
+<div cdkDropList [cdkDropListData]="exercises" class="exercise-list" (cdkDropListDropped)="drop($event)">
+    <div *ngFor="let exercise of exercises" cdkDrag class="exercise-item">
+      {{ exercise.name }} - {{ exercise.group }}
+    </div>
+  </div>
+  

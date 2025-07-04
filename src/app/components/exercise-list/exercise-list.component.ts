@@ -1,24 +1,22 @@
-import { Component } from '@angular/core';
-import { DragDropModule } from '@angular/cdk/drag-drop';
+import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
+import { Exercise } from '../../shared/models';
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
 
 @Component({
   selector: 'app-exercise-list',
   standalone: true,
-  imports: [CommonModule, DragDropModule], // Importa DragDropModule aquí
+  imports: [CommonModule, DragDropModule, ButtonModule, TableModule,],
   templateUrl: './exercise-list.component.html',
   styleUrls: ['./exercise-list.component.scss']
 })
-export class ExerciseListComponent {
-  exercises = [
-    { id: 1, name: 'Press de Pecho', group: 'Pecho' },
-    { id: 2, name: 'Sentadilla', group: 'Piernas' },
-    { id: 3, name: 'Dominadas', group: 'Espalda' },
-    { id: 4, name: 'Curl de Bíceps', group: 'Bíceps' }
-  ];
+export class ExerciseListComponent implements OnInit {
+  @Input() exercises: Exercise[] = [];
+  @Input() connectedTo: string[] = [];
 
-  drop(event: any) {
-    const exercise = this.exercises[event.previousIndex];
-    console.log('Ejercicio arrastrado:', exercise);
+  ngOnInit(): void {
+    console.log('📦 Lista de ejercicios recibida en ExerciseListComponent:', this.exercises);
   }
 }

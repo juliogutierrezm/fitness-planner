@@ -1,0 +1,119 @@
+.main-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.planner-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+
+  mat-form-field {
+    flex: 1 1 200px;
+  }
+}
+
+.planner-body {
+  display: flex;
+  gap: 1rem;
+}
+
+.exercise-sidebar {
+  width: 220px;
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+
+  h3 {
+    margin: 0 0 0.5rem;
+    text-align: center;
+  }
+
+  .list {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+  }
+
+  .list-item {
+    padding: 0.5rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: move;
+    text-align: left;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+    &:hover {
+      background-color: #e0f7fa;
+    }
+  }
+}
+
+.sessions {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.session-card {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.session-card mat-card-header {
+  background: #e3f2fd;
+  border-bottom: 1px solid #ccc;
+}
+
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid #ddd;
+  }
+
+  th {
+    font-weight: bold;
+  }
+  
+  .name-cursor {
+    cursor: move;
+  }
+
+}
+
+.cdk-drop-list-dragging .session-table {
+  background-color: #e3f2fd;
+  border: 2px dashed #1976d2;
+}
+
+.cdk-drag-placeholder {
+  background-color: #bbdefb;
+  opacity: 0.6;
+  border: 1px dashed #1976d2;
+}
+
+mat-row.cdk-drag {
+  cursor: move;
+}
+
+button[mat-icon-button] {
+  margin-left: 5px;
+}

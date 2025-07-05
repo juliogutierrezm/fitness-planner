@@ -44,18 +44,29 @@
       </div>
     </aside>
 
-    <!-- Sesiones verticales -->
-    <section class="sessions">
-      <mat-card
-        *ngFor="let s of sessions"
-        class="session-card"
+  <!-- Sesiones verticales (drag & drop de sesiones) -->
+  <section
+    class="sessions"
+    cdkDropList
+    [cdkDropListData]="sessions"
+    [cdkDropListConnectedTo]="[]"
+    (cdkDropListDropped)="dropSession($event)"
+  >
+    <mat-card
+      *ngFor="let s of sessions"
+      class="session-card"
+      cdkDrag
+      [cdkDragData]="s"
+    >
+      <!-- Dentro de cada tarjeta, tu lista de ejercicios sigue siendo un dropList independiente -->
+      <div
         cdkDropList
         [id]="'session-' + s.id"
         [cdkDropListData]="s.items"
         [cdkDropListConnectedTo]="sessionsConnectedTo['session-' + s.id]"
         (cdkDropListDropped)="drop($event, s)"
       >
-        <mat-card-header>
+        <mat-card-header class="name-cursor">
           <mat-card-title>{{ s.name }}</mat-card-title>
         </mat-card-header>
         <mat-card-content>
@@ -147,11 +158,18 @@
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="['name','equipment','sets','reps','rest','actions']"></tr>
-            <tr mat-row *matRowDef="let row; columns: ['name','equipment','sets','reps','rest','actions']" cdkDrag [cdkDragData]="row"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: ['name','equipment','sets','reps','rest','actions']"
+              cdkDrag
+              [cdkDragData]="row"
+            ></tr>
           </table>
         </mat-card-content>
-      </mat-card>
-    </section>
+      </div>
+    </mat-card>
+  </section>
+
   </div>
 
   <button mat-raised-button color="warn" (click)="clearCache()">

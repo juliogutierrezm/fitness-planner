@@ -28,7 +28,7 @@
   background: #fff;
   padding: 0.5rem;
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 
   h3 {
     margin: 0 0 0.5rem;
@@ -53,7 +53,7 @@
     border-radius: 4px;
     cursor: move;
     text-align: left;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:hover {
       background-color: #e0f7fa;
@@ -71,19 +71,23 @@
 .session-card {
   background: #fff;
   border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 
-.session-card mat-card-header {
-  background: #e3f2fd;
-  border-bottom: 1px solid #ccc;
+  mat-card-header {
+    background: #e3f2fd;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .session-table {
   width: 100%;
   border-collapse: collapse;
 
-  th, td {
+  th,
+  td {
     text-align: left;
     padding: 0.5rem;
     border-bottom: 1px solid #ddd;
@@ -92,11 +96,22 @@
   th {
     font-weight: bold;
   }
-  
-  .name-cursor {
-    cursor: move;
+
+  // Filas de superserie destacadas con borde izquierdo
+  tr.grouped td {
+    border-left: 4px solid #1976d2;
+    padding-left: 0.75rem;
   }
 
+  // Nombre de grupo en negrita y color destacado
+  .group-title {
+    font-weight: bold;
+    color: #1976d2;
+  }
+}
+
+.name-cursor {
+  cursor: move;
 }
 
 .cdk-drop-list-dragging .session-table {

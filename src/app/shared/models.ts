@@ -10,7 +10,10 @@ export interface PlanItem extends Exercise {
   sets: number;
   reps: number;
   rest: number;    // en segundos
-  weight?: number; // opcional
+  // Nuevos campos para superseries:
+  selected?: boolean;      // para el checkbox
+  isGroup?: boolean;       // true si este ítem es un grupo
+  children?: PlanItem[];   // los hijos si isGroup = true
 }
 
 // Una sesión de entrenamiento (por ejemplo, Día 1, Día 2...)
@@ -33,14 +36,14 @@ export interface EquipmentItem {
   name: string;
 }
 
-// Ejercicio según la API de WGER (con traducciones y equipo en IDs)
-export interface WgerExercise {
+export interface PlanItem {
   id: number;
-  equipment: number[];
-  translations: {
-    id: number;
-    language: number; // 2 = Español
-    name: string;
-    description: string;
-  }[];
+  name: string;
+  equipment: string;
+  sets: number;
+  reps: number;
+  rest: number;
+  selected?: boolean;    // para checkbox
+  isGroup?: boolean;     // para distinguir grupos
+  children?: PlanItem[]; // si es grupo
 }

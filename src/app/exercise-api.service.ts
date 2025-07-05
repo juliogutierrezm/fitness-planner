@@ -15,7 +15,7 @@ export class ExerciseApiService {
   // =============== CUSTOM EXERCISES CRUD ===============
   getExercises(): Observable<Exercise[]> {
     return this.http.get<Exercise[]>(this.backendUrl).pipe(
-      tap(data => console.log('📥 Ejercicios desde DynamoDB:', data)),
+      tap(exs => console.log('📋 Ejercicios obtenidos:', exs)),
       catchError(err => {
         console.error('❌ Error al obtener ejercicios:', err);
         return of([]);

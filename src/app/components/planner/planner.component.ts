@@ -39,7 +39,7 @@ import { ExerciseManagerComponent } from "../../pages/exercise-manager.component
     MatButtonModule,
     MatTableModule,
     MatCardModule,
-    ExerciseManagerComponent
+   // ExerciseManagerComponent
   ],
   templateUrl: './planner.component.html',
   styleUrls: ['./planner.component.scss']
@@ -85,6 +85,21 @@ export class PlannerComponent implements OnInit {
       this.updateSessions(count);
       this.persist();
     });
+  }
+
+/** Mueve las sesiones mismas */
+  dropSession(event: CdkDragDrop<Session[]>) {
+    if (event.previousContainer === event.container) {
+      moveItemInArray(this.sessions, event.previousIndex, event.currentIndex);
+      // Renombra de nuevo
+      this.sessions.forEach((s, i) => {
+        s.id   = i + 1;
+        s.name = `Día ${i + 1}`;
+      });
+      this.rebuildDropLists();
+      this.persist();
+      this.cdr.markForCheck();
+    }
   }
 
   // ----- edición inline -----

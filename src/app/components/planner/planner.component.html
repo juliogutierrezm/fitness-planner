@@ -1,5 +1,12 @@
-<app-workout-plans></app-workout-plans>
+<!-- <app-workout-plans></app-workout-plans> -->
 <div class="main-container">
+      <button mat-raised-button color="primary" (click)="submitPlan()">
+  💾 Guardar plan
+    </button>
+<button mat-raised-button color="accent" (click)="generateWithAI()" matTooltip="Generar plan con inteligencia artificial">
+  <mat-icon>psychology</mat-icon>
+  Generar IA
+</button>
   <form [formGroup]="form" class="planner-header">
     <mat-form-field appearance="outline">
       <mat-label>Entrenador</mat-label>
@@ -343,9 +350,6 @@
         </div>
       </mat-card>
     </section>
-    <button mat-raised-button color="primary" (click)="submitPlan()">
-  💾 Guardar plan
-    </button>
 
   </div>
 

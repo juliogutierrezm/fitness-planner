@@ -101,7 +101,7 @@ export class ExerciseApiService {
     );
   }
 
-  generatePlanFromAI(prompt: string): Observable<any> {
+generateWorkoutPlanAI(prompt: string): Observable<any> {
   const url = `${this.apiBase}/generatePlanFromAI`;
   return this.http.post(url, { prompt }).pipe(
     tap(plan => console.log('🧠 Plan generado por IA:', plan)),
@@ -111,6 +111,7 @@ export class ExerciseApiService {
     })
   );
 }
+
 
 
   // =============== SESSION STORAGE ===============

@@ -90,6 +90,34 @@ export class PlannerComponent implements OnInit {
     });
   }
 
+  generateWithAI() {
+  const userPrompt = prompt('Describe el objetivo del plan (ej: Principiante, 4 días, fuerza + movilidad)');
+  if (!userPrompt) return;
+
+  this.api.generateWorkoutPlanAI(userPrompt).subscribe(res => {
+    if (res?.plan) {
+      this.sessions = res.plan.map((day: any, idx: number) => ({
+        id: idx + 1,
+        name: day.day,
+        items: day.items.map((ex: any) => ({
+          id: Date.now() + Math.random(),
+          name: ex.name,
+          equipment: '', // si no viene, se puede dejar vacío
+          sets: ex.sets,
+          reps: ex.reps,
+          rest: ex.rest,
+          notes: ex.notes,
+          isGroup: false,
+          selected: false
+        }))
+      }));
+      this.form.patchValue({ sessionCount: this.sessions.length });
+      this.persist();
+    }
+  });
+}
+
+
   /*** Inline editing ***/
   startEdit(sessionId: number, itemId: number, field: EditableField, childIdx?: number) {
     this.editingRow = { sessionId, itemId, field, childIdx };

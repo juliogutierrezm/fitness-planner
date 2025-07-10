@@ -1,0 +1,54 @@
+<div *ngIf="plan" class="plan-container">
+  <mat-card class="plan-card">
+    <mat-card-title>{{ plan.name }}</mat-card-title>
+    <mat-card-subtitle>
+      Fecha: {{ plan.date | date:'mediumDate' }}<br />
+      Entrenador: {{ plan.trainerId || 'N/A' }}<br />
+      Compañía: {{ plan.companyId || 'INDEPENDIENTE' }}
+    </mat-card-subtitle>
+
+    <div *ngFor="let session of plan.sessions" class="session-block">
+      <h3>{{ session.name }}</h3>
+
+      <div class="table-header">
+        <div>Ejercicio</div>
+        <div>Series</div>
+        <div>Reps</div>
+        <div>Descanso</div>
+        <div>Equipo</div>
+      </div>
+
+      <div *ngFor="let item of session.items">
+        <ng-container *ngIf="!item.isGroup; else supersetBlock">
+          <div class="table-row">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <div *ngIf="item.notes" class="notes">💬 {{ item.notes }}</div>
+            </div>
+
+            <div>{{ item.sets }}</div>
+            <div>{{ item.reps }}</div>
+            <div>{{ item.rest }}s</div>
+            <div>{{ item.equipment }}</div>
+          </div>
+        </ng-container>
+
+        <ng-template #supersetBlock>
+          <div class="superset-wrapper">
+            <div class="superset-label">Superserie</div>
+            <div *ngFor="let child of item.children" class="table-row">
+              <div>
+                <strong>{{ child.name }}</strong>
+                <div *ngIf="child.notes" class="notes">💬 {{ child.notes }}</div>
+              </div>
+              <div>{{ child.sets }}</div>
+              <div>{{ child.reps }}</div>
+              <div>{{ child.rest }}s</div>
+              <div>{{ child.equipment }}</div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </mat-card>
+</div>

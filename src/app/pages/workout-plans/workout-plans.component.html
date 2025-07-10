@@ -1,0 +1,8 @@
+<div class="main-container">
+  <h2>Planes de entrenamiento del usuario</h2>
+
+  <app-workout-plan-view
+    *ngIf="plans.length > 0"
+    [plan]="plans[0]">
+  </app-workout-plan-view>
+</div>

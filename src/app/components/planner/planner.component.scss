@@ -1,5 +1,7 @@
+/* planner.component.scss ✔ estilos completos */
+
 .main-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 2rem auto;
   padding: 1rem;
   background: #f5f5f5;
@@ -23,8 +25,9 @@
   gap: 1rem;
 }
 
+/* ── sidebar ── */
 .exercise-sidebar {
-  width: 220px;
+  width: 200px;
   background: #fff;
   padding: 0.5rem;
   border-radius: 6px;
@@ -52,15 +55,15 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: move;
-    text-align: left;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:hover {
-      background-color: #e0f7fa;
+      background: #e0f7fa;
     }
   }
 }
 
+/* ── tarjetas sesión ── */
 .sessions {
   flex: 1;
   display: flex;
@@ -82,6 +85,23 @@
   }
 }
 
+.session-actions {
+  margin-bottom: 0rem;
+  display: flex;
+  gap: 1rem;
+
+  button {
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+
+    &[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* ── tabla ── */
 .session-table {
   width: 100%;
   border-collapse: collapse;
@@ -89,7 +109,7 @@
   th,
   td {
     text-align: left;
-    padding: 0.5rem;
+   // padding: 0.5rem;
     border-bottom: 1px solid #ddd;
   }
 
@@ -97,30 +117,25 @@
     font-weight: bold;
   }
 
-  // Filas de superserie destacadas con borde izquierdo
-  tr.grouped td {
-    border-left: 4px solid #1976d2;
-    padding-left: 0.75rem;
-  }
-
-  // Nombre de grupo en negrita y color destacado
-  .group-title {
-    font-weight: bold;
-    color: #1976d2;
+  th[matColumnDef="select"],
+  td[matColumnDef="select"] {
+    width: 60px;
+    text-align: center;
   }
 }
 
+/* ── arrastre ── */
 .name-cursor {
   cursor: move;
 }
 
 .cdk-drop-list-dragging .session-table {
-  background-color: #e3f2fd;
+  background: #e3f2fd;
   border: 2px dashed #1976d2;
 }
 
 .cdk-drag-placeholder {
-  background-color: #bbdefb;
+  background: #bbdefb;
   opacity: 0.6;
   border: 1px dashed #1976d2;
 }
@@ -131,4 +146,51 @@ mat-row.cdk-drag {
 
 button[mat-icon-button] {
   margin-left: 5px;
+}
+
+/* ── superserie ── */
+.superset-child {
+  padding-left: 2rem;
+}
+
+.sets-input {
+  width: 50px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.notes-input {
+  max-width: 60px;
+  font-size: 13px;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+
+}
+
+.mat-cell input[type="text"] {
+  max-width: 100px;
+}
+
+/*
+.superset-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  background: #1976d2;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.4rem;
+  margin-right: 0.5rem;
+  border-radius: 4px 0 0 4px;
+  display: inline-block;
+}
+*/
+
+.child-row.with-divider,
+.superserie-child-row.with-divider {
+  border-top: 1px dashed #bbb;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
 }

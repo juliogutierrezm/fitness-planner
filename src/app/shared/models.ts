@@ -1,20 +1,18 @@
-// Modelo base de ejercicio que usás en el planner
+//   src/app/shared/models.ts
 export interface Exercise {
   id: number;
   name: string;
   equipment: string;
 }
 
-// Elemento dentro de una sesión de entrenamiento (basado en un ejercicio)
 export interface PlanItem extends Exercise {
   sets: number;
   reps: number;
-  rest: number;    // en segundos
-  // Nuevos campos para superseries:
-  selected?: boolean;      // para el checkbox
-  isGroup?: boolean;       // true si este ítem es un grupo
-  children?: PlanItem[];   // los hijos si isGroup = true
+  rest: number;
+  selected?: boolean;
+  supersetId?: number;  // nuevo campo para indicar pertenencia
 }
+
 
 // Una sesión de entrenamiento (por ejemplo, Día 1, Día 2...)
 export interface Session {
@@ -43,7 +41,9 @@ export interface PlanItem {
   sets: number;
   reps: number;
   rest: number;
-  selected?: boolean;    // para checkbox
-  isGroup?: boolean;     // para distinguir grupos
-  children?: PlanItem[]; // si es grupo
+  selected?: boolean;
+  isGroup?: boolean;
+  children?: PlanItem[];
+  notes?: string; // 🆕 nueva propiedad
 }
+

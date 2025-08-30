@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { ExerciseApiService } from '../exercise-api.service';
-import { Exercise } from '../shared/models';
+import { ExerciseApiService } from '../../exercise-api.service';
+import { Exercise } from '../../shared/models';
 import { MatCardModule } from '@angular/material/card';
 import { HttpClient } from '@angular/common/http';
 

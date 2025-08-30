@@ -1,49 +1,41 @@
-//   src/app/shared/models.ts
+/* ---------- Ejercicio base ---------- */
 export interface Exercise {
-  id: number;
+  id: string;
   name: string;
   equipment: string;
+  muscle?: string;
+  category?: string;
 }
 
-export interface PlanItem extends Exercise {
+export interface PlanItem {
+  id: string;
+  name: string;
+  equipment: string;
   sets: number;
-  reps: number;
+  reps: number | string;
   rest: number;
+  notes?: string;
   selected?: boolean;
-  supersetId?: number;  // nuevo campo para indicar pertenencia
+  isGroup?: boolean;
+  children?: PlanItem[];
 }
 
 
-// Una sesión de entrenamiento (por ejemplo, Día 1, Día 2...)
+/* ---------- Sesión ---------- */
 export interface Session {
   id: number;
   name: string;
   items: PlanItem[];
 }
 
-// Un plan completo con múltiples sesiones (por ahora no se usa, pero es útil)
+/* ---------- Plan completo ---------- */
 export interface WorkoutPlan {
-  id: number;
+  id: string;
   name: string;
+  date: string;
   sessions: Session[];
-}
 
-// Equipamiento disponible (usado para mapear IDs a nombres)
-export interface EquipmentItem {
-  id: number;
-  name: string;
+  generalNotes?: string;
+  companyId?: string;
+  trainerId?: string;
 }
-
-export interface PlanItem {
-  id: number;
-  name: string;
-  equipment: string;
-  sets: number;
-  reps: number;
-  rest: number;
-  selected?: boolean;
-  isGroup?: boolean;
-  children?: PlanItem[];
-  notes?: string; // 🆕 nueva propiedad
-}
-

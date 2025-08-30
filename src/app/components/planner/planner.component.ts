@@ -15,7 +15,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { Exercise, Session, PlanItem } from '../../shared/models';
-import { WorkoutPlansComponent } from '../../pages/workout-plans/workout-plans.component';
 
 type EditableField = 'sets' | 'reps' | 'rest' | 'notes';
 
@@ -44,7 +43,6 @@ interface EditingRow {
     MatCardModule,
     MatCheckboxModule,
     MatTooltipModule,
-    WorkoutPlansComponent
   ],
   templateUrl: './planner.component.html',
   styleUrls: ['./planner.component.scss']
@@ -68,7 +66,8 @@ export class PlannerComponent implements OnInit {
     this.form = this.fb.group({
       userName: [''],
       date: [new Date()],
-      sessionCount: [3]
+      sessionCount: [3],
+      notes: ['']
     });
 
     this.api.getExercises().subscribe(exs => {
@@ -189,7 +188,7 @@ export class PlannerComponent implements OnInit {
       const ex = event.item.data as Exercise;
       const newItem: PlanItem = {
         ...ex,
-        id: Date.now(),
+        id: Date.now().toString(),
         sets: 3,
         reps: 10,
         rest: 60,
@@ -261,12 +260,12 @@ export class PlannerComponent implements OnInit {
     if (selectedItems.length < 2) return;
 
     let newId = Date.now();
-    while (session.items.some(item => item.id === newId)) {
+    while (session.items.some(item => Number(item.id) === newId)) {
       newId += 1;
     }
 
     const group: PlanItem = {
-      id: newId,
+      id: newId.toString(),
       name: 'Superserie',
       equipment: '',
       sets: 0,
@@ -334,7 +333,8 @@ submitPlan() {
     name: `Plan de ${formValue.userName}`,
     companyId: 'INDEPENDIENTE',           // o la empresa seleccionada más adelante
     date: new Date(formValue.date).toISOString(),
-    sessions: this.sessions               // ya contiene ejercicios, superseries, notas, etc.
+    sessions: this.sessions,
+    generalNotes: formValue.notes               // ya contiene ejercicios, superseries, notas, etc.
   };
 
   this.api.saveWorkoutPlan(planData).subscribe(res => {

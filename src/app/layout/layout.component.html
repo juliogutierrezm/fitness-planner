@@ -1,0 +1,35 @@
+<mat-sidenav-container class="shell-container">
+  <mat-sidenav mode="side" [(opened)]="sidebarOpen" class="sidenav">
+    <mat-nav-list class="sidebar-item">
+      <a mat-fab extended routerLink="/dashboard" routerLinkActive="active">
+        <mat-icon>blur_on</mat-icon>
+        Dashboard
+      </a>
+      <a  mat-fab extended routerLink="/planner" routerLinkActive="active">
+        <mat-icon>list_alt</mat-icon>
+        Crear Plan
+      </a>
+      <a mat-fab extended routerLink="/exercise-manager" routerLinkActive="active">
+        <mat-icon>fitness_center</mat-icon>
+        Ejercicios
+      </a>
+      <a mat-fab extended routerLink="/workout-plans" routerLinkActive="active">
+        <mat-icon>library_books</mat-icon>
+        Planes
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary">
+      <button mat-icon-button (click)="sidebarOpen = !sidebarOpen">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="title">Fitness Planner</span>
+    </mat-toolbar>
+
+    <main class="shell-content">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

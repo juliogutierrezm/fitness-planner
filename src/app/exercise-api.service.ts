@@ -83,7 +83,7 @@ export class ExerciseApiService {
     sessions: Session[];
   }): Observable<any> {
     return this.http.post(`${this.planUrl}`, plan).pipe(
-      tap(() => console.log('💾 Plan de entrenamiento guardado')),
+      tap(() => console.log('💾 Plan de entrenamiento guardado', plan)),
       catchError(err => {
         console.error('❌ Error al guardar plan:', err);
         return of(null);

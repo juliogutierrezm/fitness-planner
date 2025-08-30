@@ -1,0 +1,21 @@
+.shell-container {
+  height: 100vh;
+}
+.sidenav {
+  width: 30vh;
+}
+.shell-content {
+  padding: 1rem;
+}
+.title {
+  margin-left: 1rem;
+  font-weight: 600;
+}
+
+
+.sidebar-item {
+  a {
+    margin:  0.25rem;
+    min-width: 20vh;
+  }
+}

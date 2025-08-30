@@ -1,4 +1,3 @@
-<!-- <app-workout-plans></app-workout-plans> -->
 <div class="main-container">
       <button mat-raised-button color="primary" (click)="submitPlan()">
   💾 Guardar plan
@@ -10,19 +9,31 @@
   <form [formGroup]="form" class="planner-header">
     <mat-form-field appearance="outline">
       <mat-label>Entrenador</mat-label>
-      <input matInput formControlName="userName" />
+      <input matInput formControlName="userName"/>
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Fecha</mat-label>
-      <input matInput [matDatepicker]="picker" formControlName="date" />
+      <input matInput [matDatepicker]="picker" formControlName="date"/>
       <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
       <mat-datepicker #picker></mat-datepicker>
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Sesiones</mat-label>
-      <input matInput type="number" formControlName="sessionCount" min="1" />
+      <input matInput type="number" formControlName="sessionCount" min="1"/>
+    </mat-form-field>
+
+    <!-- ➤ Nuevo campo para las notas generales -->
+    <mat-form-field appearance="outline">
+      <mat-label>Notas generales</mat-label>
+      <textarea
+        matInput
+        formControlName="notes"
+        placeholder="Descripción, objetivos o comentarios para todo el plan"
+        rows="2"
+      ></textarea>
     </mat-form-field>
   </form>
+
 
   <!-- Body -->
   <div class="planner-body">
@@ -82,7 +93,7 @@
                           matTooltip="Crear superserie" 
                           (click)="groupSelected(s)" 
                           [disabled]="!hasSelectedItems(s)">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="60" height="30" viewBox="0 0 24 24"><path fill="currentColor" d="M2 7v2h5V7zm10 2v2H9v2h3v2l3-3zm5 0v6h5V9zM2 11v2h5v-2zm0 4v2h5v-2z"/></svg>
+                        <mat-icon>offline_pin</mat-icon>
                   </button>
                 </th>
                 <td mat-cell *matCellDef="let item; let i = index">
@@ -98,7 +109,7 @@
                       (click)="ungroupGroup(s, i)"
                       matTooltip="Eliminar superserie"
                     >
-                   <svg xmlns="http://www.w3.org/2000/svg" width="60" height="30" viewBox="0 0 24 24"><path fill="currentColor" d="M17 7v2h5V7zM2 9v6h5V9zm10 0v2H9v2h3v2l3-3zm5 2v2h5v-2zm0 4v2h5v-2z"/></svg>
+                  <mat-icon>remove_circle</mat-icon>
                     </button>
                   </ng-container>
                 </td>
@@ -198,10 +209,11 @@
                     <ng-template #editReps>
                       <input class="sets-input"
                         matInput
-                        type="number"
+                        type="text"
                         [(ngModel)]="item.reps"
                         (blur)="finishEdit()"
                         (keydown.enter)="finishEdit()"
+                        maxlength="20"
                       />
                     </ng-template>
                   </ng-container>

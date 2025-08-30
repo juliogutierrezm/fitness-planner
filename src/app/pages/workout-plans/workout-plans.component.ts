@@ -17,7 +17,7 @@ import { WorkoutPlanViewComponent } from "../../components/workout-plan-view/wor
 })
 export class WorkoutPlansComponent {
   plans: any[] = [];
-  userId: string = 'Julio'; // cambiar según autenticación
+  userId: string = 'Plucky'; // cambiar según autenticación
 
   constructor(private api: ExerciseApiService) {}
 

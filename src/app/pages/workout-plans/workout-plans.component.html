@@ -1,8 +1,38 @@
 <div class="main-container">
-  <h2>Planes de entrenamiento del usuario</h2>
+  <div class="header">
+    <h2>Mis Planes de Entrenamiento</h2>
+    <button mat-flat-button color="primary" routerLink="/planner">
+      <mat-icon>add</mat-icon>
+      Crear Plan Nuevo
+    </button>
+  </div>
 
-  <app-workout-plan-view
-    *ngIf="plans.length > 0"
-    [plan]="plans[0]">
-  </app-workout-plan-view>
+  <div *ngIf="plans.length === 0" class="no-plans">
+    <p>Aún no has creado ningún plan de entrenamiento.</p>
+    <p>¡Crea tu primer plan para empezar!</p>
+  </div>
+
+  <div class="plans-grid">
+    <mat-card *ngFor="let plan of plans" class="plan-card">
+      <mat-card-header>
+        <mat-card-title>{{ plan.name }}</mat-card-title>
+        <mat-card-subtitle>{{ plan.date | date: 'dd/MM/yyyy' }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>{{ plan.generalNotes || 'Sin notas generales.' }}</p>
+        <p><strong>{{ plan.sessions.length }}</strong> sesiones</p>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button color="primary" [routerLink]="['/planner', plan.planId]">
+          <mat-icon>edit</mat-icon>
+          Editar
+        </button>
+        <button mat-button color="warn">
+          <mat-icon>delete</mat-icon>
+          Eliminar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
 </div>

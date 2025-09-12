@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,6 +15,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
 import { Exercise, Session, PlanItem } from '../../shared/models';
 
 type EditableField = 'sets' | 'reps' | 'rest' | 'notes';
@@ -55,14 +57,22 @@ export class PlannerComponent implements OnInit {
   sessionsConnectedTo: Record<string, string[]> = {};
 
   editingRow: EditingRow | null = null;
+  planId: string | null = null;
+  isEditMode = false;
 
   constructor(
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
-    private api: ExerciseApiService
+    private api: ExerciseApiService,
+    private authService: AuthService,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit() {
+    this.planId = this.route.snapshot.paramMap.get('id');
+    this.isEditMode = !!this.planId;
+
     this.form = this.fb.group({
       userName: [''],
       date: [new Date()],
@@ -75,47 +85,69 @@ export class PlannerComponent implements OnInit {
       this.cdr.markForCheck();
     });
 
-    const loaded = this.api.loadSessions();
-    if (loaded.length) {
-      this.sessions = JSON.parse(JSON.stringify(loaded));
+    if (this.isEditMode && this.planId) {
+      this.api.getWorkoutPlanById(this.planId).subscribe(plan => {
+        if (plan) {
+          this.form.patchValue({
+            userName: plan.name.replace('Plan de ', ''),
+            date: new Date(plan.date),
+            sessionCount: plan.sessions.length,
+            notes: plan.generalNotes
+          });
+          this.sessions = plan.sessions;
+          this.rebuildDropLists();
+          this.cdr.markForCheck();
+        }
+      });
     } else {
-      this.updateSessions(this.form.value.sessionCount);
-    }
-    this.rebuildDropLists();
+      const currentUser = this.authService.getCurrentUser();
+      const displayName = currentUser ? 
+        `${currentUser.givenName || ''} ${currentUser.familyName || ''}`.trim() || 
+        currentUser.email?.split('@')[0] || 'Usuario' : 'Usuario';
+      this.form.patchValue({ userName: displayName });
 
-    this.form.get('sessionCount')!.valueChanges.subscribe(count => {
-      this.updateSessions(count);
-      this.persist();
-    });
+      const loaded = this.api.loadSessions();
+      if (loaded.length) {
+        this.sessions = JSON.parse(JSON.stringify(loaded));
+      } else {
+        this.updateSessions(this.form.value.sessionCount);
+      }
+      this.rebuildDropLists();
+
+      // This subscription should only be active in create mode
+      this.form.get('sessionCount')!.valueChanges.subscribe(count => {
+        this.updateSessions(count);
+        this.persist();
+      });
+    }
   }
 
   generateWithAI() {
-  const userPrompt = prompt('Describe el objetivo del plan (ej: Principiante, 4 días, fuerza + movilidad)');
-  if (!userPrompt) return;
+    const userPrompt = prompt('Describe el objetivo del plan (ej: Principiante, 4 días, fuerza + movilidad)');
+    if (!userPrompt) return;
 
-  this.api.generateWorkoutPlanAI(userPrompt).subscribe(res => {
-    if (res?.plan) {
-      this.sessions = res.plan.map((day: any, idx: number) => ({
-        id: idx + 1,
-        name: day.day,
-        items: day.items.map((ex: any) => ({
-          id: Date.now() + Math.random(),
-          name: ex.name,
-          equipment: '', // si no viene, se puede dejar vacío
-          sets: ex.sets,
-          reps: ex.reps,
-          rest: ex.rest,
-          notes: ex.notes,
-          isGroup: false,
-          selected: false
-        }))
-      }));
-      this.form.patchValue({ sessionCount: this.sessions.length });
-      this.persist();
-    }
-  });
-}
-
+    this.api.generateWorkoutPlanAI(userPrompt).subscribe(res => {
+      if (res?.plan) {
+        this.sessions = res.plan.map((day: any, idx: number) => ({
+          id: idx + 1,
+          name: day.day,
+          items: day.items.map((ex: any) => ({
+            id: Date.now() + Math.random(),
+            name: ex.name,
+            equipment: '', // si no viene, se puede dejar vacío
+            sets: ex.sets,
+            reps: ex.reps,
+            rest: ex.rest,
+            notes: ex.notes,
+            isGroup: false,
+            selected: false
+          }))
+        }));
+        this.form.patchValue({ sessionCount: this.sessions.length });
+        this.persist();
+      }
+    });
+  }
 
   /*** Inline editing ***/
   startEdit(sessionId: number, itemId: number, field: EditableField, childIdx?: number) {
@@ -140,15 +172,17 @@ export class PlannerComponent implements OnInit {
   /*** End inline editing ***/
 
   private updateSessions(count: number) {
+    const currentSessions = this.sessions || [];
     this.sessions = Array.from({ length: count }, (_, i) => ({
       id: i + 1,
       name: `Día ${i + 1}`,
-      items: this.sessions[i]?.items || []
+      items: currentSessions[i]?.items || []
     }));
     this.rebuildDropLists();
   }
 
   private rebuildDropLists() {
+    if (!this.sessions) return;
     this.exerciseListConnectedTo = this.sessions.map(s => `session-${s.id}`);
     this.sessionsConnectedTo = this.sessions.reduce((acc, s) => {
       acc[`session-${s.id}`] = [
@@ -320,32 +354,40 @@ export class PlannerComponent implements OnInit {
   }
 
   private persist() {
-    this.api.saveSessions(this.sessions);
+    if (!this.isEditMode) {
+      this.api.saveSessions(this.sessions);
+    }
   }
 
-submitPlan() {
-  const formValue = this.form.value;
-
-  const planData = {
-    planId: `plan-${Date.now()}`,         // ID único
-    userId: formValue.userName.trim(),
-    trainerId: 'jorgefit',
-    name: `Plan de ${formValue.userName}`,
-    companyId: 'INDEPENDIENTE',           // o la empresa seleccionada más adelante
-    date: new Date(formValue.date).toISOString(),
-    sessions: this.sessions,
-    generalNotes: formValue.notes               // ya contiene ejercicios, superseries, notas, etc.
-  };
-
-  this.api.saveWorkoutPlan(planData).subscribe(res => {
-    if (res) {
-      alert('✅ Plan guardado correctamente');
-    } else {
-      alert('❌ Hubo un error al guardar el plan');
+  submitPlan() {
+    if (this.isEditMode && !this.planId) {
+      console.error('Cannot update plan without a planId');
+      alert('❌ Error: No se encontró el ID del plan para actualizar.');
+      return;
     }
-  });
+
+    const formValue = this.form.value;
+    const planData = {
+      planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
+      name: `Plan de ${formValue.userName}`,
+      date: new Date(formValue.date).toISOString(),
+      sessions: this.sessions,
+      generalNotes: formValue.notes,
+      userId: this.authService.getCurrentUserId()
+    };
+
+    const action = this.isEditMode 
+      ? this.api.updateWorkoutPlan(planData)
+      : this.api.saveWorkoutPlan(planData as any);
+
+    action.subscribe(res => {
+      if (res) {
+        alert(`✅ Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`);
+        this.router.navigate(['/workout-plans']);
+      } else {
+        alert(`❌ Hubo un error al ${this.isEditMode ? 'actualizar' : 'guardar'} el plan`);
+      }
+    });
+  }
 }
 
-
-
-}

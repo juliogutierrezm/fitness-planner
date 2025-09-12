@@ -5,7 +5,7 @@
         <mat-icon>blur_on</mat-icon>
         Dashboard
       </a>
-      <a  mat-fab extended routerLink="/planner" routerLinkActive="active">
+      <a mat-fab extended routerLink="/planner" routerLinkActive="active">
         <mat-icon>list_alt</mat-icon>
         Crear Plan
       </a>
@@ -17,6 +17,10 @@
         <mat-icon>library_books</mat-icon>
         Planes
       </a>
+      <a mat-fab extended routerLink="/diagnostics" routerLinkActive="active">
+        <mat-icon>bug_report</mat-icon>
+        Diagnostics
+      </a>
     </mat-nav-list>
   </mat-sidenav>
 
@@ -26,6 +30,20 @@
         <mat-icon>menu</mat-icon>
       </button>
       <span class="title">Fitness Planner</span>
+      
+      <span class="spacer"></span>
+      
+      <div class="auth-buttons">
+        <div *ngIf="isLoggedIn && user" class="user-badge">
+          <mat-icon>account_circle</mat-icon>
+          <span>{{ user.email }}</span>
+          <button mat-button (click)="logout()">Logout</button>
+        </div>
+        <button *ngIf="!isLoggedIn" mat-button (click)="login()">
+          <mat-icon>login</mat-icon>
+          Login
+        </button>
+      </div>
     </mat-toolbar>
 
     <main class="shell-content">

@@ -4,7 +4,8 @@
     <mat-card-subtitle>
       Fecha: {{ plan.date | date:'mediumDate' }}<br />
       Entrenador: {{ plan.trainerId || 'N/A' }}<br />
-      Compañía: {{ plan.companyId || 'INDEPENDIENTE' }}
+      Compañía: {{ plan.companyId || 'INDEPENDIENTE' }}<br />
+      Notas generales: {{ plan.generalNotes || 'Ninguna' }}
     </mat-card-subtitle>
 
     <div *ngFor="let session of plan.sessions" class="session-block">

@@ -1,0 +1,54 @@
+.shell-container {
+  height: 100vh;
+}
+
+.sidenav {
+  width: 280px;
+}
+
+.shell-content {
+  padding: 1rem;
+}
+
+.title {
+  margin-left: 1rem;
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.sidebar-item {
+  a {
+    margin: 0.25rem;
+    min-width: 200px;
+  }
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    
+    span {
+      font-size: 14px;
+    }
+    
+    button {
+      color: white;
+    }
+  }
+}

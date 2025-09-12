@@ -12,7 +12,7 @@ import { MatDividerModule } from '@angular/material/divider';
     DatePipe,
     MatCardModule,
     MatDividerModule,
-    MatTableModule
+    MatTableModule,
   ],
   templateUrl: './workout-plan-view.component.html',
   styleUrls: ['./workout-plan-view.component.scss']

@@ -6,6 +6,9 @@ import { AuthService } from '../../services/auth.service';
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-workout-plans',
@@ -15,7 +18,9 @@ import { MatIconModule } from '@angular/material/icon';
     RouterModule,
     MatCardModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    MatDialogModule,
+    MatSnackBarModule
   ],
   templateUrl: './workout-plans.component.html',
   styleUrls: ['./workout-plans.component.scss']
@@ -25,7 +30,9 @@ export class WorkoutPlansComponent implements OnInit {
 
   constructor(
     private api: ExerciseApiService,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit() {
@@ -35,6 +42,29 @@ export class WorkoutPlansComponent implements OnInit {
       console.log('Planes de entrenamiento obtenidos:', this.plans);
     });
   }
+
+  deletePlan(planId: string) {
+    if (!planId) { return; }
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Eliminar plan',
+        message: '¿Eliminar este plan de entrenamiento? Esta acción no se puede deshacer.',
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        icon: 'delete_outline'
+      }
+    });
+
+    ref.afterClosed().subscribe(ok => {
+      if (!ok) return;
+      this.api.deleteWorkoutPlan(planId).subscribe(res => {
+        if (res !== null) {
+          this.plans = this.plans.filter(p => p.planId !== planId);
+          this.snackBar.open('Plan eliminado', 'Cerrar', { duration: 2500 });
+        } else {
+          this.snackBar.open('No se pudo eliminar el plan', 'Cerrar', { duration: 3000 });
+        }
+      });
+    });
+  }
 }
-
-

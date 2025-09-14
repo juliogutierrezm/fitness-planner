@@ -26,6 +26,8 @@ export interface Session {
   id: number;
   name: string;
   items: PlanItem[];
+  pinned?: boolean;
+  collapsed?: boolean;
 }
 
 /* ---------- Plan completo ---------- */

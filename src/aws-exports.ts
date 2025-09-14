@@ -2,14 +2,13 @@
 // Note: These values should be replaced with actual Cognito User Pool details
 export const awsExports = {
   aws_project_region: 'us-east-1',
-  aws_cognito_identity_pool_id: 'us-east-1:YOUR_IDENTITY_POOL_ID',
   aws_cognito_region: 'us-east-1',
-  aws_user_pools_id: 'us-east-1_YOUR_USER_POOL_ID',
-  aws_user_pools_web_client_id: 'YOUR_CLIENT_ID',
+  aws_user_pools_id: 'us-east-1_8jk4VBnTQ',
+  aws_user_pools_web_client_id: '1t134cjf2t07f018cruflg41rk',
   oauth: {
-    domain: 'your-domain.auth.us-east-1.amazoncognito.com',
-    scope: ['phone', 'email', 'openid', 'profile', 'aws.cognito.signin.user.admin'],
-    redirectSignIn: 'http://localhost:4200/',
+    domain: 'fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com',
+    scope: ['email', 'openid', 'profile'],
+    redirectSignIn: 'http://localhost:4200/callback',
     redirectSignOut: 'http://localhost:4200/',
     responseType: 'code'
   },

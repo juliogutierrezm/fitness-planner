@@ -27,17 +27,30 @@ export class AuthService {
     }
   }
 
-  login(): void {
+  async login(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
     
     const { domain, clientId, redirectUri } = environment.cognito;
+
+    // PKCE support: generate code_verifier and code_challenge (S256)
+    const codeVerifier = this.generateCodeVerifier();
+    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+
+    // Persist the verifier for the token exchange step
+    try {
+      sessionStorage.setItem('pkce_verifier', codeVerifier);
+    } catch {}
+
     const authUrl = `https://${domain}/oauth2/authorize` +
       `?client_id=${clientId}` +
       `&response_type=code` +
       `&scope=email+openid+profile` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&identity_provider=COGNITO` +
+      `&code_challenge_method=S256` +
+      `&code_challenge=${encodeURIComponent(codeChallenge)}`;
     
     window.location.href = authUrl;
   }
@@ -110,10 +123,19 @@ export class AuthService {
       this.userSubject.next(null);
       
       const { domain, clientId, redirectUri } = environment.cognito;
-      const baseRedirectUri = redirectUri.replace('/callback', '');
+      // Ensure trailing slash so it matches Cognito Sign-out URLs exactly
+      let postLogoutRedirect = '';
+      try {
+        const u = new URL(redirectUri);
+        postLogoutRedirect = `${u.origin}/`;
+      } catch {
+        // Fallback: replace '/callback' with '/'
+        postLogoutRedirect = redirectUri.replace(/\/callback$/, '/');
+      }
+
       const logoutUrl = `https://${domain}/logout` +
         `?client_id=${clientId}` +
-        `&logout_uri=${encodeURIComponent(baseRedirectUri)}`;
+        `&logout_uri=${encodeURIComponent(postLogoutRedirect)}`;
       
       window.location.href = logoutUrl;
     }
@@ -130,6 +152,14 @@ export class AuthService {
       redirect_uri: redirectUri
     });
 
+    // Include PKCE verifier if available
+    try {
+      const verifier = sessionStorage.getItem('pkce_verifier');
+      if (verifier) {
+        body.set('code_verifier', verifier);
+      }
+    } catch {}
+
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
@@ -142,7 +172,48 @@ export class AuthService {
       throw new Error(`Token exchange failed: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Cleanup PKCE verifier on success
+    try { sessionStorage.removeItem('pkce_verifier'); } catch {}
+    return data;
+  }
+
+  // PKCE helpers
+  private generateCodeVerifier(length: number = 64): string {
+    // RFC 7636: 43-128 chars, unreserved [A-Z / a-z / 0-9 / - . _ ~]
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+    let result = '';
+    const array = new Uint8Array(length);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(array);
+      for (let i = 0; i < length; i++) {
+        result += charset[array[i] % charset.length];
+      }
+    } else {
+      // Fallback (less secure, but avoids crash in non-browser env)
+      for (let i = 0; i < length; i++) {
+        result += charset[Math.floor(Math.random() * charset.length)];
+      }
+    }
+    return result;
+  }
+
+  private async generateCodeChallenge(verifier: string): Promise<string> {
+    const data = new TextEncoder().encode(verifier);
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return this.base64UrlEncode(new Uint8Array(digest));
+    }
+    // Fallback without subtle crypto is not ideal; return verifier (plain) which some configs accept
+    return verifier;
+  }
+
+  private base64UrlEncode(bytes: Uint8Array): string {
+    let str = '';
+    bytes.forEach(b => { str += String.fromCharCode(b); });
+    const base64 = btoa(str);
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
   private parseTokenPayload(idToken: string): User {

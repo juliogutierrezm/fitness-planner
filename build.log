@@ -1,0 +1,91 @@
+
+> fitness-planner@0.0.0 build
+> ng build
+
+[33m>[39m Building...
+[32mÔêÜ[39m Building...
+[35mBrowser bundles[39m      
+[1mInitial chunk files[22m  [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mchunk-P4WOEXDJ.js[39m    [2m | [22m[2m-[22m                         [2m | [22m[36m202.97 kB[39m[2m | [22m               [36m52.69 kB[39m
+[32mchunk-WJL57RLS.js[39m    [2m | [22m[2m-[22m                         [2m | [22m[36m195.17 kB[39m[2m | [22m               [36m57.59 kB[39m
+[32mchunk-GMT6HEVL.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m78.47 kB[39m[2m | [22m               [36m19.45 kB[39m
+[32mmain-HT76W4W3.js[39m     [2m | [22m[2mmain[22m                      [2m | [22m [36m60.12 kB[39m[2m | [22m               [36m10.79 kB[39m
+[32mchunk-55TQPKBH.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m40.49 kB[39m[2m | [22m                [36m8.46 kB[39m
+[32mpolyfills-FFHMD2TL.js[39m[2m | [22m[2mpolyfills[22m                 [2m | [22m [36m34.52 kB[39m[2m | [22m               [36m11.28 kB[39m
+[32mchunk-WUVNBEWM.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m28.47 kB[39m[2m | [22m                [36m3.75 kB[39m
+[32mchunk-SR5QVVPS.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m24.62 kB[39m[2m | [22m                [36m6.95 kB[39m
+[32mchunk-3472M77X.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m21.53 kB[39m[2m | [22m                [36m5.42 kB[39m
+[32mstyles-R5MGXIY2.css[39m  [2m | [22m[2mstyles[22m                    [2m | [22m  [36m8.73 kB[39m[2m | [22m                [36m1.63 kB[39m
+[32mchunk-G5HBTQI6.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m4.77 kB[39m[2m | [22m                [36m1.59 kB[39m
+[32mchunk-T3Q3DASN.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m4.18 kB[39m[2m | [22m                [36m1.09 kB[39m
+[32mchunk-52ABDNYQ.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m1.45 kB[39m[2m | [22m              [36m531 bytes[39m
+
+[1m [22m                    [2m | [22m[1mInitial total[22m             [2m | [22m[1m[93m705.48 kB[39m[22m[2m | [22m              [1m181.23 kB[22m
+
+[1mLazy chunk files[22m     [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mchunk-QE2UJRBH.js[39m    [2m | [22m[2mplanner-component[22m         [2m | [22m[36m339.10 kB[39m[2m | [22m               [36m61.38 kB[39m
+[32mchunk-5VJV35G6.js[39m    [2m | [22m[2mbrowser[22m                   [2m | [22m [36m64.04 kB[39m[2m | [22m               [36m17.12 kB[39m
+[32mchunk-RPNL6JSJ.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m55.21 kB[39m[2m | [22m               [36m12.88 kB[39m
+[32mchunk-DHNZYJUH.js[39m    [2m | [22m[2m-[22m                         [2m | [22m [36m37.63 kB[39m[2m | [22m                [36m7.99 kB[39m
+[32mchunk-JKG4IDET.js[39m    [2m | [22m[2mworkout-plans-component[22m   [2m | [22m [36m30.54 kB[39m[2m | [22m                [36m7.77 kB[39m
+[32mchunk-67NMNTJX.js[39m    [2m | [22m[2mdiagnostics-component[22m     [2m | [22m [36m26.51 kB[39m[2m | [22m                [36m6.75 kB[39m
+[32mchunk-LMDZOBYQ.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m8.82 kB[39m[2m | [22m                [36m2.22 kB[39m
+[32mchunk-M7ZHNL3C.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m6.77 kB[39m[2m | [22m                [36m1.51 kB[39m
+[32mchunk-4UZGPYJY.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m5.39 kB[39m[2m | [22m                [36m1.49 kB[39m
+[32mchunk-Y26ARYUD.js[39m    [2m | [22m[2mexercise-manager-component[22m[2m | [22m  [36m4.25 kB[39m[2m | [22m                [36m1.46 kB[39m
+[32mchunk-COVB4NRG.js[39m    [2m | [22m[2m-[22m                         [2m | [22m  [36m4.08 kB[39m[2m | [22m                [36m1.15 kB[39m
+[32mchunk-5MXFL34N.js[39m    [2m | [22m[2mlogin-component[22m           [2m | [22m  [36m3.27 kB[39m[2m | [22m                [36m1.24 kB[39m
+[32mchunk-7NQBZ5MQ.js[39m    [2m | [22m[2mcallback-component[22m        [2m | [22m  [36m2.90 kB[39m[2m | [22m                [36m1.19 kB[39m
+[32mchunk-GC7CWR4V.js[39m    [2m | [22m[2mdashboard-component[22m       [2m | [22m[36m318 bytes[39m[2m | [22m              [36m318 bytes[39m
+
+
+[35mServer bundles[39m       
+[1mInitial chunk files[22m  [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mserver.mjs[39m           [2m | [22m[2mserver[22m                    [2m | [22m[36m844.03 kB[39m[2m | [22m                       
+[32mmain.server.mjs[39m      [2m | [22m[2mmain.server[22m               [2m | [22m[36m506.80 kB[39m[2m | [22m                       
+[32mpolyfills.server.mjs[39m [2m | [22m[2mpolyfills.server[22m          [2m | [22m[36m268.60 kB[39m[2m | [22m                       
+[32mchunk-SA2RRKD2.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m[36m203.21 kB[39m[2m | [22m                       
+[32mchunk-27IC5FCF.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m[36m195.06 kB[39m[2m | [22m                       
+[32mchunk-IEXAOFYE.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m78.55 kB[39m[2m | [22m                       
+[32mchunk-TWJDMP6R.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m63.57 kB[39m[2m | [22m                       
+[32mchunk-APW4PNKU.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m40.55 kB[39m[2m | [22m                       
+[32mchunk-6GKWEFDB.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m28.50 kB[39m[2m | [22m                       
+[32mchunk-RX4DTQUN.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m24.69 kB[39m[2m | [22m                       
+[32mchunk-WOGPE223.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m21.57 kB[39m[2m | [22m                       
+[32mchunk-6BF6YPOU.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m4.80 kB[39m[2m | [22m                       
+[32mchunk-P5ZL7ANQ.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m4.21 kB[39m[2m | [22m                       
+[32mchunk-X2SEQXRR.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m2.41 kB[39m[2m | [22m                       
+[32mchunk-EVDNK7CT.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m1.48 kB[39m[2m | [22m                       
+[32mchunk-GFUZYSQG.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m1.24 kB[39m[2m | [22m                       
+
+[1mLazy chunk files[22m     [2m | [22m[1mNames[22m                     [2m | [22m [1mRaw size[22m
+[32mchunk-2EUFXHQS.mjs[39m   [2m | [22m[2mplanner-component[22m         [2m | [22m[36m339.17 kB[39m[2m | [22m                       
+[32mchunk-PZTDM5PW.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m55.29 kB[39m[2m | [22m                       
+[32mchunk-CPCRRFHK.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m [36m37.66 kB[39m[2m | [22m                       
+[32mchunk-7KDNOXM4.mjs[39m   [2m | [22m[2mworkout-plans-component[22m   [2m | [22m [36m30.62 kB[39m[2m | [22m                       
+[32mchunk-3OOJ7BNF.mjs[39m   [2m | [22m[2mdiagnostics-component[22m     [2m | [22m [36m26.59 kB[39m[2m | [22m                       
+[32mchunk-EJSJJTUO.mjs[39m   [2m | [22m[2mxhr2[22m                      [2m | [22m [36m12.14 kB[39m[2m | [22m                       
+[32mchunk-TNO4MGIL.mjs[39m   [2m | [22m[2mxhr2[22m                      [2m | [22m [36m12.07 kB[39m[2m | [22m                       
+[32mchunk-UIT4H2UQ.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m8.86 kB[39m[2m | [22m                       
+[32mchunk-7JHMHUJB.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m6.81 kB[39m[2m | [22m                       
+[32mchunk-S6UHLQDN.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m5.43 kB[39m[2m | [22m                       
+[32mchunk-56AERPKX.mjs[39m   [2m | [22m[2mexercise-manager-component[22m[2m | [22m  [36m4.32 kB[39m[2m | [22m                       
+[32mchunk-BPSA2AFS.mjs[39m   [2m | [22m[2m-[22m                         [2m | [22m  [36m4.15 kB[39m[2m | [22m                       
+[32mchunk-KLPGTYRP.mjs[39m   [2m | [22m[2mlogin-component[22m           [2m | [22m  [36m3.34 kB[39m[2m | [22m                       
+[32mchunk-UHPHBOC2.mjs[39m   [2m | [22m[2mcallback-component[22m        [2m | [22m  [36m2.98 kB[39m[2m | [22m                       
+[32mchunk-HRQBK5MD.mjs[39m   [2m | [22m[2mbrowser[22m                   [2m | [22m[36m888 bytes[39m[2m | [22m                       
+[2m...and 1 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+[35mPrerendered 9 static routes.[39m
+Application bundle generation failed. [13.856 seconds]
+
+Ôû▓ [WARNING] bundle initial exceeded maximum budget. Budget 500.00 kB was not met by 205.48 kB with a total of 705.48 kB.
+
+
+Ôû▓ [WARNING] src/app/components/planner/planner.component.scss exceeded maximum budget. Budget 4.00 kB was not met by 701 bytes with a total of 4.70 kB.
+
+
+X [ERROR] The 'planner/:id' route uses prerendering and includes parameters, but 'getPrerenderParams' is missing. Please define 'getPrerenderParams' function for this route in your server routing configuration or specify a different 'renderMode'.
+
+
+

@@ -2,8 +2,8 @@
   max-width: 1200px;
   margin: 2rem auto;
   padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
 
   .header{
     display: flex;
@@ -15,4 +15,18 @@
       font-weight: 500;
     }
   }
+}
+
+/* Table polish */
+table.mat-mdc-table {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+th.mat-mdc-header-cell {
+  background: var(--bg-100);
+}
+
+tr.mdc-data-table__row:hover {
+  background: #f8fbff;
 }

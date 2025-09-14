@@ -2,8 +2,18 @@
   height: 100vh;
 }
 
+.app-toolbar {
+  background: var(--surface-200);
+  color: #ffffff;
+  box-shadow: var(--shadow-2);
+  .mat-icon { color: #ffffff; }
+  .title { color: #ffffff; }
+}
+
 .sidenav {
   width: 280px;
+  background: var(--surface-100);
+  color: #e5e7eb;
 }
 
 .shell-content {
@@ -20,9 +30,23 @@
 }
 
 .sidebar-item {
-  a {
-    margin: 0.25rem;
-    min-width: 200px;
+  padding: 12px;
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: #e5e7eb;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .nav-link:hover {
+    background: var(--surface-300);
+  }
+  .nav-link.active {
+    background: var(--primary-600);
+    color: #ffffff;
   }
 }
 
@@ -35,7 +59,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: white;
+    color: #ffffff;
     
     mat-icon {
       font-size: 20px;
@@ -45,10 +69,20 @@
     
     span {
       font-size: 14px;
+      color: #ffffff;
     }
     
-    button {
-      color: white;
-    }
+    button { color: #ffffff; }
   }
+}
+
+/* High-contrast toolbar actions */
+.login-btn {
+  background: #10b981; /* emerald-500 */
+  color: #ffffff !important;
+}
+
+.logout-btn {
+  background: var(--warn-500);
+  color: #ffffff !important;
 }

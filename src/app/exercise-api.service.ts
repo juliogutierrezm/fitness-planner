@@ -5,10 +5,11 @@ import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
 import { Exercise, Session } from './shared/models';
 import { AuthService } from './services/auth.service';
+import { environment } from '../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ExerciseApiService {
-  private apiBase     = 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev';
+  private apiBase     = environment.apiBase;
   private exerciseUrl = `${this.apiBase}/exercise`;
   private planUrl     = `${this.apiBase}/workoutPlans`;
 
@@ -169,6 +170,27 @@ export class ExerciseApiService {
       tap(() => console.log('💾 Plan de entrenamiento actualizado', plan)),
       catchError(err => {
         console.error('❌ Error al actualizar plan:', err);
+        return of(null);
+      })
+    );
+  }
+
+  deleteWorkoutPlan(planId: string): Observable<any> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      console.error('❌ Usuario no autenticado');
+      return of(null);
+    }
+
+    if (!planId) {
+      console.error('❌ planId requerido para eliminar');
+      return of(null);
+    }
+
+    return this.http.delete(`${this.planUrl}/${encodeURIComponent(planId)}`).pipe(
+      tap(() => console.log('✅ Plan de entrenamiento eliminado', planId)),
+      catchError(err => {
+        console.error('❌ Error al eliminar plan:', err);
         return of(null);
       })
     );

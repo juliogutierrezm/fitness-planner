@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService } from '../../auth/auth.service';
+import { AuthService } from '../../services/auth.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-callback',
@@ -96,17 +98,31 @@ export class CallbackComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
   async ngOnInit() {
     try {
-      // Handle the OAuth callback
-      await this.authService.handleCallback();
-      
-      // Check if authentication was successful
-      if (this.authService.isLoggedIn()) {
-        // Redirect to dashboard on successful authentication
+      // Avoid accessing window during SSR render
+      if (!isPlatformBrowser(this.platformId)) {
+        return;
+      }
+
+      // If Hosted UI returned an error, show it immediately
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get('error');
+      const errorDesc = params.get('error_description');
+      if (error) {
+        this.error = decodeURIComponent(errorDesc || 'No se pudo completar la autenticación.');
+        return;
+      }
+
+      // Finalize redirect and refresh auth state
+      await this.authService.checkAuthState();
+
+      // Evaluate synchronously after state refresh to avoid initial false emission
+      if (this.authService.isAuthenticatedSync()) {
         this.router.navigate(['/dashboard']);
       } else {
         this.error = 'No se pudo completar la autenticación.';
@@ -118,6 +134,6 @@ export class CallbackComponent implements OnInit {
   }
 
   retryLogin() {
-    this.authService.login();
+    this.authService.signInWithRedirect();
   }
 }

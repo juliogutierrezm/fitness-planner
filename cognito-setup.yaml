@@ -113,6 +113,8 @@ Resources:
       CallbackURLs:
         - http://localhost:4200/
         - https://localhost:4200/
+        - http://localhost:4200/callback
+        - https://localhost:4200/callback
       LogoutURLs:
         - http://localhost:4200/
         - https://localhost:4200/

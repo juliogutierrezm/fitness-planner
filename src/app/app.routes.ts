@@ -1,12 +1,16 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './layout/layout.component';
-import { AuthGuard } from './auth/auth.guard';
+import { AuthGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   // OAuth callback route (outside of layout)
   {
     path: 'callback',
     loadComponent: () => import('./components/callback/callback.component').then(m => m.CallbackComponent)
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent)
   },
   
   // Main application routes

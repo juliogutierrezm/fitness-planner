@@ -1,31 +1,31 @@
 <mat-sidenav-container class="shell-container">
   <mat-sidenav mode="side" [(opened)]="sidebarOpen" class="sidenav">
     <mat-nav-list class="sidebar-item">
-      <a mat-fab extended routerLink="/dashboard" routerLinkActive="active">
+      <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
         <mat-icon>blur_on</mat-icon>
-        Dashboard
+        <span>Dashboard</span>
       </a>
-      <a mat-fab extended routerLink="/planner" routerLinkActive="active">
+      <a class="nav-link" routerLink="/planner" routerLinkActive="active">
         <mat-icon>list_alt</mat-icon>
-        Crear Plan
+        <span>Crear Plan</span>
       </a>
-      <a mat-fab extended routerLink="/exercise-manager" routerLinkActive="active">
+      <a class="nav-link" routerLink="/exercise-manager" routerLinkActive="active">
         <mat-icon>fitness_center</mat-icon>
-        Ejercicios
+        <span>Ejercicios</span>
       </a>
-      <a mat-fab extended routerLink="/workout-plans" routerLinkActive="active">
+      <a class="nav-link" routerLink="/workout-plans" routerLinkActive="active">
         <mat-icon>library_books</mat-icon>
-        Planes
+        <span>Planes</span>
       </a>
-      <a mat-fab extended routerLink="/diagnostics" routerLinkActive="active">
+      <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
         <mat-icon>bug_report</mat-icon>
-        Diagnostics
+        <span>Diagnostics</span>
       </a>
     </mat-nav-list>
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-toolbar color="primary">
+    <mat-toolbar class="app-toolbar">
       <button mat-icon-button (click)="sidebarOpen = !sidebarOpen">
         <mat-icon>menu</mat-icon>
       </button>
@@ -36,12 +36,12 @@
       <div class="auth-buttons">
         <div *ngIf="isLoggedIn && user" class="user-badge">
           <mat-icon>account_circle</mat-icon>
-          <span>{{ user.email }}</span>
-          <button mat-button (click)="logout()">Logout</button>
+          <span>{{ displayName }}</span>
+          <button mat-flat-button class="logout-btn" (click)="logout()">Salir</button>
         </div>
-        <button *ngIf="!isLoggedIn" mat-button (click)="login()">
+        <button *ngIf="!isLoggedIn" mat-flat-button class="login-btn" (click)="login()">
           <mat-icon>login</mat-icon>
-          Login
+          Iniciar sesión
         </button>
       </div>
     </mat-toolbar>

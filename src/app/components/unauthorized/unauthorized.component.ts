@@ -25,7 +25,7 @@ import { AuthService } from '../../services/auth.service';
             <p>No tienes permisos para acceder a esta página.</p>
             
             <div class="user-info" *ngIf="currentUser">
-              <p><strong>Usuario:</strong> {{ currentUser.email }}</p>
+              <p><strong>Usuario:</strong> {{ displayName }}</p>
               <p><strong>Rol:</strong> {{ getRoleDisplayName(currentUser.role) }}</p>
             </div>
 
@@ -119,6 +119,14 @@ import { AuthService } from '../../services/auth.service';
 })
 export class UnauthorizedComponent {
   currentUser: any;
+  get displayName(): string {
+    const u = this.currentUser;
+    if (!u) return '';
+    const first = u?.givenName?.trim();
+    const last = u?.familyName?.trim();
+    if (first || last) return [first, last].filter(Boolean).join(' ');
+    return u?.email?.split('@')[0] || 'Usuario';
+  }
 
   constructor(
     private authService: AuthService,

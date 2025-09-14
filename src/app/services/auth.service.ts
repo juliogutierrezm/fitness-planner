@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { Amplify } from 'aws-amplify';
-import { fetchAuthSession, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession, signOut, getCurrentUser, signInWithRedirect } from 'aws-amplify/auth';
 import { awsExports } from '../../aws-exports';
 
 // Configure Amplify
@@ -37,6 +37,14 @@ export class AuthService {
 
   constructor() {
     this.checkAuthState();
+  }
+
+  async signInWithRedirect(): Promise<void> {
+    try {
+      await signInWithRedirect();
+    } catch (error) {
+      console.error('Error signing in with redirect:', error);
+    }
   }
 
   async checkAuthState(): Promise<void> {
@@ -98,6 +106,11 @@ export class AuthService {
 
   getCurrentUser(): UserProfile | null {
     return this.currentUserSubject.value;
+  }
+
+  // Synchronous read for guards/callback logic to avoid flicker
+  isAuthenticatedSync(): boolean {
+    return this.isAuthenticatedSubject.value;
   }
 
   getCurrentUserId(): string | null {

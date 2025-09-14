@@ -1,0 +1,57 @@
+/* Cognito Hosted UI customization – accessible dark theme */
+/* Only allowed selectors per AWS Cognito UI customization */
+
+/* Page background */
+.background-customizable {
+  background-color: #0b1220 !important; /* near-black */
+  background-image: none !important;
+}
+
+/* Top banner */
+.banner-customizable {
+  background-color: #0b1220 !important;
+  color: #ffffff !important;
+}
+
+/* Labels and helper text */
+.label-customizable {
+  color: #e5e7eb !important; /* slate-200 */
+}
+
+/* IdP button description */
+.idpDescription-customizable {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Legal text */
+.legalText-customizable {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+/* Input fields */
+.inputField-customizable {
+  background-color: #0f172a !important; /* slate-950 */
+  color: #f8fafc !important; /* slate-50 */
+  border-color: #334155 !important; /* slate-700 */
+  border-radius: 10px !important;
+}
+
+/* Primary button */
+.submitButton-customizable {
+  background-color: #2563eb !important; /* blue-600 */
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+}
+
+/* Identity provider buttons */
+.idpButton-customizable {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+}
+
+/* Error text */
+.errorMessage-customizable {
+  color: #f87171 !important; /* red-400 */
+}

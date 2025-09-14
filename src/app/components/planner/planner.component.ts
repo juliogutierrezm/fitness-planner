@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
@@ -13,6 +13,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatMenuModule } from '@angular/material/menu';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
@@ -45,13 +49,26 @@ interface EditingRow {
     MatCardModule,
     MatCheckboxModule,
     MatTooltipModule,
+    MatSnackBarModule,
+    MatSelectModule,
+    MatMenuModule,
+    ScrollingModule,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planner.component.html',
   styleUrls: ['./planner.component.scss']
 })
 export class PlannerComponent implements OnInit {
   form!: FormGroup;
   exercises: Exercise[] = [];
+  filteredExercises: Exercise[] = [];
+  muscles: string[] = [];
+  categories: string[] = [];
+  equipments: string[] = [];
+  filters = { muscle: '', category: '', equipment: '', q: '' };
+  favorites: Exercise[] = [];
+  recents: Exercise[] = [];
+  menuExercise: Exercise | null = null;
   sessions: Session[] = [];
   exerciseListConnectedTo: string[] = [];
   sessionsConnectedTo: Record<string, string[]> = {};
@@ -59,6 +76,7 @@ export class PlannerComponent implements OnInit {
   editingRow: EditingRow | null = null;
   planId: string | null = null;
   isEditMode = false;
+  liveMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -66,7 +84,8 @@ export class PlannerComponent implements OnInit {
     private api: ExerciseApiService,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit() {
@@ -82,20 +101,43 @@ export class PlannerComponent implements OnInit {
 
     this.api.getExercises().subscribe(exs => {
       this.exercises = exs;
+      // Build filter options
+      const uniq = (arr: (string|undefined)[]) => Array.from(new Set(arr.filter(Boolean) as string[])).sort();
+      this.muscles = uniq(exs.map(e => e.muscle));
+      this.categories = uniq(exs.map(e => e.category));
+      this.equipments = uniq(exs.map(e => e.equipment));
+      this.applyFilters();
       this.cdr.markForCheck();
     });
+
+    // Load favorites/recents
+    try {
+      this.favorites = JSON.parse(localStorage.getItem('fp_favorites') || '[]');
+      this.recents = JSON.parse(localStorage.getItem('fp_recents') || '[]');
+    } catch {
+      this.favorites = [];
+      this.recents = [];
+    }
 
     if (this.isEditMode && this.planId) {
       this.api.getWorkoutPlanById(this.planId).subscribe(plan => {
         if (plan) {
+          const parsedSessions = (() => {
+            try {
+              return typeof plan.sessions === 'string' ? JSON.parse(plan.sessions || '[]') : (plan.sessions || []);
+            } catch {
+              return [];
+            }
+          })();
           this.form.patchValue({
             userName: plan.name.replace('Plan de ', ''),
             date: new Date(plan.date),
-            sessionCount: plan.sessions.length,
+            sessionCount: parsedSessions.length,
             notes: plan.generalNotes
           });
-          this.sessions = plan.sessions;
+          this.sessions = parsedSessions;
           this.rebuildDropLists();
+          this.applyUiState();
           this.cdr.markForCheck();
         }
       });
@@ -113,13 +155,57 @@ export class PlannerComponent implements OnInit {
         this.updateSessions(this.form.value.sessionCount);
       }
       this.rebuildDropLists();
+      this.applyUiState();
 
       // This subscription should only be active in create mode
       this.form.get('sessionCount')!.valueChanges.subscribe(count => {
         this.updateSessions(count);
         this.persist();
+        this.persistUiState();
       });
     }
+  }
+
+  onFilterChange() {
+    this.applyFilters();
+  }
+
+  clearFilters() {
+    this.filters = { muscle: '', category: '', equipment: '', q: '' };
+    this.applyFilters();
+  }
+
+  private applyFilters() {
+    const { muscle, category, equipment, q } = this.filters;
+    const qn = (q || '').trim().toLowerCase();
+    this.filteredExercises = this.exercises.filter(e =>
+      (!muscle || (e.muscle || '') === muscle) &&
+      (!category || (e.category || '') === category) &&
+      (!equipment || (e.equipment || '') === equipment) &&
+      (!qn || e.name.toLowerCase().includes(qn))
+    );
+  }
+
+  private applyUiState() {
+    try {
+      const key = this.getUiKey();
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const ui = JSON.parse(raw) as Array<{ id: number; pinned?: boolean; collapsed?: boolean }>;
+      const map = new Map(ui.map(x => [x.id, x]));
+      this.sessions = this.sessions.map(s => ({ ...s, ...map.get(s.id) }));
+      this.sessions = [...this.sessions].sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    } catch {}
+  }
+
+  private persistUiState() {
+    const key = this.getUiKey();
+    const minimal = this.sessions.map((s: any) => ({ id: s.id, pinned: s.pinned, collapsed: s.collapsed }));
+    localStorage.setItem(key, JSON.stringify(minimal));
+  }
+
+  private getUiKey() {
+    return `fp_planner_ui_${this.authService.getCurrentUserId() || 'anon'}`;
   }
 
   generateWithAI() {
@@ -233,6 +319,8 @@ export class PlannerComponent implements OnInit {
       session.items = [...session.items];
       this.persist();
       this.cdr.detectChanges();
+      this.addRecent(ex);
+      this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
       return;
     }
 
@@ -248,10 +336,20 @@ export class PlannerComponent implements OnInit {
   }
 
   removeItem(session: Session, idx: number) {
+    const removed = session.items[idx];
     session.items.splice(idx, 1);
     session.items = [...session.items];
     this.persist();
     this.cdr.detectChanges();
+    const ref = this.snackBar.open('Ejercicio eliminado', 'Deshacer', { duration: 4000 });
+    ref.onAction().subscribe(() => {
+      session.items.splice(idx, 0, removed);
+      session.items = [...session.items];
+      this.persist();
+      this.cdr.markForCheck();
+      this.liveAnnounce('Ejercicio restaurado');
+    });
+    this.liveAnnounce('Ejercicio eliminado');
   }
 
   clearCache() {
@@ -322,16 +420,26 @@ export class PlannerComponent implements OnInit {
     if (!group || !group.children) return;
 
     const idx = session.items.indexOf(group);
+    const snapshot: any = JSON.parse(JSON.stringify(group));
     session.items.splice(idx, 1, ...group.children);
 
     this.persist();
     this.cdr.detectChanges();
+    const ref = this.snackBar.open('Superserie deshecha', 'Deshacer', { duration: 4000 });
+    ref.onAction().subscribe(() => {
+      session.items.splice(idx, snapshot.children!.length, snapshot);
+      session.items = [...session.items];
+      this.persist();
+      this.cdr.markForCheck();
+    });
+    this.liveAnnounce('Superserie deshecha');
   }
 
   ungroupGroup(session: Session, index: number) {
     const group = session.items[index];
     if (!group.isGroup || !group.children) return;
 
+    const snapshot: any = JSON.parse(JSON.stringify(group));
     session.items = [
       ...session.items.slice(0, index),
       ...group.children,
@@ -340,6 +448,14 @@ export class PlannerComponent implements OnInit {
 
     this.persist();
     this.cdr.detectChanges();
+    const ref = this.snackBar.open('Superserie deshecha', 'Deshacer', { duration: 4000 });
+    ref.onAction().subscribe(() => {
+      session.items.splice(index, snapshot.children!.length, snapshot);
+      session.items = [...session.items];
+      this.persist();
+      this.cdr.markForCheck();
+    });
+    this.liveAnnounce('Superserie deshecha');
   }
 
   canDragGroup(item: PlanItem): boolean {
@@ -347,11 +463,105 @@ export class PlannerComponent implements OnInit {
   }
 
   removeGroup(session: Session, idx: number) {
+    const removed = session.items[idx];
     session.items.splice(idx, 1);
     session.items = [...session.items];
     this.persist();
     this.cdr.detectChanges();
+    const ref = this.snackBar.open('Superserie eliminada', 'Deshacer', { duration: 4000 });
+    ref.onAction().subscribe(() => {
+      session.items.splice(idx, 0, removed);
+      session.items = [...session.items];
+      this.persist();
+      this.cdr.markForCheck();
+    });
   }
+
+  addExerciseToSession(session: Session, ex: Exercise) {
+    const item: PlanItem = {
+      ...ex,
+      id: Date.now().toString(),
+      sets: 3,
+      reps: 10,
+      rest: 60,
+      selected: false,
+      isGroup: false
+    };
+    session.items = [item, ...session.items];
+    this.persist();
+    this.cdr.markForCheck();
+    this.addRecent(ex);
+    this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
+    this.liveAnnounce('Ejercicio añadido');
+  }
+
+  toggleFavorite(ex: Exercise) {
+    const exists = this.favorites.find(f => f.id === ex.id);
+    this.favorites = exists
+      ? this.favorites.filter(f => f.id !== ex.id)
+      : [ex, ...this.favorites].slice(0, 50);
+    localStorage.setItem('fp_favorites', JSON.stringify(this.favorites));
+    this.cdr.markForCheck();
+  }
+
+  isFavorite(ex: Exercise): boolean {
+    return this.favorites.some(f => f.id === ex.id);
+  }
+
+  onOpenAddMenu(ex: Exercise) {
+    this.menuExercise = ex;
+  }
+
+  private addRecent(ex: Exercise) {
+    this.recents = [ex, ...this.recents.filter(r => r.id !== ex.id)].slice(0, 12);
+    localStorage.setItem('fp_recents', JSON.stringify(this.recents));
+  }
+
+  // Drag auto-scroll near viewport edges
+  onDragMoved(event: any) {
+    const y = event.pointerPosition?.y ?? 0;
+    const threshold = 80;
+    if (y < threshold) {
+      window.scrollBy({ top: -20, behavior: 'smooth' });
+    } else if (y > (window.innerHeight - threshold)) {
+      window.scrollBy({ top: 20, behavior: 'smooth' });
+    }
+  }
+
+  togglePin(session: any) {
+    session.pinned = !session.pinned;
+    this.sessions = [...this.sessions].sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    this.persistUiState();
+    this.cdr.markForCheck();
+  }
+
+  toggleCollapse(session: any) {
+    session.collapsed = !session.collapsed;
+    this.persistUiState();
+    this.cdr.markForCheck();
+  }
+
+  expandSession(session: any) {
+    if (session.collapsed) {
+      session.collapsed = false;
+      this.persistUiState();
+      this.cdr.markForCheck();
+    }
+  }
+
+  private liveAnnounce(msg: string) {
+    this.liveMessage = msg;
+    setTimeout(() => {
+      this.liveMessage = '';
+      this.cdr.markForCheck();
+    }, 1200);
+  }
+
+  // TrackBy helpers
+  trackByExercise = (_: number, e: Exercise) => e.id;
+  trackBySession = (_: number, s: Session) => s.id;
+  trackByItem = (_: number, i: PlanItem) => i.id;
+  trackByChild = (_: number, i: PlanItem) => i.id;
 
   private persist() {
     if (!this.isEditMode) {
@@ -382,12 +592,11 @@ export class PlannerComponent implements OnInit {
 
     action.subscribe(res => {
       if (res) {
-        alert(`✅ Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`);
+        this.snackBar.open(`Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`, 'Cerrar', { duration: 2500 });
         this.router.navigate(['/workout-plans']);
       } else {
-        alert(`❌ Hubo un error al ${this.isEditMode ? 'actualizar' : 'guardar'} el plan`);
+        this.snackBar.open(`Hubo un error al ${this.isEditMode ? 'actualizar' : 'guardar'} el plan`, 'Cerrar', { duration: 3500 });
       }
     });
   }
 }
-

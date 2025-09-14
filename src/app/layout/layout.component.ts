@@ -6,7 +6,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { AuthService, User } from '../auth/auth.service';
+import { AuthService, UserProfile } from '../services/auth.service';
 
 @Component({
   selector: 'app-layout',
@@ -25,25 +25,39 @@ import { AuthService, User } from '../auth/auth.service';
 })
 export class LayoutComponent implements OnInit {
   sidebarOpen = true;
-  user: User | null = null;
+  user: UserProfile | null = null;
+  private authenticated = false;
 
   constructor(private authService: AuthService) {}
 
   ngOnInit() {
-    this.authService.user$.subscribe(user => {
+    this.authService.currentUser$.subscribe(user => {
       this.user = user;
+    });
+    this.authService.isAuthenticated$.subscribe(isAuth => {
+      this.authenticated = isAuth;
     });
   }
 
   get isLoggedIn(): boolean {
-    return this.authService.isLoggedIn();
+    return this.authenticated;
+  }
+
+  get displayName(): string {
+    if (!this.user) return '';
+    const first = this.user.givenName?.trim();
+    const last = this.user.familyName?.trim();
+    if (first || last) {
+      return [first, last].filter(Boolean).join(' ');
+    }
+    return this.user.email?.split('@')[0] || 'Usuario';
   }
 
   login() {
-    this.authService.login();
+    this.authService.signInWithRedirect();
   }
 
   logout() {
-    this.authService.logout();
+    this.authService.signOut();
   }
 }

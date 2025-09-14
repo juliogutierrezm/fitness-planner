@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { AuthService } from '../../auth/auth.service';
+import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 
 interface ApiCallResult {
@@ -45,7 +45,7 @@ interface ApiCallResult {
                 </span>
               </div>
               <div class="status-item" *ngIf="user">
-                <strong>Email:</strong> {{ user.email }}
+                <strong>Usuario:</strong> {{ user.givenName || (user.email?.split('@')[0]) }}
               </div>
               <div class="status-item" *ngIf="user">
                 <strong>Subject:</strong> {{ user.id }}
@@ -266,35 +266,40 @@ export class DiagnosticsComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.updateAuthInfo();
-    
-    // Subscribe to user changes
-    this.authService.user$.subscribe(() => {
+    // Subscribe to auth state
+    this.authService.isAuthenticated$.subscribe(isAuth => {
+      this.isLoggedIn = isAuth;
+    });
+    // Subscribe to user changes and refresh token info
+    this.authService.currentUser$.subscribe(() => {
       this.updateAuthInfo();
     });
   }
 
   private updateAuthInfo() {
-    this.isLoggedIn = this.authService.isLoggedIn();
-    this.user = this.authService.getUser();
+    this.user = this.authService.getCurrentUser();
     
-    const token = this.authService.getIdToken();
-    if (token) {
-      try {
-        this.decodedToken = this.decodeToken(token);
-        const exp = this.decodedToken.payload.exp;
-        if (exp) {
-          this.tokenExpiration = new Date(exp * 1000);
-          this.timeToExpire = exp - Math.floor(Date.now() / 1000);
+    this.authService.getIdToken().subscribe(token => {
+      if (token) {
+        try {
+          this.decodedToken = this.decodeToken(token);
+          const exp = this.decodedToken.payload.exp;
+          if (exp) {
+            this.tokenExpiration = new Date(exp * 1000);
+            this.timeToExpire = exp - Math.floor(Date.now() / 1000);
+          }
+        } catch (error) {
+          console.error('Error decoding token:', error);
+          this.decodedToken = null;
+          this.tokenExpiration = null;
+          this.timeToExpire = null;
         }
-      } catch (error) {
-        console.error('Error decoding token:', error);
+      } else {
+        this.decodedToken = null;
+        this.tokenExpiration = null;
+        this.timeToExpire = null;
       }
-    } else {
-      this.decodedToken = null;
-      this.tokenExpiration = null;
-      this.timeToExpire = null;
-    }
+    });
   }
 
   private decodeToken(token: string) {

@@ -69,6 +69,7 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 }
 
 /* Unify selects/buttons using tokens */
+.mat-mdc-button-base { border-radius: var(--radius-md) !important; }
 .mat-mdc-raised-button.mat-primary, .mat-mdc-fab.mat-primary, .mat-mdc-mini-fab.mat-primary {
   --mdc-filled-button-container-color: var(--primary-600);
 }

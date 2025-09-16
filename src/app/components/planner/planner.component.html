@@ -1,19 +1,57 @@
 <div class="main-container">
+  <div class="ai-sidepanel" *ngIf="isGenerating">
+    <div class="panel-title">Planes anteriores del usuario</div>
+    <div class="prev-list">
+      <div class="prev-item" *ngFor="let p of previousPlans">
+        <div class="prev-title">{{ p.name }}</div>
+        <div class="prev-meta">{{ p.date | date:'dd/MM/yyyy' }} • {{ p.sessions?.length || 0 }} sesiones</div>
+        <button mat-stroked-button color="primary" (click)="openPreviewInline(p)">
+          <mat-icon>visibility</mat-icon>
+          Ver
+        </button>
+      </div>
+    </div>
+    <div class="inline-preview" *ngIf="selectedPreviewPlan">
+      <div class="inline-preview-header">
+        <div class="label">Previsualización</div>
+        <button mat-icon-button (click)="closePreviewInline()" aria-label="Cerrar">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <app-workout-plan-view [plan]="selectedPreviewPlan"></app-workout-plan-view>
+    </div>
+  </div>
   <div class="planner-actions">
-    <div class="left-actions">
-      <button mat-stroked-button color="accent" (click)="generateWithAI()" matTooltip="Generar plan con IA">
+    <div class="spacer"></div>
+    <div class="actions-right">
+      <button mat-stroked-button color="accent" (click)="openAIDialog()" matTooltip="Generar plan con IA">
         <mat-icon>psychology</mat-icon>
         Generar plan
       </button>
-    </div>
-    <div class="right-actions">
       <button mat-raised-button color="primary" (click)="submitPlan()" matTooltip="Guardar el plan actual">
         <mat-icon>save</mat-icon>
         Guardar plan
       </button>
     </div>
   </div>
+  <div class="ai-overlay" *ngIf="isGenerating">
+    <div class="ai-overlay-content">
+      <mat-spinner diameter="42"></mat-spinner>
+      <div class="ai-msg">Generando plan con IA…</div>
+    </div>
+  </div>
   <form [formGroup]="form" class="planner-header">
+    <ng-container *ngIf="canAssignUser">
+      <mat-form-field appearance="outline">
+        <mat-label>Cliente</mat-label>
+        <mat-select formControlName="targetUserId">
+          <mat-option [value]="">Sin asignar</mat-option>
+          <mat-option *ngFor="let u of clients" [value]="u.id">
+            {{ u.givenName || '' }} {{ u.familyName || '' }} ({{ u.email }})
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </ng-container>
     <mat-form-field appearance="outline">
       <mat-label>Entrenador</mat-label>
       <input matInput formControlName="userName"/>
@@ -52,34 +90,13 @@
         <mat-label>Buscar</mat-label>
         <input matInput [(ngModel)]="filters.q" (ngModelChange)="onFilterChange()" placeholder="Nombre..." />
       </mat-form-field>
-      <div class="favorites-recents">
-        <div class="fav-block" *ngIf="favorites.length">
-          <div class="block-title">Favoritos</div>
-          <div class="fav-list">
-            <ng-container *ngFor="let ex of favorites; trackBy: trackByExercise">
-              <button type="button" class="pill" [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()">
-                <mat-icon>star</mat-icon>{{ ex.name }}
-              </button>
-            </ng-container>
-          </div>
-        </div>
-        <div class="rec-block" *ngIf="recents.length">
-          <div class="block-title">Recientes</div>
-          <div class="fav-list">
-            <ng-container *ngFor="let ex of recents; trackBy: trackByExercise">
-              <button type="button" class="pill" [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()">
-                <mat-icon>history</mat-icon>{{ ex.name }}
-              </button>
-            </ng-container>
-          </div>
-        </div>
-        <mat-menu #addMenu="matMenu">
-          <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
-            <mat-icon>add</mat-icon>
-            <span>{{ s.name }}</span>
-          </button>
-        </mat-menu>
-      </div>
+      <!-- Submenú: a qué día agregar -->
+      <mat-menu #addMenu="matMenu">
+        <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
+          <mat-icon>add</mat-icon>
+          <span>{{ s.name }}</span>
+        </button>
+      </mat-menu>
       <div class="filters">
         <mat-form-field appearance="fill" class="filter-field">
           <mat-label>Grupo muscular</mat-label>
@@ -172,10 +189,11 @@
               <ng-container matColumnDef="select">
                 <th mat-header-cell *matHeaderCellDef>
                   <button mat-icon-button 
+                          class="link-action"
                           matTooltip="Crear superserie" 
                           (click)="groupSelected(s)" 
                           [disabled]="!hasSelectedItems(s)">
-                        <mat-icon>offline_pin</mat-icon>
+                        <mat-icon>link</mat-icon>
                   </button>
                 </th>
                 <td mat-cell *matCellDef="let item; let i = index">
@@ -185,13 +203,14 @@
                     (change)="updateSelection(s)"
                   ></mat-checkbox>
                   <ng-container *ngIf="item.isGroup">
+                    <span class="superset-label">Superserie</span>
                     <button
                       mat-icon-button
-                      
+                      class="unlink-action"
                       (click)="ungroupGroup(s, i)"
                       matTooltip="Eliminar superserie"
                     >
-                  <mat-icon>remove_circle</mat-icon>
+                      <mat-icon>link_off</mat-icon>
                     </button>
                   </ng-container>
                 </td>
@@ -207,9 +226,6 @@
                 <ng-container *ngIf="item.isGroup && item.children as children">
                     <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
                     <div class="child-row" [ngClass]="{ 'with-divider': cIdx > 0 }">
-                      <ng-container *ngIf="cIdx === 0">
-                        <span class="superset-label">Superserie</span>
-                      </ng-container>
                       {{ child.name }}
                     </div>
                   </ng-container>
@@ -445,12 +461,5 @@
         </div>
       </mat-card>
     </section>
-
-    
-
   </div>
-
-  <button mat-raised-button color="warn" (click)="clearCache()">
-    🧹 Limpiar caché
-  </button>
 </div>

@@ -17,8 +17,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Inject } from '@angular/core';
+import { finalize } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
+import { UserApiService, AppUser } from '../../user-api.service';
+import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view.component';
 import { AuthService } from '../../services/auth.service';
 import { Exercise, Session, PlanItem } from '../../shared/models';
 
@@ -53,6 +59,9 @@ interface EditingRow {
     MatSelectModule,
     MatMenuModule,
     ScrollingModule,
+    MatDialogModule,
+    MatProgressSpinnerModule,
+    WorkoutPlanViewComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planner.component.html',
@@ -77,6 +86,12 @@ export class PlannerComponent implements OnInit {
   planId: string | null = null;
   isEditMode = false;
   liveMessage = '';
+  isGenerating = false;
+  previousPlans: any[] = [];
+  selectedPreviewPlan: any | null = null;
+  private readonly prevLimit = 8;
+  canAssignUser = false;
+  clients: AppUser[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -85,8 +100,53 @@ export class PlannerComponent implements OnInit {
     private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog,
+    private userApi: UserApiService
   ) {}
+
+  // Abre un diálogo amplio para escribir el prompt de IA
+  openAIDialog() {
+    const ref = this.dialog.open(AiPromptDialogComponent, {
+      width: '720px',
+      maxWidth: '90vw',
+      data: {}
+    });
+    ref.afterClosed().subscribe((userPrompt?: string) => {
+      if (userPrompt) {
+        this.runGenerateAI(userPrompt);
+      }
+    });
+  }
+
+  // Genera plan con indicador de carga
+  private runGenerateAI(userPrompt: string) {
+    this.isGenerating = true;
+    this.api.generateWorkoutPlanAI(userPrompt)
+      .pipe(finalize(() => { this.isGenerating = false; this.cdr.markForCheck(); }))
+      .subscribe(res => {
+        if (res?.plan) {
+          this.sessions = res.plan.map((day: any, idx: number) => ({
+            id: idx + 1,
+            name: day.day,
+            items: day.items.map((ex: any) => ({
+              id: Date.now() + Math.random(),
+              name: ex.name,
+              equipment: '',
+              sets: ex.sets,
+              reps: ex.reps,
+              rest: ex.rest,
+              notes: ex.notes,
+              isGroup: false,
+              selected: false
+            }))
+          }));
+          this.form.patchValue({ sessionCount: this.sessions.length });
+          this.persist();
+          this.snackBar.open('Plan generado por IA', undefined, { duration: 1500 });
+        }
+      });
+  }
 
   ngOnInit() {
     this.planId = this.route.snapshot.paramMap.get('id');
@@ -96,8 +156,15 @@ export class PlannerComponent implements OnInit {
       userName: [''],
       date: [new Date()],
       sessionCount: [3],
-      notes: ['']
+      notes: [''],
+      targetUserId: ['']
     });
+
+    // Prefill target user if arriving from user detail
+    const qpUserId = this.route.snapshot.queryParamMap.get('userId');
+    if (qpUserId) {
+      this.form.patchValue({ targetUserId: qpUserId });
+    }
 
     this.api.getExercises().subscribe(exs => {
       this.exercises = exs;
@@ -119,6 +186,16 @@ export class PlannerComponent implements OnInit {
       this.recents = [];
     }
 
+    // Load assignable users if trainer independent or admin
+    const current = this.authService.getCurrentUser();
+    if (current?.role === 'admin') {
+      this.canAssignUser = true;
+      this.userApi.getUsersByCompany().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
+    } else if (current?.role === 'trainer' && !current.companyId) {
+      this.canAssignUser = true;
+      this.userApi.getUsersByTrainer().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
+    }
+
     if (this.isEditMode && this.planId) {
       this.api.getWorkoutPlanById(this.planId).subscribe(plan => {
         if (plan) {
@@ -137,11 +214,11 @@ export class PlannerComponent implements OnInit {
           });
           this.sessions = parsedSessions;
           this.rebuildDropLists();
-          this.applyUiState();
-          this.cdr.markForCheck();
-        }
-      });
-    } else {
+      this.applyUiState();
+      this.cdr.markForCheck();
+    }
+  });
+  } else {
       const currentUser = this.authService.getCurrentUser();
       const displayName = currentUser ? 
         `${currentUser.givenName || ''} ${currentUser.familyName || ''}`.trim() || 
@@ -164,6 +241,13 @@ export class PlannerComponent implements OnInit {
         this.persistUiState();
       });
     }
+
+    // Load previous plans (latest N) for quick preview in AI overlay
+    this.api.getWorkoutPlansByUser().subscribe(list => {
+      const sorted = (list || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      this.previousPlans = sorted.slice(0, this.prevLimit);
+      this.cdr.markForCheck();
+    });
   }
 
   onFilterChange() {
@@ -234,6 +318,9 @@ export class PlannerComponent implements OnInit {
       }
     });
   }
+
+  openPreviewInline(plan: any) { this.selectedPreviewPlan = plan; this.cdr.markForCheck(); }
+  closePreviewInline() { this.selectedPreviewPlan = null; this.cdr.markForCheck(); }
 
   /*** Inline editing ***/
   startEdit(sessionId: number, itemId: number, field: EditableField, childIdx?: number) {
@@ -583,7 +670,7 @@ export class PlannerComponent implements OnInit {
       date: new Date(formValue.date).toISOString(),
       sessions: this.sessions,
       generalNotes: formValue.notes,
-      userId: this.authService.getCurrentUserId()
+      userId: formValue.targetUserId || this.authService.getCurrentUserId()
     };
 
     const action = this.isEditMode 
@@ -600,3 +687,35 @@ export class PlannerComponent implements OnInit {
     });
   }
 }
+
+// Diálogo simple para prompt de IA con textarea amplia
+@Component({
+  selector: 'app-ai-prompt-dialog',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title class="ai-title">Generar plan con IA</h2>
+    <div mat-dialog-content class="ai-content">
+      <p class="ai-help">Describe con detalle el objetivo del plan, días por semana, nivel, limitaciones y preferencias.</p>
+      <mat-form-field appearance="outline" class="w-100">
+        <mat-label>Instrucciones para la IA</mat-label>
+        <textarea matInput [(ngModel)]="prompt" rows="10" placeholder="Ej.: Principiante, 3-4 días/semana, foco fuerza y movilidad, 45-60 min por sesión, sin ejercicios de salto, incluir calentamiento y movilidad de hombro."></textarea>
+      </mat-form-field>
+    </div>
+    <div mat-dialog-actions align="end" class="ai-actions">
+      <button mat-stroked-button (click)="close()">Cancelar</button>
+      <button mat-raised-button color="primary" [disabled]="!prompt.trim()" (click)="confirm()">Generar</button>
+    </div>
+  `,
+  styles: [`.w-100{width:100%;} .ai-title{margin:0 0 8px;} .ai-content{padding-right:4px;} .ai-help{margin:0 0 8px;color:var(--ink-500);} .ai-actions{padding-top:8px;}`]
+})
+export class AiPromptDialogComponent {
+  prompt = '';
+  constructor(public dialogRef: MatDialogRef<AiPromptDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: any) {}
+  close(){ this.dialogRef.close(); }
+  confirm(){ this.dialogRef.close(this.prompt); }
+}
+
+
+
+

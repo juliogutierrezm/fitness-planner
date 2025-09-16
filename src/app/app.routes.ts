@@ -38,6 +38,11 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
+        path: 'plan/:id',
+        loadComponent: () => import('./pages/plan-view/plan-view.component').then(m => m.PlanViewPageComponent),
+        canActivate: [AuthGuard]
+      },
+      {
         path: 'plans',
         redirectTo: 'workout-plans',
         pathMatch: 'full'
@@ -50,6 +55,16 @@ export const routes: Routes = [
       {
         path: 'diagnostics',
         loadComponent: () => import('./pages/diagnostics/diagnostics.component').then(m => m.DiagnosticsComponent),
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'users',
+        loadComponent: () => import('./pages/users/users.component').then(m => m.UsersComponent),
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'users/:id',
+        loadComponent: () => import('./pages/user-detail/user-detail.component').then(m => m.UserDetailComponent),
         canActivate: [AuthGuard]
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

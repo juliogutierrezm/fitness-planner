@@ -8,7 +8,7 @@
       Notas generales: {{ plan.generalNotes || 'Ninguna' }}
     </mat-card-subtitle>
 
-    <div *ngFor="let session of plan.sessions" class="session-block">
+    <div *ngFor="let session of getSessions()" class="session-block">
       <h3>{{ session.name }}</h3>
 
       <div class="table-header">

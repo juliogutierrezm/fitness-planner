@@ -1,0 +1,49 @@
+<div class="user-detail">
+  <mat-card class="header-card" *ngIf="user as u">
+    <button mat-button routerLink="/users" class="back">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </button>
+    <h2 class="title">{{ u.givenName }} {{ u.familyName }}</h2>
+    <div class="meta">
+      <span class="email">{{ u.email }}</span>
+      <mat-chip-set>
+        <mat-chip color="primary" selected>{{ u.role }}</mat-chip>
+        <mat-chip *ngIf="u.companyId">Company: {{ u.companyId }}</mat-chip>
+        <mat-chip *ngIf="u.trainerId">Trainer: {{ u.trainerId }}</mat-chip>
+      </mat-chip-set>
+    </div>
+  </mat-card>
+
+  <mat-card class="plans-card">
+    <div class="plans-header">
+      <h3>Planes de entrenamiento</h3>
+      <a
+        *ngIf="userId as uid"
+        mat-raised-button
+        color="primary"
+        [routerLink]="['/planner']"
+        [queryParams]="{ userId: uid }"
+      >
+        <mat-icon>add</mat-icon>
+        Crear plan para este usuario
+      </a>
+    </div>
+
+    <div *ngIf="loadingPlans" class="empty">Cargando planes...</div>
+    <div *ngIf="!loadingPlans && (!plans || !plans.length)" class="empty">Sin planes</div>
+
+    <div *ngIf="plans && plans.length" class="plans-list">
+      <div
+        class="plan-row"
+        *ngFor="let p of plans; let i = index"
+        [routerLink]="['/plan', getPlanId(p)]"
+      >
+        <div class="title">Plan {{ i + 1 }}</div>
+        <div class="meta">
+          {{ p.date | date:'dd/MM/yyyy' }} · {{ p.sessions?.length || 0 }} sesiones
+        </div>
+      </div>
+    </div>
+  </mat-card>
+</div>

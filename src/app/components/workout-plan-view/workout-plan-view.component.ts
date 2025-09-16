@@ -19,4 +19,20 @@ import { MatDividerModule } from '@angular/material/divider';
 })
 export class WorkoutPlanViewComponent {
   @Input() plan: any;
+
+  getSessions() {
+    if (this.plan?.sessions) {
+      if (typeof this.plan.sessions === 'string') {
+        try {
+          return JSON.parse(this.plan.sessions);
+        } catch (e) {
+          console.error('Error parsing sessions JSON:', e);
+          return [];
+        }
+      }
+      return this.plan.sessions; // It's already an object/array
+    }
+    return [];
+  }
 }
+

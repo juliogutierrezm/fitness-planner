@@ -1,26 +1,4 @@
 <div class="main-container">
-  <div class="ai-sidepanel" *ngIf="isGenerating">
-    <div class="panel-title">Planes anteriores del usuario</div>
-    <div class="prev-list">
-      <div class="prev-item" *ngFor="let p of previousPlans">
-        <div class="prev-title">{{ p.name }}</div>
-        <div class="prev-meta">{{ p.date | date:'dd/MM/yyyy' }} • {{ p.sessions?.length || 0 }} sesiones</div>
-        <button mat-stroked-button color="primary" (click)="openPreviewInline(p)">
-          <mat-icon>visibility</mat-icon>
-          Ver
-        </button>
-      </div>
-    </div>
-    <div class="inline-preview" *ngIf="selectedPreviewPlan">
-      <div class="inline-preview-header">
-        <div class="label">Previsualización</div>
-        <button mat-icon-button (click)="closePreviewInline()" aria-label="Cerrar">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <app-workout-plan-view [plan]="selectedPreviewPlan"></app-workout-plan-view>
-    </div>
-  </div>
   <div class="planner-actions">
     <div class="spacer"></div>
     <div class="actions-right">
@@ -34,14 +12,32 @@
       </button>
     </div>
   </div>
-  <div class="ai-overlay" *ngIf="isGenerating">
+  <div class="ai-overlay" *ngIf="isGenerating" role="dialog" aria-live="assertive" aria-label="Generando plan con IA">
     <div class="ai-overlay-content">
-      <mat-spinner diameter="42"></mat-spinner>
-      <div class="ai-msg">Generando plan con IA…</div>
+      <div class="ai-animation-container">
+        <div class="ai-brain-icon">
+          <mat-icon class="brain-icon">psychology</mat-icon>
+          <div class="thinking-dots">
+            <span class="dot dot-1"></span>
+            <span class="dot dot-2"></span>
+            <span class="dot dot-3"></span>
+          </div>
+        </div>
+        <div class="ai-dumbbell-icon">
+          <mat-icon class="dumbbell-icon">fitness_center</mat-icon>
+        </div>
+      </div>
+      <div class="ai-msg" [attr.aria-live]="generationStep ? 'polite' : null">
+        {{ generationStep || 'Estamos creando tu plan de entrenamiento con IA...' }}
+      </div>
+      <div class="ai-subtitle">Esto puede tomar unos momentos</div>
+      <div class="ai-progress-container">
+        <mat-progress-bar mode="indeterminate" color="primary" class="ai-progress-bar"></mat-progress-bar>
+      </div>
     </div>
   </div>
   <form [formGroup]="form" class="planner-header">
-    <ng-container *ngIf="canAssignUser">
+    <ng-container *ngIf="canAssignUser && !isSpecificUser">
       <mat-form-field appearance="outline">
         <mat-label>Cliente</mat-label>
         <mat-select formControlName="targetUserId">
@@ -149,6 +145,29 @@
           </div>
         </cdk-virtual-scroll-viewport>
       </div>
+
+      <!-- Planes anteriores -->
+      <h3>Planes anteriores</h3>
+      <div class="list" *ngIf="previousPlans.length > 0; else noPreviousPlans">
+        <div class="empty" *ngIf="previousPlans.length === 0">No hay planes anteriores</div>
+        <cdk-virtual-scroll-viewport itemSize="44" class="vs-plans">
+          <div *cdkVirtualFor="let plan of previousPlans; trackBy: trackByPlan"
+               class="list-item" (click)="openPlanPreview(plan)">
+            <div class="row">
+              <div class="plan-info">
+                <div class="plan-name">{{ plan.name }}</div>
+                <div class="plan-meta">
+                  <span class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
+                  <span class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </cdk-virtual-scroll-viewport>
+      </div>
+      <ng-template #noPreviousPlans>
+        <div class="empty">No hay planes anteriores</div>
+      </ng-template>
     </aside>
 
     <!-- Sesiones verticales (drag & drop de sesiones) -->
@@ -172,12 +191,9 @@
           [cdkDropListConnectedTo]="sessionsConnectedTo['session-' + s.id]"
           (cdkDropListDropped)="drop($event, s)"
         >
-          <mat-card-header class="name-cursor" (mouseenter)="expandSession(s)">
+          <mat-card-header class="name-cursor">
             <mat-card-title>{{ s.name }}</mat-card-title>
             <div class="session-actions">
-              <button mat-icon-button (click)="togglePin(s)" [matTooltip]="s.pinned ? 'Desfijar' : 'Fijar'">
-                <mat-icon>push_pin</mat-icon>
-              </button>
               <button mat-icon-button (click)="toggleCollapse(s)" [matTooltip]="s.collapsed ? 'Expandir' : 'Colapsar'">
                 <mat-icon>{{ s.collapsed ? 'unfold_more' : 'unfold_less' }}</mat-icon>
               </button>
@@ -461,5 +477,7 @@
         </div>
       </mat-card>
     </section>
+
+
   </div>
 </div>

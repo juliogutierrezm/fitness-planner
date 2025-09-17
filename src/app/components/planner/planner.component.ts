@@ -17,14 +17,18 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Inject } from '@angular/core';
 import { finalize } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view.component';
+import { PreviousPlansDialogComponent } from './previous-plans-dialog.component';
+import { PlanPreviewDialogComponent } from './plan-preview-dialog.component';
 import { AuthService } from '../../services/auth.service';
 import { Exercise, Session, PlanItem } from '../../shared/models';
 
@@ -61,7 +65,7 @@ interface EditingRow {
     ScrollingModule,
     MatDialogModule,
     MatProgressSpinnerModule,
-    WorkoutPlanViewComponent,
+    MatProgressBarModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planner.component.html',
@@ -87,11 +91,23 @@ export class PlannerComponent implements OnInit {
   isEditMode = false;
   liveMessage = '';
   isGenerating = false;
+  generationStep = '';
+  generationStepIndex = 0;
   previousPlans: any[] = [];
   selectedPreviewPlan: any | null = null;
   private readonly prevLimit = 8;
   canAssignUser = false;
   clients: AppUser[] = [];
+  isSpecificUser = false;
+  private generationSteps = [
+    'Estamos creando tu plan de entrenamiento con IA...',
+    'Generando sesiones de entrenamiento...',
+    'Seleccionando ejercicios apropiados...',
+    'Ajustando series y repeticiones...',
+    'Optimizando tiempos de descanso...',
+    'Finalizando plan personalizado...'
+  ];
+  private stepInterval: any;
 
   constructor(
     private fb: FormBuilder,
@@ -119,11 +135,22 @@ export class PlannerComponent implements OnInit {
     });
   }
 
-  // Genera plan con indicador de carga
+  // Genera plan con indicador de carga mejorado
   private runGenerateAI(userPrompt: string) {
     this.isGenerating = true;
+    this.generationStepIndex = 0;
+    this.generationStep = this.generationSteps[0];
+
+    // Start rotating messages
+    this.startStepRotation();
+
     this.api.generateWorkoutPlanAI(userPrompt)
-      .pipe(finalize(() => { this.isGenerating = false; this.cdr.markForCheck(); }))
+      .pipe(finalize(() => {
+        this.isGenerating = false;
+        this.stopStepRotation();
+        this.generationStep = '';
+        this.cdr.markForCheck();
+      }))
       .subscribe(res => {
         if (res?.plan) {
           this.sessions = res.plan.map((day: any, idx: number) => ({
@@ -143,9 +170,24 @@ export class PlannerComponent implements OnInit {
           }));
           this.form.patchValue({ sessionCount: this.sessions.length });
           this.persist();
-          this.snackBar.open('Plan generado por IA', undefined, { duration: 1500 });
+          this.snackBar.open('¡Plan generado exitosamente!', undefined, { duration: 2000 });
         }
       });
+  }
+
+  private startStepRotation() {
+    this.stepInterval = setInterval(() => {
+      this.generationStepIndex = (this.generationStepIndex + 1) % this.generationSteps.length;
+      this.generationStep = this.generationSteps[this.generationStepIndex];
+      this.cdr.markForCheck();
+    }, 2000); // Change message every 2 seconds
+  }
+
+  private stopStepRotation() {
+    if (this.stepInterval) {
+      clearInterval(this.stepInterval);
+      this.stepInterval = null;
+    }
   }
 
   ngOnInit() {
@@ -154,16 +196,25 @@ export class PlannerComponent implements OnInit {
 
     this.form = this.fb.group({
       userName: [''],
-      date: [new Date()],
+      date: [null],
       sessionCount: [3],
       notes: [''],
       targetUserId: ['']
     });
 
-    // Prefill target user if arriving from user detail
+    // Check if arriving from user detail
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
+    this.isSpecificUser = !!qpUserId;
     if (qpUserId) {
       this.form.patchValue({ targetUserId: qpUserId });
+      // Fetch user details to prefill userName
+      this.userApi.getUserById(qpUserId).subscribe(user => {
+        if (user) {
+          const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
+          this.form.patchValue({ userName: displayName });
+          this.cdr.markForCheck();
+        }
+      });
     }
 
     this.api.getExercises().subscribe(exs => {
@@ -214,33 +265,27 @@ export class PlannerComponent implements OnInit {
           });
           this.sessions = parsedSessions;
           this.rebuildDropLists();
-      this.applyUiState();
+          this.applyUiState();
       this.cdr.markForCheck();
     }
   });
   } else {
-      const currentUser = this.authService.getCurrentUser();
-      const displayName = currentUser ? 
-        `${currentUser.givenName || ''} ${currentUser.familyName || ''}`.trim() || 
-        currentUser.email?.split('@')[0] || 'Usuario' : 'Usuario';
-      this.form.patchValue({ userName: displayName });
+      // Clear any previous sessions from localStorage for clean start
+      this.api.clearUserSessions();
 
-      const loaded = this.api.loadSessions();
-      if (loaded.length) {
-        this.sessions = JSON.parse(JSON.stringify(loaded));
-      } else {
-        this.updateSessions(this.form.value.sessionCount);
-      }
+      // Always start with empty sessions for new plans
+      this.updateSessions(this.form.value.sessionCount);
       this.rebuildDropLists();
       this.applyUiState();
-
-      // This subscription should only be active in create mode
-      this.form.get('sessionCount')!.valueChanges.subscribe(count => {
-        this.updateSessions(count);
-        this.persist();
-        this.persistUiState();
-      });
     }
+
+    // Subscribe to sessionCount changes in both create and edit modes
+    this.form.get('sessionCount')!.valueChanges.subscribe(count => {
+      this.updateSessions(count);
+      this.persist();
+      this.persistUiState();
+      this.cdr.markForCheck();
+    });
 
     // Load previous plans (latest N) for quick preview in AI overlay
     this.api.getWorkoutPlansByUser().subscribe(list => {
@@ -275,22 +320,23 @@ export class PlannerComponent implements OnInit {
       const key = this.getUiKey();
       const raw = localStorage.getItem(key);
       if (!raw) return;
-      const ui = JSON.parse(raw) as Array<{ id: number; pinned?: boolean; collapsed?: boolean }>;
+      const ui = JSON.parse(raw) as Array<{ id: number; collapsed?: boolean }>;
       const map = new Map(ui.map(x => [x.id, x]));
       this.sessions = this.sessions.map(s => ({ ...s, ...map.get(s.id) }));
-      this.sessions = [...this.sessions].sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
     } catch {}
   }
 
   private persistUiState() {
     const key = this.getUiKey();
-    const minimal = this.sessions.map((s: any) => ({ id: s.id, pinned: s.pinned, collapsed: s.collapsed }));
+    const minimal = this.sessions.map((s: any) => ({ id: s.id, collapsed: s.collapsed }));
     localStorage.setItem(key, JSON.stringify(minimal));
   }
 
   private getUiKey() {
     return `fp_planner_ui_${this.authService.getCurrentUserId() || 'anon'}`;
   }
+
+
 
   generateWithAI() {
     const userPrompt = prompt('Describe el objetivo del plan (ej: Principiante, 4 días, fuerza + movilidad)');
@@ -322,6 +368,31 @@ export class PlannerComponent implements OnInit {
   openPreviewInline(plan: any) { this.selectedPreviewPlan = plan; this.cdr.markForCheck(); }
   closePreviewInline() { this.selectedPreviewPlan = null; this.cdr.markForCheck(); }
 
+  openPreviousPlansDialog() {
+    const dialogRef = this.dialog.open(PreviousPlansDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      maxHeight: '80vh',
+      data: { plans: this.previousPlans }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      // Handle any actions after dialog closes if needed
+      if (result) {
+        // Could navigate to plan details or perform other actions
+      }
+    });
+  }
+
+  openPlanPreview(plan: any) {
+    this.dialog.open(PlanPreviewDialogComponent, {
+      width: '800px',
+      maxWidth: '90vw',
+      maxHeight: '80vh',
+      data: { plan }
+    });
+  }
+
   /*** Inline editing ***/
   startEdit(sessionId: number, itemId: number, field: EditableField, childIdx?: number) {
     this.editingRow = { sessionId, itemId, field, childIdx };
@@ -352,6 +423,7 @@ export class PlannerComponent implements OnInit {
       items: currentSessions[i]?.items || []
     }));
     this.rebuildDropLists();
+    this.cdr.markForCheck();
   }
 
   private rebuildDropLists() {
@@ -604,6 +676,12 @@ export class PlannerComponent implements OnInit {
     localStorage.setItem('fp_recents', JSON.stringify(this.recents));
   }
 
+  toggleCollapse(session: any) {
+    session.collapsed = !session.collapsed;
+    this.persistUiState();
+    this.cdr.markForCheck();
+  }
+
   // Drag auto-scroll near viewport edges
   onDragMoved(event: any) {
     const y = event.pointerPosition?.y ?? 0;
@@ -615,26 +693,7 @@ export class PlannerComponent implements OnInit {
     }
   }
 
-  togglePin(session: any) {
-    session.pinned = !session.pinned;
-    this.sessions = [...this.sessions].sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-    this.persistUiState();
-    this.cdr.markForCheck();
-  }
 
-  toggleCollapse(session: any) {
-    session.collapsed = !session.collapsed;
-    this.persistUiState();
-    this.cdr.markForCheck();
-  }
-
-  expandSession(session: any) {
-    if (session.collapsed) {
-      session.collapsed = false;
-      this.persistUiState();
-      this.cdr.markForCheck();
-    }
-  }
 
   private liveAnnounce(msg: string) {
     this.liveMessage = msg;
@@ -649,6 +708,7 @@ export class PlannerComponent implements OnInit {
   trackBySession = (_: number, s: Session) => s.id;
   trackByItem = (_: number, i: PlanItem) => i.id;
   trackByChild = (_: number, i: PlanItem) => i.id;
+  trackByPlan = (_: number, p: any) => p.id || p.name;
 
   private persist() {
     if (!this.isEditMode) {
@@ -666,8 +726,8 @@ export class PlannerComponent implements OnInit {
     const formValue = this.form.value;
     const planData = {
       planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
-      name: `Plan de ${formValue.userName}`,
-      date: new Date(formValue.date).toISOString(),
+      name: `Plan de ${formValue.userName || 'Usuario'}`,
+      date: formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString(),
       sessions: this.sessions,
       generalNotes: formValue.notes,
       userId: formValue.targetUserId || this.authService.getCurrentUserId()
@@ -688,26 +748,294 @@ export class PlannerComponent implements OnInit {
   }
 }
 
-// Diálogo simple para prompt de IA con textarea amplia
+// Diálogo mejorado para prompt de IA con mejor UX
 @Component({
   selector: 'app-ai-prompt-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, TextFieldModule],
   template: `
-    <h2 mat-dialog-title class="ai-title">Generar plan con IA</h2>
-    <div mat-dialog-content class="ai-content">
-      <p class="ai-help">Describe con detalle el objetivo del plan, días por semana, nivel, limitaciones y preferencias.</p>
-      <mat-form-field appearance="outline" class="w-100">
-        <mat-label>Instrucciones para la IA</mat-label>
-        <textarea matInput [(ngModel)]="prompt" rows="10" placeholder="Ej.: Principiante, 3-4 días/semana, foco fuerza y movilidad, 45-60 min por sesión, sin ejercicios de salto, incluir calentamiento y movilidad de hombro."></textarea>
-      </mat-form-field>
-    </div>
-    <div mat-dialog-actions align="end" class="ai-actions">
-      <button mat-stroked-button (click)="close()">Cancelar</button>
-      <button mat-raised-button color="primary" [disabled]="!prompt.trim()" (click)="confirm()">Generar</button>
+    <div class="ai-dialog-container">
+      <div class="ai-dialog-header">
+        <div class="ai-dialog-title">
+          <mat-icon class="ai-icon">psychology</mat-icon>
+          <h2>Generar plan con IA</h2>
+        </div>
+        <div class="ai-dialog-divider"></div>
+      </div>
+
+      <div class="ai-dialog-content">
+        <div class="ai-help-card">
+          <mat-icon class="help-icon">lightbulb</mat-icon>
+          <div class="help-content">
+            <strong class="help-title">Consejos para mejores resultados:</strong>
+            <ul class="help-list">
+              <li class="help-item">Nivel de experiencia (principiante, intermedio, avanzado)</li>
+              <li class="help-item">Días disponibles por semana</li>
+              <li class="help-item">Objetivos específicos (fuerza, masa muscular, pérdida de peso, etc.)</li>
+              <li class="help-item">Limitaciones físicas o equipo disponible</li>
+              <li class="help-item">Duración preferida de las sesiones</li>
+            </ul>
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" class="prompt-field">
+          <mat-label>Instrucciones detalladas para la IA</mat-label>
+          <textarea
+            matInput
+            [(ngModel)]="prompt"
+            class="prompt-textarea"
+            placeholder="Ejemplo: Soy principiante, tengo 3-4 días disponibles por semana, quiero enfocarme en fuerza general y mejorar mi movilidad. Cada sesión debería durar entre 45-60 minutos. Tengo acceso a mancuernas, barras y máquinas básicas. Me gustaría incluir calentamiento específico y trabajo de core en cada sesión."
+            rows="4"
+          ></textarea>
+          <mat-hint>Cuanto más detallado seas, mejor será el plan generado</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="ai-dialog-actions">
+        <button mat-stroked-button (click)="close()" class="cancel-btn">
+          <mat-icon>close</mat-icon>
+          Cancelar
+        </button>
+        <button
+          mat-raised-button
+          color="primary"
+          [disabled]="!prompt.trim()"
+          (click)="confirm()"
+          class="generate-btn"
+        >
+          <mat-icon>auto_awesome</mat-icon>
+          Generar Plan
+        </button>
+      </div>
     </div>
   `,
-  styles: [`.w-100{width:100%;} .ai-title{margin:0 0 8px;} .ai-content{padding-right:4px;} .ai-help{margin:0 0 8px;color:var(--ink-500);} .ai-actions{padding-top:8px;}`]
+  styles: [`
+    .ai-dialog-container {
+      padding: 24px;
+      min-height: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ai-dialog-header {
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+
+    .ai-dialog-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+
+      h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--ink-900);
+      }
+
+      .ai-icon {
+        color: var(--primary-600);
+        font-size: 2rem;
+        width: 2rem;
+        height: 2rem;
+        flex-shrink: 0;
+      }
+    }
+
+    .ai-dialog-divider {
+      height: 1px;
+      background: var(--bg-200);
+      margin-top: 16px;
+    }
+
+    .ai-dialog-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 0;
+    }
+
+    .ai-help-card {
+      display: flex;
+      gap: 12px;
+      background: var(--bg-50);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--bg-200);
+      flex-shrink: 0;
+
+      .help-icon {
+        color: var(--accent-500);
+        font-size: 1.25rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+
+      .help-content {
+        flex: 1;
+
+        .help-title {
+          color: var(--ink-900);
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 600;
+        }
+
+        .help-list {
+          margin: 0;
+          padding: 0;
+          list-style: none;
+
+          .help-item {
+            color: var(--ink-600);
+            margin-bottom: 6px;
+            line-height: 1.5;
+            padding-left: 16px;
+            position: relative;
+
+            &:before {
+              content: '•';
+              color: var(--accent-500);
+              font-weight: bold;
+              position: absolute;
+              left: 0;
+            }
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+          }
+        }
+      }
+    }
+
+    .prompt-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 120px;
+
+      ::ng-deep .mat-mdc-form-field-outline {
+        color: var(--ink-300);
+      }
+
+      ::ng-deep .mat-mdc-form-field-focus-overlay {
+        background-color: rgba(var(--primary-600), 0.04);
+      }
+
+      .prompt-textarea {
+        font-family: inherit;
+        line-height: 1.5;
+        resize: none;
+        min-height: 100px;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+      }
+
+      .mat-mdc-form-field-hint {
+        color: var(--ink-500);
+        margin-top: 4px;
+      }
+    }
+
+    .ai-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding-top: 24px;
+      margin-top: 24px;
+      border-top: 1px solid var(--bg-200);
+      flex-shrink: 0;
+
+      .cancel-btn {
+        color: var(--ink-600);
+        border-color: var(--ink-300);
+
+        &:hover {
+          background: var(--bg-50);
+          border-color: var(--ink-400);
+        }
+      }
+
+      .generate-btn {
+        min-width: 140px;
+
+        &[disabled] {
+          opacity: 0.6;
+        }
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .ai-dialog-container {
+        padding: 20px;
+        min-height: 450px;
+      }
+
+      .ai-dialog-title {
+        gap: 8px;
+
+        h2 {
+          font-size: 1.25rem;
+        }
+
+        .ai-icon {
+          font-size: 1.5rem;
+          width: 1.5rem;
+          height: 1.5rem;
+        }
+      }
+
+      .ai-help-card {
+        padding: 12px;
+        gap: 8px;
+
+        .help-content .help-list .help-item {
+          padding-left: 12px;
+          font-size: 0.9rem;
+        }
+      }
+
+      .ai-dialog-actions {
+        flex-direction: column-reverse;
+        gap: 8px;
+
+        button {
+          width: 100%;
+          margin: 0;
+        }
+      }
+    }
+
+    @media (max-width: 480px) {
+      .ai-dialog-container {
+        padding: 16px;
+      }
+
+      .ai-dialog-header {
+        margin-bottom: 16px;
+      }
+
+      .ai-dialog-content {
+        gap: 16px;
+      }
+
+      .ai-help-card {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+
+        .help-icon {
+          align-self: flex-start;
+        }
+      }
+    }
+  `]
 })
 export class AiPromptDialogComponent {
   prompt = '';
@@ -715,7 +1043,3 @@ export class AiPromptDialogComponent {
   close(){ this.dialogRef.close(); }
   confirm(){ this.dialogRef.close(this.prompt); }
 }
-
-
-
-

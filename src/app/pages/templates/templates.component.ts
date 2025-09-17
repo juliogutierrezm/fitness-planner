@@ -17,11 +17,12 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 // Removed dialog-based preview; use dedicated route instead.
 
 @Component({
-  selector: 'app-workout-plans',
+  selector: 'app-templates',
   standalone: true,
   imports: [
     CommonModule,
@@ -39,23 +40,23 @@ import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/wor
     MatNativeDateModule,
     MatSelectModule,
     MatTooltipModule,
+    MatProgressSpinnerModule,
     WorkoutPlanViewComponent
   ],
-  templateUrl: './workout-plans.component.html',
-  styleUrls: ['./workout-plans.component.scss'],
+  templateUrl: './templates.component.html',
+  styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class WorkoutPlansComponent implements OnInit {
-  plans: any[] = [];
-  viewPlans: any[] = [];
+export class TemplatesComponent implements OnInit {
+  templates: any[] = [];
+  viewTemplates: any[] = [];
+  loading = true;
+  currentUser: any = null;
 
   // filtros
-  origin: 'all' | 'user' | 'trainer' = 'all';
   q = '';
   dateFrom: Date | null = null;
   dateTo: Date | null = null;
-
-  private pinnedIds = new Set<string>();
 
   constructor(
     private api: ExerciseApiService,
@@ -67,10 +68,17 @@ export class WorkoutPlansComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Load workout plans only for the authenticated user
-    this.api.getWorkoutPlansByUser().subscribe((data) => {
-      this.plans = (data || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Get current user info
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      this.cdr.markForCheck();
+    });
+
+    // Load templates created by the current trainer
+    this.api.getPlansByTrainer().subscribe((data) => {
+      this.templates = (data || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       this.applyFilters();
+      this.loading = false;
       this.cdr.markForCheck();
     });
   }
@@ -91,24 +99,20 @@ export class WorkoutPlansComponent implements OnInit {
     const from = this.dateFrom ? new Date(this.dateFrom).getTime() : null;
     const to = this.dateTo ? new Date(this.dateTo).getTime() : null;
 
-    let arr = this.plans.filter(p => {
+    let arr = this.templates.filter((p: any) => {
       const name = (p.name || '').toLowerCase();
       const notes = (p.generalNotes || '').toLowerCase();
       const t = p.date ? new Date(p.date).getTime() : 0;
       const matchQ = !qn || name.includes(qn) || notes.includes(qn);
       const matchFrom = from === null || t >= from!;
       const matchTo = to === null || t <= to!;
-      let matchOrigin = true;
-      if (this.origin === 'trainer') matchOrigin = !!p.trainerId;
-      if (this.origin === 'user') matchOrigin = !p.trainerId;
-      return matchQ && matchFrom && matchTo && matchOrigin;
+      return matchQ && matchFrom && matchTo;
     });
 
-    this.viewPlans = arr.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    this.viewTemplates = arr.slice().sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
   clearFilters() {
-    this.origin = 'all';
     this.q = '';
     this.dateFrom = null;
     this.dateTo = null;
@@ -117,6 +121,27 @@ export class WorkoutPlansComponent implements OnInit {
   }
 
   preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
+
+  getSessionCount(plan: any): number {
+    if (!plan) return 0;
+
+    // If sessions is a string, try to parse it as JSON
+    if (typeof plan.sessions === 'string') {
+      try {
+        const parsed = JSON.parse(plan.sessions);
+        return Array.isArray(parsed) ? parsed.length : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    // If sessions is already an array, return its length
+    if (Array.isArray(plan.sessions)) {
+      return plan.sessions.length;
+    }
+
+    return 0;
+  }
 
   getSessionSummary(items: any[] | null | undefined): string {
     if (!items || !Array.isArray(items)) return '';
@@ -129,12 +154,12 @@ export class WorkoutPlansComponent implements OnInit {
     return names.join(', ');
   }
 
-  deletePlan(planId: string) {
-    if (!planId) { return; }
+  deleteTemplate(templateId: string) {
+    if (!templateId) { return; }
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Eliminar plan',
-        message: '¿Eliminar este plan de entrenamiento? Esta acción no se puede deshacer.',
+        title: 'Eliminar plantilla',
+        message: '¿Eliminar esta plantilla? Esta acción no se puede deshacer.',
         confirmLabel: 'Eliminar',
         cancelLabel: 'Cancelar',
         icon: 'delete_outline'
@@ -143,16 +168,25 @@ export class WorkoutPlansComponent implements OnInit {
 
     ref.afterClosed().subscribe(ok => {
       if (!ok) return;
-      this.api.deleteWorkoutPlan(planId).subscribe(res => {
+      this.api.deleteWorkoutPlan(templateId).subscribe(res => {
         if (res !== null) {
-          this.plans = this.plans.filter(p => (p.planId || p.id) !== planId);
+          this.templates = this.templates.filter((p: any) => (p.planId || p.id) !== templateId);
           this.applyFilters();
-          this.snackBar.open('Plan eliminado', 'Cerrar', { duration: 2500 });
+          this.snackBar.open('Plantilla eliminada', 'Cerrar', { duration: 2500 });
           this.cdr.markForCheck();
         } else {
-          this.snackBar.open('No se pudo eliminar el plan', 'Cerrar', { duration: 3000 });
+          this.snackBar.open('No se pudo eliminar la plantilla', 'Cerrar', { duration: 3000 });
         }
       });
     });
+  }
+
+  createTemplate() {
+    this.router.navigate(['/planner']);
+  }
+
+  assignTemplate(template: any) {
+    // TODO: Implement template assignment to users
+    this.snackBar.open('Funcionalidad de asignación próximamente', 'Cerrar', { duration: 2000 });
   }
 }

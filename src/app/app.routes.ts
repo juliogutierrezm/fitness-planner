@@ -33,19 +33,14 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
-        path: 'workout-plans',
-        loadComponent: () => import('./pages/workout-plans/workout-plans.component').then(m => m.WorkoutPlansComponent),
+        path: 'templates',
+        loadComponent: () => import('./pages/templates/templates.component').then(m => m.TemplatesComponent),
         canActivate: [AuthGuard]
       },
       {
         path: 'plan/:id',
         loadComponent: () => import('./pages/plan-view/plan-view.component').then(m => m.PlanViewPageComponent),
         canActivate: [AuthGuard]
-      },
-      {
-        path: 'plans',
-        redirectTo: 'workout-plans',
-        pathMatch: 'full'
       },
       {
         path: 'exercise-manager',

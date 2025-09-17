@@ -1,0 +1,100 @@
+<div class="diagnostics-container">
+  <mat-card class="diagnostics-card">
+    <mat-card-header>
+      <mat-card-title>🔍 Authentication Diagnostics</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <!-- Login State -->
+      <div class="section">
+        <h3><mat-icon>verified_user</mat-icon> Authentication Status</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <strong>Logged In:</strong>
+            <span [class]="isLoggedIn ? 'success' : 'error'">
+              {{ isLoggedIn ? '✅ Yes' : '❌ No' }}
+            </span>
+          </div>
+          <div class="status-item" *ngIf="user">
+            <strong>Usuario:</strong> {{ user.givenName || (user.email?.split('@')[0]) }}
+          </div>
+          <div class="status-item" *ngIf="user">
+            <strong>Subject:</strong> {{ user.id }}
+          </div>
+          <div class="status-item" *ngIf="tokenExpiration">
+            <strong>Token Expires:</strong> {{ tokenExpiration | date:'medium' }}
+          </div>
+          <div class="status-item" *ngIf="timeToExpire">
+            <strong>Time to Expire:</strong>
+            <span [class]="timeToExpire < 300 ? 'warning' : 'success'">
+              {{ formatTimeToExpire(timeToExpire) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- API Test Buttons -->
+      <div class="section">
+        <h3><mat-icon>api</mat-icon> API Tests</h3>
+        <div class="button-group">
+          <button mat-raised-button color="primary" (click)="callExerciseApi()" [disabled]="loading">
+            <mat-icon>fitness_center</mat-icon>
+            Call /exercise
+          </button>
+          <button mat-raised-button color="accent" (click)="callWorkoutPlansApi()" [disabled]="loading">
+            <mat-icon>library_books</mat-icon>
+            Call /workoutPlans
+          </button>
+        </div>
+
+        <!-- Last API Call Result -->
+        <div *ngIf="lastApiCall" class="api-result">
+          <h4>Last API Call Result:</h4>
+          <div class="result-header">
+            <strong>{{ lastApiCall.timestamp | date:'medium' }}</strong>
+            <span [class]="getStatusClass(lastApiCall.status)">
+              {{ lastApiCall.status ? 'HTTP ' + lastApiCall.status : 'ERROR' }}
+            </span>
+          </div>
+          <div class="result-body">
+            <pre *ngIf="lastApiCall.body">{{ formatJson(lastApiCall.body) }}</pre>
+            <div *ngIf="lastApiCall.error" class="error-text">{{ lastApiCall.error }}</div>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Token Decoder -->
+      <div class="section">
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon>code</mat-icon>
+              Decode JWT Token
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div *ngIf="decodedToken" class="token-decode">
+            <div class="token-section">
+              <h4>Header:</h4>
+              <pre>{{ formatJson(decodedToken.header) }}</pre>
+            </div>
+            <div class="token-section">
+              <h4>Payload:</h4>
+              <pre>{{ formatJson(decodedToken.payload) }}</pre>
+            </div>
+            <div class="token-info">
+              <small><em>Signature verification not shown for security</em></small>
+            </div>
+          </div>
+          <div *ngIf="!decodedToken" class="no-token">
+            No valid token available
+          </div>
+        </mat-expansion-panel>
+      </div>
+
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -28,7 +28,7 @@ export class AuthInterceptor implements HttpInterceptor {
     }
 
     // Authenticated: attach token (avoid CORS preflight for simple GETs unless endpoint is protected)
-    const needsAuthHeaderForGet = /\/workoutPlans|\/exercise(?!\/bulk)/.test(req.url);
+    const needsAuthHeaderForGet = /\/(users|workoutPlans)|\/exercise(?!\/bulk)/.test(req.url);
     return this.authService.getIdToken().pipe(
       switchMap(token => {
         // Attach Authorization on non-GET requests, and on GET if explicitly required

@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { Amplify } from 'aws-amplify';
@@ -31,16 +32,24 @@ export enum UserRole {
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserProfile | null>(null);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  private readonly isBrowser: boolean;
 
   public currentUser$ = this.currentUserSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
-  constructor() {
-    this.checkAuthState();
+  constructor(@Inject(PLATFORM_ID) platformId: Object) {
+    this.isBrowser = isPlatformBrowser(platformId);
+    if (this.isBrowser) {
+      this.checkAuthState();
+    }
   }
 
   async signInWithRedirect(): Promise<void> {
     try {
+      if (!this.isBrowser || typeof window === 'undefined') {
+        console.warn('signInWithRedirect called on server; ignoring.');
+        return;
+      }
       await signInWithRedirect();
     } catch (error) {
       console.error('Error signing in with redirect:', error);
@@ -49,6 +58,7 @@ export class AuthService {
 
   async checkAuthState(): Promise<void> {
     try {
+      if (!this.isBrowser) { return; }
       const user = await getCurrentUser();
       const session = await fetchAuthSession();
       
@@ -69,32 +79,42 @@ export class AuthService {
 
   private async buildUserProfile(user: any, session: any): Promise<UserProfile> {
     const idToken = session.tokens?.idToken;
-    const payload = idToken?.payload;
-    
-    // Extract role from custom attributes or default to CLIENT
-    const role = this.extractUserRole(payload);
-    
+    const accessToken = session.tokens?.accessToken;
+    const idPayload = idToken?.payload || {};
+    const accessPayload = accessToken?.payload || {};
+
+    // Extract role from custom attributes or Cognito groups (check both tokens)
+    const role = this.extractUserRole(idPayload, accessPayload);
+
+    // Prefer ID token for profile fields; fallback to access token
+    const email = idPayload.email || accessPayload.email || user.username;
+    const givenName = idPayload.given_name || accessPayload.given_name;
+    const familyName = idPayload.family_name || accessPayload.family_name;
+    const companyId = idPayload['custom:companyId'] || accessPayload['custom:companyId'];
+    const trainerIdsRaw = idPayload['custom:trainerIds'] || accessPayload['custom:trainerIds'];
+
     return {
       id: user.userId,
-      email: payload?.email || user.username,
-      givenName: payload?.given_name,
-      familyName: payload?.family_name,
+      email,
+      givenName,
+      familyName,
       role,
-      companyId: payload?.['custom:companyId'],
-      trainerIds: payload?.['custom:trainerIds']?.split(','),
+      companyId,
+      trainerIds: typeof trainerIdsRaw === 'string' ? trainerIdsRaw.split(',') : undefined,
       isActive: true
     };
   }
 
-  private extractUserRole(payload: any): UserRole {
-    // Check custom role attribute first
-    const customRole = payload?.['custom:role'];
-    if (customRole && Object.values(UserRole).includes(customRole)) {
-      return customRole as UserRole;
-    }
+  private extractUserRole(idPayload: any, accessPayload: any): UserRole {
+    const norm = (v: any) => (typeof v === 'string' ? v.toLowerCase() : v);
 
-    // Check Cognito groups
-    const groups = payload?.['cognito:groups'];
+    // 1) Custom role attribute on either token
+    const customRole = norm(idPayload?.['custom:role'] || accessPayload?.['custom:role']);
+    if (customRole === 'admin') return UserRole.ADMIN;
+    if (customRole === 'trainer') return UserRole.TRAINER;
+
+    // 2) Cognito groups claim on either token
+    const groups = idPayload?.['cognito:groups'] || accessPayload?.['cognito:groups'];
     if (groups && Array.isArray(groups)) {
       if (groups.includes('Admin')) return UserRole.ADMIN;
       if (groups.includes('Trainer')) return UserRole.TRAINER;
@@ -158,6 +178,7 @@ export class AuthService {
 
   async signOut(): Promise<void> {
     try {
+      if (!this.isBrowser) { return; }
       await signOut();
       this.currentUserSubject.next(null);
       this.isAuthenticatedSubject.next(false);
@@ -169,6 +190,9 @@ export class AuthService {
 
   // Utility method to get auth session for API calls
   getAuthSession(): Observable<any> {
+    if (!this.isBrowser) {
+      return of(null);
+    }
     return from(fetchAuthSession()).pipe(
       catchError(error => {
         console.error('Error getting auth session:', error);

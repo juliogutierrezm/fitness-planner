@@ -12,9 +12,26 @@
 
 .sidenav {
   width: 280px;
-  background: var(--surface-100);
+  /* Match navbar color and remove any rounding */
+  background: var(--surface-200);
   color: #e5e7eb;
 }
+
+/* Ensure the Angular Material drawer has sharp corners */
+:host ::ng-deep .mat-drawer-container,
+:host ::ng-deep .mat-sidenav-container,
+:host ::ng-deep .mat-drawer,
+:host ::ng-deep .mat-sidenav,
+:host ::ng-deep .mat-drawer-content,
+:host ::ng-deep .mat-sidenav-content,
+:host ::ng-deep .mat-drawer-inner-container,
+:host ::ng-deep .mat-sidenav-inner-container {
+  border-radius: 0 !important;
+}
+
+/* Sidebar nav items without rounded corners for consistency */
+
+
 
 .shell-content {
   padding: 1rem;
@@ -38,7 +55,7 @@
     padding: 10px 12px;
     color: #e5e7eb;
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    border-radius: 0; /* keep sharp to match sidebar */
     transition: background-color .15s ease, color .15s ease;
   }
   .nav-link:hover {

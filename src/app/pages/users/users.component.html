@@ -1,0 +1,92 @@
+<div class="users-page">
+  <div class="header">
+    <h2>Usuarios</h2>
+  </div>
+
+  <mat-card class="form-card" *ngIf="canCreate">
+    <h3>Crear usuario</h3>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" type="email" required />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
+          <input matInput formControlName="givenName" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Apellidos</mat-label>
+          <input matInput formControlName="familyName" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="isAdmin">
+          <mat-label>Rol</mat-label>
+          <mat-select formControlName="role">
+            <mat-option value="client">Cliente</mat-option>
+            <mat-option value="trainer">Entrenador</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="actions">
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Guardar</button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="list-card">
+    <h3>Listado</h3>
+    <div *ngIf="users.length === 0" class="empty">No hay usuarios</div>
+    <div class="user-row" *ngFor="let u of users">
+      <ng-container *ngIf="editingId !== u.id; else editTpl">
+        <div class="info">
+          <div class="name">{{ u.givenName || '' }} {{ u.familyName || '' }}</div>
+          <div class="meta">{{ u.email }} · {{ u.role }} <span *ngIf="u.companyId">· {{ u.companyId }}</span></div>
+        </div>
+        <div class="row-actions">
+          <a matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" aria-label="Abrir detalle">
+            <mat-icon>open_in_new</mat-icon>
+          </a>
+          <button matTooltip="Previsualización de planes" mat-icon-button (click)="openPlans(u)" aria-label="Ver planes (rápido)">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button matTooltip="Eliminar usuario" mat-icon-button color="warn" (click)="remove(u)" aria-label="Eliminar">
+            <mat-icon>delete</mat-icon>
+            
+          </button>
+        </div>
+      </ng-container>
+
+      <ng-template #editTpl>
+        <form [formGroup]="editForm" class="edit-grid" (ngSubmit)="saveEdit(u)">
+          <mat-form-field appearance="outline">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" formControlName="email" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre</mat-label>
+            <input matInput formControlName="givenName" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Apellidos</mat-label>
+            <input matInput formControlName="familyName" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" *ngIf="isAdmin">
+            <mat-label>Rol</mat-label>
+            <mat-select formControlName="role">
+              <mat-option value="client">Cliente</mat-option>
+              <mat-option value="trainer">Entrenador</mat-option>
+              <mat-option value="admin">Admin</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <div class="edit-actions">
+            <button mat-stroked-button type="button" (click)="cancelEdit()">Cancelar</button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="editForm.invalid">Guardar</button>
+          </div>
+        </form>
+      </ng-template>
+    </div>
+  </mat-card>
+</div>

@@ -1,0 +1,85 @@
+<div class="main-container">
+  <div class="header">
+    <div class="header-info">
+      <h2>Plantillas de {{ currentUser ? (currentUser.givenName || currentUser.email?.split('@')[0] || 'Entrenador') : 'Entrenamiento' }}</h2>
+      <div class="user-info" *ngIf="currentUser">
+        <span class="user-name">{{ currentUser.givenName || currentUser.email?.split('@')[0] || 'Entrenador' }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="createTemplate()">
+        <mat-icon>add</mat-icon>
+        Crear plantilla nueva
+      </button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <mat-form-field appearance="outline" class="q">
+      <mat-label>Buscar</mat-label>
+      <input matInput [(ngModel)]="q" (ngModelChange)="applyFilters()" placeholder="Título o notas" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Desde</mat-label>
+      <input matInput [matDatepicker]="fromPicker" [(ngModel)]="dateFrom" (dateChange)="applyFilters()" />
+      <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+      <mat-datepicker #fromPicker></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Hasta</mat-label>
+      <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo" (dateChange)="applyFilters()" />
+      <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+      <mat-datepicker #toPicker></mat-datepicker>
+    </mat-form-field>
+
+    <button mat-button color="primary" (click)="clearFilters()">
+      <mat-icon>filter_alt_off</mat-icon>
+      Limpiar filtros
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Cargando plantillas...</p>
+  </div>
+
+  <div *ngIf="!loading && viewTemplates.length === 0" class="no-plans">
+    <p>No hay plantillas que coincidan con el filtro.</p>
+  </div>
+
+  <mat-accordion class="plans-accordion" multi>
+    <mat-expansion-panel *ngFor="let template of viewTemplates; trackBy: getPlanId">
+      <mat-expansion-panel-header>
+        <div class="plan-header">
+          <div class="left">
+            <div class="title">{{ template.name }}</div>
+            <div class="meta">
+              <span>{{ template.date | date: 'dd/MM/yyyy' }}</span>
+              <span>•</span>
+              <span>{{ getSessionCount(template) }} sesiones</span>
+              <span class="notes" *ngIf="template.generalNotes">{{ template.generalNotes }}</span>
+            </div>
+          </div>
+          <div class="right">
+            <button mat-icon-button (click)="preview(template)" matTooltip="Ver plantilla">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(template)]" matTooltip="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="accent" (click)="assignTemplate(template)" matTooltip="Asignar a usuario">
+              <mat-icon>person_add</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteTemplate(getPlanId(template))" matTooltip="Eliminar">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-expansion-panel-header>
+
+      <app-workout-plan-view [plan]="template"></app-workout-plan-view>
+    </mat-expansion-panel>
+  </mat-accordion>
+</div>

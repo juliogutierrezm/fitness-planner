@@ -1,0 +1,108 @@
+<div class="user-detail">
+  <mat-card class="header-card" *ngIf="user as u">
+    <button mat-button routerLink="/users" class="back">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </button>
+    <h2 class="title">{{ u.givenName }} {{ u.familyName }}</h2>
+    <div class="meta">
+      <span class="email">{{ u.email }}</span>
+      <mat-chip-set>
+        <mat-chip color="primary" selected>{{ u.role }}</mat-chip>
+        <mat-chip *ngIf="u.companyId">Company: {{ u.companyId }}</mat-chip>
+        <mat-chip *ngIf="u.trainerId">Trainer: {{ u.trainerId }}</mat-chip>
+      </mat-chip-set>
+    </div>
+  </mat-card>
+
+  <mat-card class="plans-card">
+    <div class="plans-header">
+      <h3>Planes de entrenamiento</h3>
+      <a
+        *ngIf="userId as uid"
+        mat-raised-button
+        color="primary"
+        [routerLink]="['/planner']"
+        [queryParams]="{ userId: uid }"
+      >
+        <mat-icon>add</mat-icon>
+        Crear plan para este usuario
+      </a>
+    </div>
+
+    <div class="filters">
+      <mat-form-field appearance="outline">
+        <mat-label>Origen</mat-label>
+        <mat-select [(ngModel)]="origin" (selectionChange)="applyFilters()">
+          <mat-option value="all">Todos</mat-option>
+          <mat-option value="user">Por Usuario/Cliente</mat-option>
+          <mat-option value="trainer">Por Entrenador</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="q">
+        <mat-label>Buscar</mat-label>
+        <input matInput [(ngModel)]="q" (ngModelChange)="applyFilters()" placeholder="Título o notas" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Desde</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="dateFrom" (dateChange)="applyFilters()" />
+        <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Hasta</mat-label>
+        <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo" (dateChange)="applyFilters()" />
+        <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+
+      <button mat-button color="primary" (click)="clearFilters()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div *ngIf="loadingPlans" class="loading-container">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Cargando planes de entrenamiento...</p>
+    </div>
+
+    <div *ngIf="!loadingPlans && viewPlans.length === 0" class="no-plans">
+      <p>No hay planes que coincidan con el filtro.</p>
+    </div>
+
+    <mat-accordion class="plans-accordion" multi>
+      <mat-expansion-panel *ngFor="let plan of viewPlans; trackBy: getPlanId">
+        <mat-expansion-panel-header>
+          <div class="plan-header">
+            <div class="left">
+              <div class="title">{{ plan.name }}</div>
+              <div class="meta">
+                <span>{{ plan.date | date: 'dd/MM/yyyy' }}</span>
+                <span>•</span>
+                <span>{{ getSessionCount(plan) }} sesiones</span>
+                <span class="notes" *ngIf="plan.generalNotes">{{ plan.generalNotes }}</span>
+              </div>
+            </div>
+            <div class="right">
+              <button mat-icon-button (click)="preview(plan)" matTooltip="Ver plan">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deletePlan(getPlanId(plan))" matTooltip="Eliminar">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </mat-expansion-panel-header>
+
+        <app-workout-plan-view [plan]="plan"></app-workout-plan-view>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </mat-card>
+</div>

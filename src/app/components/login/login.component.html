@@ -1,0 +1,27 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-content>
+      <div class="brand">
+        <mat-icon>fitness_center</mat-icon>
+        <h1>Fitness Planner</h1>
+        <p>Planifica y gestiona tus entrenamientos</p>
+      </div>
+
+      <div class="actions" *ngIf="!loading">
+        <button mat-flat-button class="login-primary" (click)="signInWithHostedUI()">
+          <mat-icon>login</mat-icon>
+          Iniciar sesión
+        </button>
+        <button mat-stroked-button class="login-secondary" (click)="signUpWithHostedUI()">
+          <mat-icon>person_add</mat-icon>
+          Crear cuenta
+        </button>
+      </div>
+
+      <div class="loading" *ngIf="loading">
+        <mat-spinner diameter="48"></mat-spinner>
+        <p>Redirigiendo al proveedor…</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

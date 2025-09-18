@@ -1,0 +1,33 @@
+<div class="unauthorized-container">
+  <mat-card class="unauthorized-card">
+    <mat-card-content>
+      <div class="unauthorized-content">
+        <mat-icon class="warning-icon">warning</mat-icon>
+        <h1>Acceso No Autorizado</h1>
+        <p>No tienes permisos para acceder a esta página.</p>
+
+        <div class="user-info" *ngIf="currentUser">
+          <p><strong>Usuario:</strong> {{ displayName }}</p>
+          <p><strong>Rol:</strong> {{ getRoleDisplayName(currentUser.role) }}</p>
+        </div>
+
+        <div class="actions">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="goToDashboard()">
+            <mat-icon>dashboard</mat-icon>
+            Ir al Dashboard
+          </button>
+
+          <button
+            mat-stroked-button
+            (click)="signOut()">
+            <mat-icon>logout</mat-icon>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

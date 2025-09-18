@@ -1,19 +1,53 @@
 <div class="main-container">
   <div class="planner-actions">
-    <div class="left-actions">
-      <button mat-stroked-button color="accent" (click)="generateWithAI()" matTooltip="Generar plan con IA">
+    <div class="spacer"></div>
+    <div class="actions-right">
+      <button mat-stroked-button color="accent" (click)="openAIDialog()" matTooltip="Generar plan con IA">
         <mat-icon>psychology</mat-icon>
         Generar plan
       </button>
-    </div>
-    <div class="right-actions">
       <button mat-raised-button color="primary" (click)="submitPlan()" matTooltip="Guardar el plan actual">
         <mat-icon>save</mat-icon>
         Guardar plan
       </button>
     </div>
   </div>
+  <div class="ai-overlay" *ngIf="isGenerating" role="dialog" aria-live="assertive" aria-label="Generando plan con IA">
+    <div class="ai-overlay-content">
+      <div class="ai-animation-container">
+        <div class="ai-brain-icon">
+          <mat-icon class="brain-icon">psychology</mat-icon>
+          <div class="thinking-dots">
+            <span class="dot dot-1"></span>
+            <span class="dot dot-2"></span>
+            <span class="dot dot-3"></span>
+          </div>
+        </div>
+        <div class="ai-dumbbell-icon">
+          <mat-icon class="dumbbell-icon">fitness_center</mat-icon>
+        </div>
+      </div>
+      <div class="ai-msg" [attr.aria-live]="generationStep ? 'polite' : null">
+        {{ generationStep || 'Estamos creando tu plan de entrenamiento con IA...' }}
+      </div>
+      <div class="ai-subtitle">Esto puede tomar unos momentos</div>
+      <div class="ai-progress-container">
+        <mat-progress-bar mode="indeterminate" color="primary" class="ai-progress-bar"></mat-progress-bar>
+      </div>
+    </div>
+  </div>
   <form [formGroup]="form" class="planner-header">
+    <ng-container *ngIf="canAssignUser && !isSpecificUser">
+      <mat-form-field appearance="outline">
+        <mat-label>Cliente</mat-label>
+        <mat-select formControlName="targetUserId">
+          <mat-option [value]="">Sin asignar</mat-option>
+          <mat-option *ngFor="let u of clients" [value]="u.id">
+            {{ u.givenName || '' }} {{ u.familyName || '' }} ({{ u.email }})
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </ng-container>
     <mat-form-field appearance="outline">
       <mat-label>Entrenador</mat-label>
       <input matInput formControlName="userName"/>
@@ -52,34 +86,13 @@
         <mat-label>Buscar</mat-label>
         <input matInput [(ngModel)]="filters.q" (ngModelChange)="onFilterChange()" placeholder="Nombre..." />
       </mat-form-field>
-      <div class="favorites-recents">
-        <div class="fav-block" *ngIf="favorites.length">
-          <div class="block-title">Favoritos</div>
-          <div class="fav-list">
-            <ng-container *ngFor="let ex of favorites; trackBy: trackByExercise">
-              <button type="button" class="pill" [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()">
-                <mat-icon>star</mat-icon>{{ ex.name }}
-              </button>
-            </ng-container>
-          </div>
-        </div>
-        <div class="rec-block" *ngIf="recents.length">
-          <div class="block-title">Recientes</div>
-          <div class="fav-list">
-            <ng-container *ngFor="let ex of recents; trackBy: trackByExercise">
-              <button type="button" class="pill" [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()">
-                <mat-icon>history</mat-icon>{{ ex.name }}
-              </button>
-            </ng-container>
-          </div>
-        </div>
-        <mat-menu #addMenu="matMenu">
-          <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
-            <mat-icon>add</mat-icon>
-            <span>{{ s.name }}</span>
-          </button>
-        </mat-menu>
-      </div>
+      <!-- Submenú: a qué día agregar -->
+      <mat-menu #addMenu="matMenu">
+        <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
+          <mat-icon>add</mat-icon>
+          <span>{{ s.name }}</span>
+        </button>
+      </mat-menu>
       <div class="filters">
         <mat-form-field appearance="fill" class="filter-field">
           <mat-label>Grupo muscular</mat-label>
@@ -132,6 +145,29 @@
           </div>
         </cdk-virtual-scroll-viewport>
       </div>
+
+      <!-- Planes anteriores -->
+      <h3>Planes anteriores</h3>
+      <div class="list" *ngIf="previousPlans.length > 0; else noPreviousPlans">
+        <div class="empty" *ngIf="previousPlans.length === 0">No hay planes anteriores</div>
+        <cdk-virtual-scroll-viewport itemSize="44" class="vs-plans">
+          <div *cdkVirtualFor="let plan of previousPlans; trackBy: trackByPlan"
+               class="list-item" (click)="openPlanPreview(plan)">
+            <div class="row">
+              <div class="plan-info">
+                <div class="plan-name">{{ plan.name }}</div>
+                <div class="plan-meta">
+                  <span class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
+                  <span class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </cdk-virtual-scroll-viewport>
+      </div>
+      <ng-template #noPreviousPlans>
+        <div class="empty">No hay planes anteriores</div>
+      </ng-template>
     </aside>
 
     <!-- Sesiones verticales (drag & drop de sesiones) -->
@@ -155,12 +191,9 @@
           [cdkDropListConnectedTo]="sessionsConnectedTo['session-' + s.id]"
           (cdkDropListDropped)="drop($event, s)"
         >
-          <mat-card-header class="name-cursor" (mouseenter)="expandSession(s)">
+          <mat-card-header class="name-cursor">
             <mat-card-title>{{ s.name }}</mat-card-title>
             <div class="session-actions">
-              <button mat-icon-button (click)="togglePin(s)" [matTooltip]="s.pinned ? 'Desfijar' : 'Fijar'">
-                <mat-icon>push_pin</mat-icon>
-              </button>
               <button mat-icon-button (click)="toggleCollapse(s)" [matTooltip]="s.collapsed ? 'Expandir' : 'Colapsar'">
                 <mat-icon>{{ s.collapsed ? 'unfold_more' : 'unfold_less' }}</mat-icon>
               </button>
@@ -172,10 +205,11 @@
               <ng-container matColumnDef="select">
                 <th mat-header-cell *matHeaderCellDef>
                   <button mat-icon-button 
+                          class="link-action"
                           matTooltip="Crear superserie" 
                           (click)="groupSelected(s)" 
                           [disabled]="!hasSelectedItems(s)">
-                        <mat-icon>offline_pin</mat-icon>
+                        <mat-icon>link</mat-icon>
                   </button>
                 </th>
                 <td mat-cell *matCellDef="let item; let i = index">
@@ -185,13 +219,14 @@
                     (change)="updateSelection(s)"
                   ></mat-checkbox>
                   <ng-container *ngIf="item.isGroup">
+                    <span class="superset-label">Superserie</span>
                     <button
                       mat-icon-button
-                      
+                      class="unlink-action"
                       (click)="ungroupGroup(s, i)"
                       matTooltip="Eliminar superserie"
                     >
-                  <mat-icon>remove_circle</mat-icon>
+                      <mat-icon>link_off</mat-icon>
                     </button>
                   </ng-container>
                 </td>
@@ -207,9 +242,6 @@
                 <ng-container *ngIf="item.isGroup && item.children as children">
                     <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
                     <div class="child-row" [ngClass]="{ 'with-divider': cIdx > 0 }">
-                      <ng-container *ngIf="cIdx === 0">
-                        <span class="superset-label">Superserie</span>
-                      </ng-container>
                       {{ child.name }}
                     </div>
                   </ng-container>
@@ -446,11 +478,6 @@
       </mat-card>
     </section>
 
-    
 
   </div>
-
-  <button mat-raised-button color="warn" (click)="clearCache()">
-    🧹 Limpiar caché
-  </button>
 </div>

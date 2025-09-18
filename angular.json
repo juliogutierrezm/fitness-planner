@@ -73,7 +73,8 @@
               "buildTarget": "fitness-planner:build:production"
             },
             "development": {
-              "buildTarget": "fitness-planner:build:development"
+              "buildTarget": "fitness-planner:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

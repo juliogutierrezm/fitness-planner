@@ -97,7 +97,7 @@ export class ExerciseApiService {
 
     const fullPlan = {
       ...plan,
-      userId: currentUser.id,
+      userId: (plan as any).userId || currentUser.id,
       companyId: currentUser.companyId || 'INDEPENDENT',
       trainerId: currentUser.role === 'trainer' ? currentUser.id : undefined
     };
@@ -127,11 +127,17 @@ export class ExerciseApiService {
       return of([]);
     }
 
-    return this.http.get<any[]>(`${this.planUrl}?userId=${targetUserId}`).pipe(
-      tap(plans => console.log('📦 Planes obtenidos:', plans)),
+    const byUserUrl = `${this.apiBase}/users/plan?userId=${encodeURIComponent(targetUserId)}&id=${encodeURIComponent(targetUserId)}`;
+    return this.http.get<any[]>(byUserUrl).pipe(
+      tap(plans => console.log('📦 Planes obtenidos (users/:id/plan):', plans)),
       catchError(err => {
-        console.error('❌ Error al obtener planes:', err);
-        return of([]);
+        console.warn('Fallo users/:id/plan, intentando /workoutPlans?userId', err);
+        return this.http.get<any[]>(`${this.planUrl}?userId=${encodeURIComponent(targetUserId)}`).pipe(
+          catchError(err2 => {
+            console.error('❌ Error al obtener planes por usuario:', err2);
+            return of([]);
+          })
+        );
       })
     );
   }
@@ -206,6 +212,37 @@ generateWorkoutPlanAI(prompt: string): Observable<any> {
     })
   );
 }
+
+  // =============== ADMIN/TRAINER AGGREGATES ===============
+  getPlansByTrainer(trainerId?: string): Observable<any[]> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return of([]);
+    const url = trainerId
+      ? `${this.planUrl}/trainer?trainerId=${encodeURIComponent(trainerId)}`
+      : `${this.planUrl}/trainer`;
+    return this.http.get<any[]>(url).pipe(
+      tap(list => console.log('Planes por entrenador:', list?.length || 0)),
+      catchError(err => {
+        console.error('Error al obtener planes por entrenador:', err);
+        return of([]);
+      })
+    );
+  }
+
+  getPlansByCompany(companyId?: string): Observable<any[]> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return of([]);
+    const url = companyId
+      ? `${this.planUrl}/company?companyId=${encodeURIComponent(companyId)}`
+      : `${this.planUrl}/company`;
+    return this.http.get<any[]>(url).pipe(
+      tap(list => console.log('Planes por compañía:', list?.length || 0)),
+      catchError(err => {
+        console.error('Error al obtener planes por compañía:', err);
+        return of([]);
+      })
+    );
+  }
 
 
 

@@ -1,0 +1,20 @@
+<div class="callback-container">
+  <mat-card class="callback-card">
+    <mat-card-content>
+      <div class="callback-content" *ngIf="!error">
+        <mat-spinner diameter="50"></mat-spinner>
+        <h2>Completando autenticación...</h2>
+        <p>Por favor espera mientras procesamos tu información.</p>
+      </div>
+
+      <div class="error-content" *ngIf="error">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <h2>Error de autenticación</h2>
+        <p>{{ error }}</p>
+        <button mat-button (click)="retryLogin()">
+          Intentar de nuevo
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

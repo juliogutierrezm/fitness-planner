@@ -17,81 +17,8 @@ import { firstValueFrom } from 'rxjs';
     MatCardModule,
     MatIconModule
   ],
-  template: `
-    <div class="callback-container">
-      <mat-card class="callback-card">
-        <mat-card-content>
-          <div class="callback-content" *ngIf="!error">
-            <mat-spinner diameter="50"></mat-spinner>
-            <h2>Completando autenticación...</h2>
-            <p>Por favor espera mientras procesamos tu información.</p>
-          </div>
-          
-          <div class="error-content" *ngIf="error">
-            <mat-icon class="error-icon">error_outline</mat-icon>
-            <h2>Error de autenticación</h2>
-            <p>{{ error }}</p>
-            <button mat-button (click)="retryLogin()">
-              Intentar de nuevo
-            </button>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  `,
-  styles: [`
-    .callback-container {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f5f5f5;
-      padding: 20px;
-    }
-
-    .callback-card {
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-    }
-
-    .callback-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      padding: 40px 20px;
-    }
-
-    .error-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      padding: 40px 20px;
-    }
-
-    .error-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      color: #f44336;
-    }
-
-    h2 {
-      margin: 0;
-      color: #333;
-    }
-
-    p {
-      margin: 0;
-      color: #666;
-    }
-
-    button {
-      margin-top: 16px;
-    }
-  `]
+  templateUrl: './callback.component.html',
+  styleUrls: ['./callback.component.scss']
 })
 export class CallbackComponent implements OnInit {
   error: string | null = null;

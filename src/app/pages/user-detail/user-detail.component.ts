@@ -13,7 +13,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatSelectModule } from '@angular/material/select';
+
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -23,6 +23,7 @@ import { UserApiService, AppUser } from '../../user-api.service';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
+import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
 
 @Component({
   selector: 'app-user-detail',
@@ -42,12 +43,12 @@ import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/wor
     MatInputModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatSelectModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatDialogModule,
     MatSnackBarModule,
-    WorkoutPlanViewComponent
+    WorkoutPlanViewComponent,
+    UserDisplayNamePipe
   ],
   templateUrl: './user-detail.component.html',
   styleUrls: ['./user-detail.component.scss'],
@@ -61,7 +62,6 @@ export class UserDetailComponent implements OnInit {
   loadingPlans = false;
 
   // filtros
-  origin: 'all' | 'user' | 'trainer' = 'all';
   q = '';
   dateFrom: Date | null = null;
   dateTo: Date | null = null;
@@ -77,13 +77,9 @@ export class UserDetailComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.user = history.state.user;
     this.userId = this.route.snapshot.paramMap.get('id');
     if (!this.userId) return;
-
-    this.userApi.getUserById(this.userId).subscribe(u => {
-      this.user = u;
-      this.cdr.markForCheck();
-    });
 
     this.loadingPlans = true;
     this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
@@ -121,17 +117,13 @@ export class UserDetailComponent implements OnInit {
       const matchQ = !qn || name.includes(qn) || notes.includes(qn);
       const matchFrom = from === null || t >= from!;
       const matchTo = to === null || t <= to!;
-      let matchOrigin = true;
-      if (this.origin === 'trainer') matchOrigin = !!p.trainerId;
-      if (this.origin === 'user') matchOrigin = !p.trainerId;
-      return matchQ && matchFrom && matchTo && matchOrigin;
+      return matchQ && matchFrom && matchTo;
     });
 
     this.viewPlans = arr.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
   clearFilters() {
-    this.origin = 'all';
     this.q = '';
     this.dateFrom = null;
     this.dateTo = null;
@@ -187,16 +179,36 @@ export class UserDetailComponent implements OnInit {
 
     ref.afterClosed().subscribe(ok => {
       if (!ok) return;
+      this.loadingPlans = true;
       this.planApi.deleteWorkoutPlan(planId).subscribe(res => {
+        this.loadingPlans = false;
         if (res !== null) {
-          this.plans = this.plans.filter(p => (p.planId || p.id) !== planId);
-          this.applyFilters();
-          this.snackBar.open('Plan eliminado', 'Cerrar', { duration: 2500 });
-          this.cdr.markForCheck();
+          // Recargar la lista completa desde el servidor para asegurar sincronización
+          if (this.userId) {
+            this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
+              updatedPlans => {
+                this.plans = (updatedPlans || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                this.applyFilters();
+                this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
+                this.cdr.markForCheck();
+              },
+              error => {
+                console.error('Error al recargar planes después de eliminación:', error);
+                // Eliminación optimista si falla la recarga
+                this.plans = [...this.plans.filter(p => (p.planId || p.id) !== planId)];
+                this.applyFilters();
+                this.snackBar.open('Plan eliminado (con error de sincronización)', 'Cerrar', { duration: 3000 });
+                this.cdr.markForCheck();
+              }
+            );
+          }
         } else {
           this.snackBar.open('No se pudo eliminar el plan', 'Cerrar', { duration: 3000 });
+          this.cdr.markForCheck();
         }
       });
     });
   }
+
+
 }

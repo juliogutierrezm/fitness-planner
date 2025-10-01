@@ -99,6 +99,7 @@ export class PlannerComponent implements OnInit {
   canAssignUser = false;
   clients: AppUser[] = [];
   isSpecificUser = false;
+  isClientNameReadonly = false;
   private generationSteps = [
     'Estamos creando tu plan de entrenamiento con IA...',
     'Generando sesiones de entrenamiento...',
@@ -108,6 +109,7 @@ export class PlannerComponent implements OnInit {
     'Finalizando plan personalizado...'
   ];
   private stepInterval: any;
+  private aiTempIdCounter = 0;
 
   constructor(
     private fb: FormBuilder,
@@ -141,7 +143,6 @@ export class PlannerComponent implements OnInit {
     this.generationStepIndex = 0;
     this.generationStep = this.generationSteps[0];
 
-    // Start rotating messages
     this.startStepRotation();
 
     this.api.generateWorkoutPlanAI(userPrompt)
@@ -152,27 +153,117 @@ export class PlannerComponent implements OnInit {
         this.cdr.markForCheck();
       }))
       .subscribe(res => {
-        if (res?.plan) {
-          this.sessions = res.plan.map((day: any, idx: number) => ({
-            id: idx + 1,
-            name: day.day,
-            items: day.items.map((ex: any) => ({
-              id: Date.now() + Math.random(),
-              name: ex.name,
-              equipment: '',
-              sets: ex.sets,
-              reps: ex.reps,
-              rest: ex.rest,
-              notes: ex.notes,
-              isGroup: false,
-              selected: false
-            }))
-          }));
-          this.form.patchValue({ sessionCount: this.sessions.length });
-          this.persist();
-          this.snackBar.open('¡Plan generado exitosamente!', undefined, { duration: 2000 });
+        const sessionsFromAI = this.createSessionsFromAI(res);
+        if (!sessionsFromAI.length) {
+          this.snackBar.open('No se pudo interpretar la respuesta de la IA.', undefined, { duration: 3000 });
+          return;
         }
+
+        this.sessions = sessionsFromAI;
+        const patch: any = { sessionCount: this.sessions.length };
+        if (typeof res?.generalNotes === 'string' && res.generalNotes.trim()) {
+          patch.notes = res.generalNotes.trim();
+        }
+        this.form.patchValue(patch);
+        this.rebuildDropLists();
+        this.persist();
+        this.snackBar.open('Plan generado exitosamente!', undefined, { duration: 2000 });
+        this.cdr.markForCheck();
       });
+  }
+
+  private createSessionsFromAI(res: any): Session[] {
+    this.aiTempIdCounter = 0;
+
+    const plan = Array.isArray(res?.plan) ? res.plan : [];
+    const planLegacy = Array.isArray(res?.planLegacy) ? res.planLegacy : [];
+    const source = plan.length ? plan : planLegacy;
+
+    return source.map((day: any, idx: number) => ({
+      id: idx + 1,
+      name: day?.name || day?.day || 'Dia ' + (idx + 1),
+      items: this.normaliseAiItems(day?.items, plan.length > 0)
+    }));
+  }
+
+  private normaliseAiItems(items: any, treatGroups: boolean): PlanItem[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items
+      .map(item => this.normaliseAiItem(item, treatGroups))
+      .filter((item: PlanItem | null): item is PlanItem => !!item);
+  }
+
+  private normaliseAiItem(raw: any, treatGroups: boolean): PlanItem | null {
+    if (!raw) {
+      return null;
+    }
+
+    if (treatGroups && (raw.isGroup || Array.isArray(raw.children))) {
+      const children = Array.isArray(raw.children)
+        ? raw.children
+            .map((child: any) => this.normaliseAiItem({ ...child, isGroup: false }, treatGroups))
+            .filter((child: PlanItem | null): child is PlanItem => !!child)
+        : [];
+
+      if (!children.length) {
+        return null;
+      }
+
+      return {
+        ...(raw as any),
+        id: this.ensureAiId(raw.id, 'group'),
+        name: raw.name || raw.displayName || 'Superserie',
+        equipment: '',
+        sets: this.ensureAiNumber(raw.sets, children[0]?.sets ?? 3),
+        reps: this.ensureAiReps(raw.reps, children[0]?.reps ?? 10),
+        rest: this.ensureAiNumber(raw.rest, children[0]?.rest ?? 60),
+        notes: typeof raw.notes === 'string' ? raw.notes : '',
+        isGroup: true,
+        selected: false,
+        children
+      };
+    }
+
+    const base: PlanItem = {
+      ...(raw as any),
+      id: this.ensureAiId(raw.id, 'item'),
+      name: raw.name || 'Ejercicio',
+      equipment: raw.equipment || '',
+      sets: this.ensureAiNumber(raw.sets, 3),
+      reps: this.ensureAiReps(raw.reps, 10),
+      rest: this.ensureAiNumber(raw.rest, 60),
+      notes: typeof raw.notes === 'string' ? raw.notes : '',
+      isGroup: false,
+      selected: false
+    };
+
+    delete (base as any).children;
+    return base;
+  }
+
+  private ensureAiId(source: any, prefix: 'item' | 'group' = 'item'): string {
+    if (typeof source === 'string' && source.trim()) {
+      return source.trim();
+    }
+    if (typeof source === 'number' && Number.isFinite(source)) {
+      return source.toString();
+    }
+    const suffix = Date.now().toString(36) + '-' + this.aiTempIdCounter++;
+    return prefix + '-' + suffix;
+  }
+
+  private ensureAiNumber(value: any, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  private ensureAiReps(value: any, fallback: number | string): number | string {
+    if (typeof value === 'number' || typeof value === 'string') {
+      return value;
+    }
+    return fallback;
   }
 
   private startStepRotation() {
@@ -199,7 +290,25 @@ export class PlannerComponent implements OnInit {
       date: [null],
       sessionCount: [3],
       notes: [''],
-      targetUserId: ['']
+      targetUserId: [''],
+      objective: ['']
+    });
+
+    // Subscribe to targetUserId changes to populate userName and set readonly
+    this.form.get('targetUserId')!.valueChanges.subscribe(userId => {
+      this.isClientNameReadonly = !!userId;
+      if (userId) {
+        this.userApi.getUserById(userId).subscribe(user => {
+          if (user) {
+            const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
+            this.form.patchValue({ userName: displayName });
+            this.cdr.markForCheck();
+          }
+        });
+      } else {
+        this.form.patchValue({ userName: '' });
+        this.cdr.markForCheck();
+      }
     });
 
     // Check if arriving from user detail
@@ -258,10 +367,11 @@ export class PlannerComponent implements OnInit {
             }
           })();
           this.form.patchValue({
-            userName: plan.name.replace('Plan de ', ''),
+            userName: plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
             date: new Date(plan.date),
             sessionCount: parsedSessions.length,
-            notes: plan.generalNotes
+            notes: plan.generalNotes,
+            objective: plan.objective || ''
           });
           this.sessions = parsedSessions;
           this.rebuildDropLists();
@@ -290,7 +400,17 @@ export class PlannerComponent implements OnInit {
     // Load previous plans (latest N) for quick preview in AI overlay
     this.api.getWorkoutPlansByUser().subscribe(list => {
       const sorted = (list || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      this.previousPlans = sorted.slice(0, this.prevLimit);
+      // Parse sessions to ensure they're arrays, not JSON strings
+      this.previousPlans = sorted.slice(0, this.prevLimit).map(plan => ({
+        ...plan,
+        sessions: (() => {
+          try {
+            return typeof plan.sessions === 'string' ? JSON.parse(plan.sessions || '[]') : (plan.sessions || []);
+          } catch {
+            return [];
+          }
+        })()
+      }));
       this.cdr.markForCheck();
     });
   }
@@ -710,13 +830,35 @@ export class PlannerComponent implements OnInit {
   trackByChild = (_: number, i: PlanItem) => i.id;
   trackByPlan = (_: number, p: any) => p.id || p.name;
 
+  getUserDisplayName(): string {
+    const formValue = this.form.value;
+    if (formValue.targetUserId) {
+      // Find the user in clients list
+      const user = this.clients.find(c => c.id === formValue.targetUserId);
+      if (user) {
+        return `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
+      }
+    }
+    return formValue.userName || 'Usuario sin asignar';
+  }
+
   private persist() {
     if (!this.isEditMode) {
       this.api.saveSessions(this.sessions);
     }
   }
 
-  submitPlan() {
+  private async getNextPlanNumber(userId: string): Promise<number> {
+    try {
+      const existingPlans = await this.api.getWorkoutPlansByUser(userId).toPromise();
+      return (existingPlans?.length || 0) + 1;
+    } catch (error) {
+      console.error('Error fetching existing plans:', error);
+      return 1; // Default to 1 if there's an error
+    }
+  }
+
+  async submitPlan() {
     if (this.isEditMode && !this.planId) {
       console.error('Cannot update plan without a planId');
       alert('❌ Error: No se encontró el ID del plan para actualizar.');
@@ -724,16 +866,30 @@ export class PlannerComponent implements OnInit {
     }
 
     const formValue = this.form.value;
+    const userId = formValue.targetUserId || this.authService.getCurrentUserId();
+
+    // Generate plan name with number for new plans
+    let planName: string;
+    if (this.isEditMode) {
+      // Keep existing name for edit mode
+      planName = `Plan de ${formValue.userName || 'Usuario'}`;
+    } else {
+      // Generate numbered name for new plans
+      const planNumber = await this.getNextPlanNumber(userId);
+      planName = `${formValue.userName || 'Usuario'} Plan ${planNumber}`;
+    }
+
     const planData = {
       planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
-      name: `Plan de ${formValue.userName || 'Usuario'}`,
+      name: planName,
       date: formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString(),
       sessions: this.sessions,
       generalNotes: formValue.notes,
-      userId: formValue.targetUserId || this.authService.getCurrentUserId()
+      objective: formValue.objective,
+      userId: userId
     };
 
-    const action = this.isEditMode 
+    const action = this.isEditMode
       ? this.api.updateWorkoutPlan(planData)
       : this.api.saveWorkoutPlan(planData as any);
 
@@ -1043,3 +1199,4 @@ export class AiPromptDialogComponent {
   close(){ this.dialogRef.close(); }
   confirm(){ this.dialogRef.close(this.prompt); }
 }
+

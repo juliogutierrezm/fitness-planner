@@ -10,6 +10,7 @@ export interface AppUser {
   email: string;
   givenName?: string;
   familyName?: string;
+  telephone?: string;
   role: 'client' | 'trainer' | 'admin';
   companyId?: string;
   trainerId?: string; // owner trainer for independent trainers

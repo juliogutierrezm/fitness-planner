@@ -19,6 +19,10 @@
           <mat-label>Apellidos</mat-label>
           <input matInput formControlName="familyName" />
         </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Teléfono</mat-label>
+          <input matInput formControlName="telephone" type="tel" />
+        </mat-form-field>
         <mat-form-field appearance="outline" *ngIf="isAdmin">
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role">
@@ -35,15 +39,19 @@
 
   <mat-card class="list-card">
     <h3>Listado</h3>
-    <div *ngIf="users.length === 0" class="empty">No hay usuarios</div>
-    <div class="user-row" *ngFor="let u of users">
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+    <div *ngIf="!isLoading && users.length === 0" class="empty">No hay usuarios</div>
+    <ng-container *ngIf="!isLoading">
+      <div class="user-row" *ngFor="let u of users">
       <ng-container *ngIf="editingId !== u.id; else editTpl">
         <div class="info">
           <div class="name">{{ u.givenName || '' }} {{ u.familyName || '' }}</div>
-          <div class="meta">{{ u.email }} · {{ u.role }} <span *ngIf="u.companyId">· {{ u.companyId }}</span></div>
+          <div class="meta">{{ u.email }} <span *ngIf="u.telephone">· {{ u.telephone }}</span> · {{ u.role }} <span *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">· {{ u.companyId }}</span></div>
         </div>
         <div class="row-actions">
-          <a matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" aria-label="Abrir detalle">
+          <a matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
             <mat-icon>open_in_new</mat-icon>
           </a>
           <button matTooltip="Previsualización de planes" mat-icon-button (click)="openPlans(u)" aria-label="Ver planes (rápido)">
@@ -73,6 +81,10 @@
             <mat-label>Apellidos</mat-label>
             <input matInput formControlName="familyName" />
           </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Teléfono</mat-label>
+            <input matInput formControlName="telephone" type="tel" />
+          </mat-form-field>
           <mat-form-field appearance="outline" *ngIf="isAdmin">
             <mat-label>Rol</mat-label>
             <mat-select formControlName="role">
@@ -87,6 +99,7 @@
           </div>
         </form>
       </ng-template>
-    </div>
+      </div>
+    </ng-container>
   </mat-card>
 </div>

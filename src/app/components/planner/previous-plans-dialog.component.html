@@ -9,17 +9,13 @@
   <div class="dialog-content">
     <div class="plans-list" *ngIf="data.plans && data.plans.length > 0; else noPlans">
       <mat-card
-        *ngFor="let plan of data.plans; trackBy: trackByPlan"
+        *ngFor="let plan of data.plans; let i = index; trackBy: trackByPlan"
         class="plan-card"
         (click)="selectPlan(plan)"
       >
         <mat-card-content class="plan-content">
           <div class="plan-info">
-            <div class="plan-name">{{ plan.name }}</div>
-            <div class="plan-meta">
-              <span class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
-              <span class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</span>
-            </div>
+            <div class="plan-name">{{ i + 1 }}. {{ plan.date | date:'dd/MM/yyyy' }} - {{ plan.sessions?.length || 0 }} sesiones</div>
           </div>
           <div class="plan-actions">
             <button mat-icon-button color="primary" aria-label="Ver detalles del plan">

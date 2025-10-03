@@ -1,0 +1,145 @@
+{
+  "name": "Exercise Video Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "sheetId": "<<<TU_SHEET_ID>>>",
+        "range": "Sheet1!A:Z"
+      },
+      "id": "2",
+      "name": "Google Sheets Read",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [400, 300],
+      "credentials": {
+        "googleApi": "Google Sheets Credenciales"
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "id": "3",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const row = $json;\nreturn {\n  json: {\n    id: `ex-${row.row_number || Date.now()}`,\n    name: row[\"Exercise\"] || \"Sin nombre\",\n    demoUrl: row[\"Short YouTube Demonstration\"] || null,\n    primaryMuscle: row[\"Prime Mover Muscle\"] || row[\"Target Muscle Group\"] || null,\n    equipment: row[\"Primary Equipment \"] || \"Sin equipo\",\n    script: `Realiza el ejercicio ${row[\"Exercise\"]}. Trabaja ${row[\"Target Muscle Group\"] || \"el cuerpo\"} usando ${row[\"Primary Equipment \"] || \"sin equipo\"}.`,\n    status: row[\"Short YouTube Demonstration\"] ? \"pending\" : \"no_video\"\n  }\n};"
+      },
+      "id": "4",
+      "name": "Normalize Exercise",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.demoUrl}}",
+              "operation": "contains",
+              "value2": "http"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF has demoUrl",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.d-id.com/talks",
+        "options": {},
+        "body": "={\n  \"script\": { \"type\": \"text\", \"input\": $json.script },\n  \"config\": { \"stitch\": true, \"result_format\": \"mp4\", \"resolution\": \"720p\" },\n  \"source_url\": \"https://link-a-tu-avatar.png\"\n}",
+        "sendBody": true,
+        "jsonParameters": true,
+        "method": "POST",
+        "authentication": "headerAuth"
+      },
+      "id": "6",
+      "name": "Create Video (D-ID)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1200, 180],
+      "credentials": {
+        "httpHeaderAuth": "D-ID API Key"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "put",
+        "tableName": "ExercisesAI",
+        "keyAttributes": "PK,SK",
+        "keyAttributesValues": "={\"PK\":{\"S\":\"EXERCISE#\" + $json.id},\"SK\":{\"S\":\"META#v1\"}}",
+        "updateExpression": "SET #n=:n, demoUrl=:d, status=:st, updatedAt=:ts",
+        "expressionAttributeNames": "={\"#n\":\"name\"}",
+        "expressionAttributeValues": "={\":n\":{\"S\":$json.name},\":d\":{\"S\":$json.demoUrl||''},\":st\":{\"S\":$json.status},\":ts\":{\"S\":\"={{new Date().toISOString()}}\"}}"
+      },
+      "id": "7",
+      "name": "Save Metadata Dynamo",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [1200, 420],
+      "credentials": {
+        "aws": "AWS Credenciales"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "put",
+        "tableName": "ExercisesAI",
+        "keyAttributes": "PK,SK",
+        "keyAttributesValues": "={\"PK\":{\"S\":\"EXERCISE#\" + $json.id},\"SK\":{\"S\":\"META#v1\"}}",
+        "updateExpression": "SET videoUrl=:v, status=:st, updatedAt=:ts",
+        "expressionAttributeValues": "={\":v\":{\"S\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/exercises/\" + $json.id + \"/video.mp4\"},\":st\":{\"S\":\"done\"},\":ts\":{\"S\":\"={{new Date().toISOString()}}\"}}"
+      },
+      "id": "8",
+      "name": "Update Dynamo with Video URL",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [1600, 300],
+      "credentials": {
+        "aws": "AWS Credenciales"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Google Sheets Read", "type": "main", "index": 0 }]]
+    },
+    "Google Sheets Read": {
+      "main": [[{ "node": "Split In Batches", "type": "main", "index": 0 }]]
+    },
+    "Split In Batches": {
+      "main": [[{ "node": "Normalize Exercise", "type": "main", "index": 0 }]]
+    },
+    "Normalize Exercise": {
+      "main": [[{ "node": "IF has demoUrl", "type": "main", "index": 0 }]]
+    },
+    "IF has demoUrl": {
+      "main": [
+        [{ "node": "Create Video (D-ID)", "type": "main", "index": 0 }],
+        [{ "node": "Save Metadata Dynamo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Video (D-ID)": {
+      "main": [[{ "node": "Update Dynamo with Video URL", "type": "main", "index": 0 }]]
+    }
+  }
+}

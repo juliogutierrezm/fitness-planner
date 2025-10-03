@@ -37,6 +37,7 @@ export interface WorkoutPlan {
   sessions: Session[];
 
   generalNotes?: string;
+  objective?: string;
   companyId?: string;
   trainerId?: string;
 }

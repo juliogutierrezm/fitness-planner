@@ -26,6 +26,6 @@ export class PlanViewPageComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/workout-plans']);
+    this.router.navigate(['/users']);
   }
 }

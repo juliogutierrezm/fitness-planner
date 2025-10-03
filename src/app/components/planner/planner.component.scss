@@ -25,6 +25,24 @@
 .planner-actions .spacer { flex: 1 1 auto; }
 .planner-actions .actions-right { display: inline-flex; gap: 0.5rem; }
 
+.user-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--ink-900);
+  background: var(--bg-0);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-1);
+
+  .user-name {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+}
+
 .planner-header {
   display: flex;
   flex-wrap: wrap;
@@ -473,7 +491,11 @@ button[mat-icon-button] {
 }
 
 /* Planes anteriores en sidebar */
-.vs-plans { height: 30vh; }
+.vs-plans {
+  min-height: 200px;
+  max-height: 40vh;
+  margin-top: 1rem;
+}
 
 .plan-info {
   flex: 1;

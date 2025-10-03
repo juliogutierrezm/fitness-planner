@@ -1,5 +1,5 @@
 <h2 mat-dialog-title>
-  Planes de {{ data.user?.givenName || '' }} {{ data.user?.familyName || '' }}
+  Planes de {{ data.user | userDisplayName }}
 </h2>
 
 <div class="plans-list" *ngIf="(data.plans || []).length; else noPlans">

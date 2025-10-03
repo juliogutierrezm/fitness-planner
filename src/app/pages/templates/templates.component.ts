@@ -170,7 +170,8 @@ export class TemplatesComponent implements OnInit {
       if (!ok) return;
       this.api.deleteWorkoutPlan(templateId).subscribe(res => {
         if (res !== null) {
-          this.templates = this.templates.filter((p: any) => (p.planId || p.id) !== templateId);
+          // Crear nueva referencia del array para forzar detección de cambios
+          this.templates = [...this.templates.filter((p: any) => (p.planId || p.id) !== templateId)];
           this.applyFilters();
           this.snackBar.open('Plantilla eliminada', 'Cerrar', { duration: 2500 });
           this.cdr.markForCheck();

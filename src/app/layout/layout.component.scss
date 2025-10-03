@@ -37,9 +37,23 @@
   padding: 1rem;
 }
 
-.title {
+.brand-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-left: 1rem;
+}
+
+.app-logo {
+  height: 48px;
+  width: auto;
+}
+
+.app-name {
+  font-size: 24px;
   font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.5px;
 }
 
 .spacer {

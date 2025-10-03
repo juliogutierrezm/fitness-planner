@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -35,8 +36,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
+    MatProgressSpinnerModule,
     RouterModule,
-    MatTooltipModule 
+    MatTooltipModule
   ],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
@@ -49,6 +51,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   isAdmin = false;
   editingId: string | null = null;
   editForm!: FormGroup;
+  isLoading = false;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -65,6 +68,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       givenName: [''],
       familyName: [''],
+      telephone: [''],
       role: ['client']
     });
   }
@@ -85,12 +89,24 @@ export class UsersComponent implements OnInit, OnDestroy {
           this.form.get('role')?.disable({ emitEvent: false });
         }
 
+        this.isLoading = true;
+        this.cdr.markForCheck();
+
         if (this.isAdmin) {
-          this.api.getUsersByCompany().subscribe(list => { this.users = list; this.cdr.markForCheck(); });
+          this.api.getUsersByCompany().subscribe(list => {
+            this.users = list;
+            this.isLoading = false;
+            this.cdr.markForCheck();
+          });
         } else if (user?.role === UserRole.TRAINER) {
-          this.api.getUsersByTrainer().subscribe(list => { this.users = list; this.cdr.markForCheck(); });
+          this.api.getUsersByTrainer().subscribe(list => {
+            this.users = list;
+            this.isLoading = false;
+            this.cdr.markForCheck();
+          });
         } else {
           this.users = [];
+          this.isLoading = false;
           this.cdr.markForCheck();
         }
       });
@@ -107,12 +123,13 @@ export class UsersComponent implements OnInit, OnDestroy {
       email: this.form.value.email!,
       givenName: this.form.value.givenName || '',
       familyName: this.form.value.familyName || '',
+      telephone: this.form.value.telephone || '',
       role: (this.isAdmin ? this.form.value.role : 'client') as any
     };
     this.api.createUser(payload).subscribe(res => {
       if (res) {
         this.snack.open('Usuario creado', 'Cerrar', { duration: 2000 });
-        this.form.reset({ email: '', givenName: '', familyName: '', role: 'client' });
+        this.form.reset({ email: '', givenName: '', familyName: '', telephone: '', role: 'client' });
         this.ngOnInit();
       } else {
         this.snack.open('No se pudo crear', 'Cerrar', { duration: 2500 });
@@ -150,6 +167,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       email: u.email || '',
       givenName: u.givenName || '',
       familyName: u.familyName || '',
+      telephone: u.telephone || '',
       role: (u.role || 'client') as any
     });
     if (!this.isAdmin) { this.editForm.get('role')?.disable({ emitEvent: false }); }
@@ -168,6 +186,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       email: this.editForm.get('email')?.value || u.email,
       givenName: this.editForm.get('givenName')?.value || '',
       familyName: this.editForm.get('familyName')?.value || '',
+      telephone: this.editForm.get('telephone')?.value || '',
       role: (this.isAdmin ? (this.editForm.get('role')?.value || u.role) : u.role) as any
     };
     this.api.updateUser(payload).subscribe(res => {

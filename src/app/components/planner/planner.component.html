@@ -1,5 +1,8 @@
 <div class="main-container">
   <div class="planner-actions">
+    <div class="user-label">
+      <span class="user-name">{{ getUserDisplayName() }}</span>
+    </div>
     <div class="spacer"></div>
     <div class="actions-right">
       <button mat-stroked-button color="accent" (click)="openAIDialog()" matTooltip="Generar plan con IA">
@@ -49,8 +52,13 @@
       </mat-form-field>
     </ng-container>
     <mat-form-field appearance="outline">
-      <mat-label>Entrenador</mat-label>
-      <input matInput formControlName="userName"/>
+      <mat-label>Objetivo</mat-label>
+      <textarea
+        matInput
+        formControlName="objective"
+        placeholder="Describe el objetivo del cliente (ej: ganar masa muscular, perder peso, mejorar resistencia...)"
+        rows="2"
+      ></textarea>
     </mat-form-field>
     <mat-form-field appearance="outline">
       <mat-label>Fecha</mat-label>
@@ -151,15 +159,11 @@
       <div class="list" *ngIf="previousPlans.length > 0; else noPreviousPlans">
         <div class="empty" *ngIf="previousPlans.length === 0">No hay planes anteriores</div>
         <cdk-virtual-scroll-viewport itemSize="44" class="vs-plans">
-          <div *cdkVirtualFor="let plan of previousPlans; trackBy: trackByPlan"
+          <div *cdkVirtualFor="let plan of previousPlans; let i = index; trackBy: trackByPlan"
                class="list-item" (click)="openPlanPreview(plan)">
             <div class="row">
               <div class="plan-info">
-                <div class="plan-name">{{ plan.name }}</div>
-                <div class="plan-meta">
-                  <span class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
-                  <span class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</span>
-                </div>
+                <div class="plan-name">{{ i + 1 }}. {{ plan.date | date:'dd/MM/yyyy' }} - {{ plan.sessions?.length || 0 }} sesiones</div>
               </div>
             </div>
           </div>

@@ -1,0 +1,119 @@
+.shell-container {
+  height: 100vh;
+}
+
+.app-toolbar {
+  background: var(--surface-200);
+  color: #ffffff;
+  box-shadow: var(--shadow-2);
+  .mat-icon { color: #ffffff; }
+  .title { color: #ffffff; }
+}
+
+.sidenav {
+  width: 280px;
+  /* Match navbar color and remove any rounding */
+  background: var(--surface-200);
+  color: #e5e7eb;
+}
+
+/* Ensure the Angular Material drawer has sharp corners */
+:host ::ng-deep .mat-drawer-container,
+:host ::ng-deep .mat-sidenav-container,
+:host ::ng-deep .mat-drawer,
+:host ::ng-deep .mat-sidenav,
+:host ::ng-deep .mat-drawer-content,
+:host ::ng-deep .mat-sidenav-content,
+:host ::ng-deep .mat-drawer-inner-container,
+:host ::ng-deep .mat-sidenav-inner-container {
+  border-radius: 0 !important;
+}
+
+/* Sidebar nav items without rounded corners for consistency */
+
+
+
+.shell-content {
+  padding: 1rem;
+}
+
+.brand-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 1rem;
+}
+
+.app-logo {
+  height: 48px;
+  width: auto;
+}
+
+.app-name {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.sidebar-item {
+  padding: 12px;
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: #e5e7eb;
+    text-decoration: none;
+    border-radius: 0; /* keep sharp to match sidebar */
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .nav-link:hover {
+    background: var(--surface-300);
+  }
+  .nav-link.active {
+    background: var(--primary-600);
+    color: #ffffff;
+  }
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+    
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+    
+    span {
+      font-size: 14px;
+      color: #ffffff;
+    }
+    
+    button { color: #ffffff; }
+  }
+}
+
+/* High-contrast toolbar actions */
+.login-btn {
+  background: #10b981; /* emerald-500 */
+  color: #ffffff !important;
+}
+
+.logout-btn {
+  background: var(--warn-500);
+  color: #ffffff !important;
+}

@@ -1,0 +1,19 @@
+.main-container {
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 1rem;
+  background: var(--bg-50);
+  border-radius: var(--radius-md);
+
+  .header {
+    display: flex;
+    margin: 15px;
+    align-items: center;
+    gap: 5px;
+
+    span {
+      font-size: large;
+      font-weight: 500;
+    }
+  }
+}

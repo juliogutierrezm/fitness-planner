@@ -1,0 +1,83 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1220;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+.brand {
+  text-align: center;
+  padding: 28px 20px 8px;
+}
+
+.brand mat-icon {
+  color: #60a5fa;
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+}
+
+.brand h1 {
+  margin: 8px 0 4px;
+  font-size: 22px;
+  color: #fff;
+}
+
+.brand p {
+  margin: 0;
+  color: #9ca3af;
+}
+
+.brand-logo {
+  width: 60px;
+  height: auto;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.login-primary {
+  background: #2563eb;
+  color: #fff;
+  height: 44px;
+}
+
+.login-secondary {
+  border-color: #9ca3af;
+  color: #e5e7eb;
+  height: 44px;
+}
+
+.actions button mat-icon {
+  margin-right: 8px;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+
+.loading p {
+  color: #9ca3af;
+  margin: 0;
+}

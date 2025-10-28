@@ -1,0 +1,84 @@
+<div class="user-detail">
+  <div class="header-simple">
+    <button mat-button routerLink="/users" class="back">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </button>
+  </div>
+
+  <mat-card class="plans-card">
+    <div class="plans-header">
+      <h3>Planes de entrenamiento de {{ user | userDisplayName }}</h3>
+      <a
+        *ngIf="userId as uid"
+        mat-raised-button
+        color="primary"
+        [routerLink]="['/planner']"
+        [queryParams]="{ userId: uid }"
+      >
+        <mat-icon>add</mat-icon>
+        Crear plan para este usuario
+      </a>
+    </div>
+
+    <div class="filters">
+      <mat-form-field appearance="outline" class="q">
+        <mat-label>Buscar</mat-label>
+        <input matInput [(ngModel)]="q" (ngModelChange)="applyFilters()" placeholder="Título o notas" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Desde</mat-label>
+        <input matInput [matDatepicker]="fromPicker" [(ngModel)]="dateFrom" (dateChange)="applyFilters()" />
+        <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+        <mat-datepicker #fromPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Hasta</mat-label>
+        <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo" (dateChange)="applyFilters()" />
+        <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+        <mat-datepicker #toPicker></mat-datepicker>
+      </mat-form-field>
+
+      <button mat-button color="primary" (click)="clearFilters()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div *ngIf="loadingPlans" class="loading-container">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Cargando planes de entrenamiento...</p>
+    </div>
+
+    <div *ngIf="!loadingPlans && viewPlans.length === 0" class="no-plans">
+      <p>No hay planes que coincidan con el filtro.</p>
+    </div>
+
+    <mat-accordion class="plans-accordion" multi>
+      <mat-expansion-panel *ngFor="let plan of viewPlans; let i = index; trackBy: getPlanId">
+        <mat-expansion-panel-header>
+          <div class="plan-header">
+            <div class="left">
+              <div class="title">{{ i + 1 }}. {{ plan.date | date: 'dd/MM/yyyy' }} - {{ getSessionCount(plan) }} sesiones</div>
+            </div>
+            <div class="right">
+              <button mat-icon-button (click)="$event.stopPropagation(); preview(plan)" matTooltip="Ver plan">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </mat-expansion-panel-header>
+
+        <app-workout-plan-view [plan]="plan"></app-workout-plan-view>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </mat-card>
+</div>

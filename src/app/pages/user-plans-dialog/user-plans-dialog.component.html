@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>
+  Planes de {{ data.user | userDisplayName }}
+</h2>
+
+<div class="plans-list" *ngIf="(data.plans || []).length; else noPlans">
+  <div class="plan-row" *ngFor="let p of data.plans">
+    <div class="title">{{ p.name || 'Plan' }}</div>
+    <div class="meta">
+      {{ p.date | date:'dd/MM/yyyy' }} · {{ (p.sessions?.length || 0) }} sesiones
+    </div>
+  </div>
+</div>
+
+<ng-template #noPlans>
+  <div class="empty">Sin planes para este usuario.</div>
+</ng-template>
+
+<div class="dialog-actions">
+  <button mat-stroked-button color="primary" mat-dialog-close>
+    Cerrar
+  </button>
+</div>

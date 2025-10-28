@@ -1,2 +1,85 @@
+/* Global base + design tokens */
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+:root {
+  /* Requested Palette */
+  --blue-600: #2563EB;
+  --blue-900: #1E40AF;
+  --turquoise-500: #06B6D4;
+  --turquoise-900: #0891B2;
+  --lime-500: #84CC16;
+  --lime-800: #65A30D;
+  --orange-500: #F97316;
+  --orange-800: #EA580C;
+  --white: #FFFFFF;
+  --gray-100: #F3F4F6;
+  --gray-500: #6B7280;
+  --ink: #111827;
+
+  /* Tokens */
+  --primary-600: var(--blue-600);
+  --primary-900: var(--blue-900);
+  --accent-500: var(--turquoise-500);
+  --accent-900: var(--turquoise-900);
+  --success-500: var(--lime-500);
+  --success-800: var(--lime-800);
+  --warn-500: var(--orange-500);
+  --warn-800: var(--orange-800);
+  --bg-0: var(--white);
+  --bg-50: var(--gray-100);
+  --ink-900: var(--ink);
+  --ink-500: var(--gray-500);
+
+  --surface-100: #111827; /* dark sidebar */
+  --surface-200: #0b1220; /* dark navbar */
+  --surface-300: #1f2937; /* hover/active */
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.12);
+
+  --gap-1: 0.25rem;
+  --gap-2: 0.5rem;
+  --gap-3: 0.75rem;
+  --gap-4: 1rem;
+}
+
+/* Utility classes */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.elev-1 { box-shadow: var(--shadow-1); }
+.elev-2 { box-shadow: var(--shadow-2); }
+
+/* Material overrides: consistent table/card look */
+.mat-mdc-card {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.mat-mdc-table .mdc-data-table__header-row {
+  background-color: var(--bg-50);
+}
+
+.mat-mdc-table .mdc-data-table__row:hover {
+  background-color: #f8fbff;
+}
+
+/* Unify selects/buttons using tokens */
+.mat-mdc-button-base { border-radius: var(--radius-md) !important; }
+.mat-mdc-raised-button.mat-primary, .mat-mdc-fab.mat-primary, .mat-mdc-mini-fab.mat-primary {
+  --mdc-filled-button-container-color: var(--primary-600);
+}
+.mat-mdc-stroked-button.mat-accent, .mat-mdc-outlined-button.mat-accent {
+  --mdc-outlined-button-outline-color: var(--accent-500);
+  color: var(--accent-900);
+}
+.mat-mdc-unelevated-button.mat-warn, .mat-mdc-raised-button.mat-warn {
+  --mdc-filled-button-container-color: var(--warn-500);
+}
+.mat-mdc-select-panel {
+  border-radius: var(--radius-sm);
+}

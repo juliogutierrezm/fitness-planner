@@ -1,0 +1,28 @@
+.dialog-container {
+  padding: 16px;
+  max-width: 420px;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dialog-header h2 {
+  margin: 0;
+}
+
+.icon {
+  color: #ef4444;
+}
+
+.message {
+  margin: 12px 0 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}

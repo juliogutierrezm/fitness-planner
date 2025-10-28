@@ -1,0 +1,36 @@
+<div class="main-container" [attr.aria-busy]="loading">
+    <!-- Loading Spinner -->
+    <div *ngIf="loading" class="loading-container" id="exercise-loading-region" aria-live="polite">
+        <mat-progress-spinner diameter="48" mode="indeterminate" role="status" aria-label="Cargando ejercicios"></mat-progress-spinner>
+        <p>Cargando ejercicios...</p>
+    </div>
+
+    <!-- Content (hidden while loading) -->
+    <div *ngIf="!loading">
+        <mat-card>
+            <div class="header">
+                <mat-icon>assignment</mat-icon>
+                <span>Gestión de Biblioteca de Ejercicios ({{ exercises.length }} ejercicios)</span>
+            </div>
+
+            <!-- Filters Component -->
+            <app-exercise-filters
+              [currentFilters]="currentFilters"
+              [filterOptions]="filterOptions"
+              (filtersChanged)="onFiltersChanged($event)"
+              (createNewClicked)="onCreateNewClicked()"
+              (refreshClicked)="onRefreshClicked()">
+            </app-exercise-filters>
+
+            <!-- Table Component -->
+            <app-exercise-table
+              [dataSource]="dataSource"
+              [initialPaginatorState]="paginatorState"
+              (editExercise)="onEditExercise($event)"
+              (viewDetails)="onViewDetails($event)"
+              (openVideoPreview)="onOpenVideo($event)"
+              (paginatorChanged)="onPaginatorChanged($event)">
+            </app-exercise-table>
+        </mat-card>
+    </div>
+</div>

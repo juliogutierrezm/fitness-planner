@@ -1,62 +1,36 @@
-<!-- <button mat-raised-button color="primary" (click)="bulkInsert()">🚀 Cargar Ejercicios Masivamente</button>
-<input type="file" accept=".json" (change)="onFileSelected($event)" /> -->
-<div class="main-container">
-    
+<div class="main-container" [attr.aria-busy]="loading">
+    <!-- Loading Spinner -->
+    <div *ngIf="loading" class="loading-container" id="exercise-loading-region" aria-live="polite">
+        <mat-progress-spinner diameter="48" mode="indeterminate" role="status" aria-label="Cargando ejercicios"></mat-progress-spinner>
+        <p>Cargando ejercicios...</p>
+    </div>
 
+    <!-- Content (hidden while loading) -->
+    <div *ngIf="!loading">
+        <mat-card>
+            <div class="header">
+                <mat-icon>assignment</mat-icon>
+                <span>Gestión de Biblioteca de Ejercicios ({{ exercises.length }} ejercicios)</span>
+            </div>
 
-    <mat-card>
-<div class="header" >
-        <mat-icon>assignment</mat-icon>
-    <span>Lista de Ejercicios Personalizados</span>
-</div>
+            <!-- Filters Component -->
+            <app-exercise-filters
+              [currentFilters]="currentFilters"
+              [filterOptions]="filterOptions"
+              (filtersChanged)="onFiltersChanged($event)"
+              (createNewClicked)="onCreateNewClicked()"
+              (refreshClicked)="onRefreshClicked()">
+            </app-exercise-filters>
 
-    <table mat-table [dataSource]="exercises" class="mat-elevation-z8" style="width: 100%;">
-        
-        <!-- ID -->
-        <ng-container matColumnDef="id">
-        <th mat-header-cell *matHeaderCellDef>ID</th>
-        <td mat-cell *matCellDef="let ex">{{ ex.id }}</td>
-        </ng-container>
-
-        <!-- Nombre -->
-        <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef>Nombre</th>
-        <td mat-cell *matCellDef="let ex">{{ ex.name }}</td>
-        </ng-container>
-
-        <!-- Equipo -->
-        <ng-container matColumnDef="equipment">
-        <th mat-header-cell *matHeaderCellDef>Equipo</th>
-        <td mat-cell *matCellDef="let ex">{{ ex.equipment }}</td>
-        </ng-container>
-
-        <!-- Músculo -->
-        <ng-container matColumnDef="muscle">
-        <th mat-header-cell *matHeaderCellDef>Músculo</th>
-        <td mat-cell *matCellDef="let ex">{{ ex.muscle }}</td>
-        </ng-container>
-
-        <!-- Categoría -->
-        <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef>Categoría</th>
-        <td mat-cell *matCellDef="let ex">{{ ex.category }}</td>
-        </ng-container>
-
-        <!-- Acciones -->
-        <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Acciones</th>
-        <td mat-cell *matCellDef="let ex">
-            <button mat-icon-button color="primary" (click)="editExercise(ex)">
-            <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" (click)="deleteExercise(ex.id)">
-            <mat-icon>delete</mat-icon>
-            </button>
-        </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-    </mat-card>
+            <!-- Table Component -->
+            <app-exercise-table
+              [dataSource]="dataSource"
+              [initialPaginatorState]="paginatorState"
+              (editExercise)="onEditExercise($event)"
+              (viewDetails)="onViewDetails($event)"
+              (openVideoPreview)="onOpenVideo($event)"
+              (paginatorChanged)="onPaginatorChanged($event)">
+            </app-exercise-table>
+        </mat-card>
+    </div>
 </div>

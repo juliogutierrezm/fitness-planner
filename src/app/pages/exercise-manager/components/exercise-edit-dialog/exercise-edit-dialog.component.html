@@ -1,0 +1,125 @@
+<h2 mat-dialog-title>{{ isCreationMode ? 'Crear Nuevo Ejercicio' : 'Editar Ejercicio' }}</h2>
+<mat-dialog-content>
+  <form [formGroup]="editForm" style="height: 100%;">
+    <mat-tab-group>
+    <!-- General Tab -->
+    <mat-tab label="General">
+      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('name_es')">
+          <mat-label>Nombre (ES) *</mat-label>
+          <input matInput formControlName="name_es">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('category')">
+          <mat-label>Categoría *</mat-label>
+          <input matInput formControlName="category">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('muscle_group')">
+          <mat-label>Grupo Muscular *</mat-label>
+          <input matInput formControlName="muscle_group">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('equipment_type')">
+          <mat-label>Tipo de Equipo *</mat-label>
+          <input matInput formControlName="equipment_type">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('exercise_type')">
+          <mat-label>Tipo de Ejercicio</mat-label>
+          <input matInput formControlName="exercise_type">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('difficulty')">
+          <mat-label>Dificultad</mat-label>
+          <input matInput formControlName="difficulty">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('training_goal')">
+          <mat-label>Meta de Entrenamiento</mat-label>
+          <input matInput formControlName="training_goal">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('description_es')">
+          <mat-label>Descripción (ES)</mat-label>
+          <textarea matInput formControlName="description_es" rows="3"></textarea>
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode">
+          <mat-label>Descripción (EN)</mat-label>
+          <textarea matInput formControlName="description_en" rows="3"></textarea>
+        </mat-form-field>
+
+        <!-- Video Upload Section - Only for creation -->
+        <div style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;" *ngIf="isCreationMode">
+          <h4>Video del Ejercicio</h4>
+          <input
+            type="file"
+            accept="video/*"
+            (change)="onFileSelected($event)"
+            style="margin-bottom: 1rem;"
+            [disabled]="isUploading">
+
+          <div *ngIf="isUploading" style="margin-bottom: 1rem;">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            <p>Subiendo video...</p>
+          </div>
+
+          <video
+            *ngIf="uploadedVideoUrl"
+            [src]="uploadedVideoUrl"
+            controls
+            style="width: 100%; max-height: 200px; margin-bottom: 1rem;">
+          </video>
+
+          <p *ngIf="uploadError" style="color: red;">{{ uploadError }}</p>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Technique Tab -->
+    <mat-tab label="Técnica">
+      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('tips')">
+          <mat-label>Tips</mat-label>
+          <textarea matInput formControlName="tips" rows="3" placeholder="Consejos para ejecutar correctamente..."></textarea>
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
+          <mat-label>Errores Comunes</mat-label>
+          <textarea matInput formControlName="common_mistakes" rows="3" placeholder="Errores frecuentes a evitar..."></textarea>
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode">
+          <mat-label>Plano de Movimiento</mat-label>
+          <input matInput formControlName="plane_of_motion" placeholder="Ej: Sagital, Frontal, Transversal">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode">
+          <mat-label>Patrón de Movimiento</mat-label>
+          <input matInput formControlName="movement_pattern" placeholder="Ej: Aceleración, Deceleración">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
+          <mat-label>Músculos Secundarios</mat-label>
+          <input matInput formControlName="secondary_muscles" placeholder="Músculos auxiliares separados por comas">
+        </mat-form-field>
+      </div>
+    </mat-tab>
+
+    <!-- Equipment Tab -->
+    <mat-tab label="Equipo">
+      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+        <mat-form-field *ngIf="isCreationMode">
+          <mat-label>Equipo Específico</mat-label>
+          <input matInput formControlName="equipment_specific" placeholder="Ej: Mancuerna, Barra, Máquina Smith">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('functional')">
+          <mat-label>Funcional</mat-label>
+          <input matInput formControlName="functional" placeholder="Ej: Push, Pull, Core">
+        </mat-form-field>
+        <mat-form-field *ngIf="isCreationMode || isFieldEditable('aliases')">
+          <mat-label>Alias/Variaciones</mat-label>
+          <input matInput formControlName="aliases" placeholder="Nombres alternativos separados por comas">
+        </mat-form-field>
+        <mat-form-field *ngIf="!isCreationMode">
+          <mat-label>Video Preview URL</mat-label>
+          <input matInput formControlName="preview_url" readonly>
+        </mat-form-field>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onClose()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="editForm.invalid || isUploading">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</button>
+</mat-dialog-actions>

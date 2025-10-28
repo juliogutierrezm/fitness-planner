@@ -1,0 +1,42 @@
+<div class="filters-row">
+    <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar por nombre</mat-label>
+        <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onSearchChange()">
+        <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+        <mat-label>Categoría</mat-label>
+        <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="">Todas</mat-option>
+            <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ cat }}</mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+        <mat-label>Grupo Muscular</mat-label>
+        <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="">Todos</mat-option>
+            <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ mg }}</mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+        <mat-label>Tipo de Equipo</mat-label>
+        <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="">Todos</mat-option>
+            <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <div class="action-buttons">
+        <button mat-raised-button color="info" (click)="onRefresh()" [disabled]="isLoading">
+            <mat-icon>refresh</mat-icon>
+            Refrescar
+        </button>
+        <button mat-raised-button color="primary" (click)="onCreateNew()" [disabled]="isLoading">
+            <mat-icon>add</mat-icon>
+            Nuevo Ejercicio
+        </button>
+    </div>
+</div>

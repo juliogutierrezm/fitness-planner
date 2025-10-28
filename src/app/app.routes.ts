@@ -48,6 +48,11 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
+        path: 'exercise-detail/:id',
+        loadComponent: () => import('./pages/exercise-manager/components/exercise-detail/exercise-detail.component').then(m => m.ExerciseDetailComponent),
+        canActivate: [AuthGuard]
+      },
+      {
         path: 'diagnostics',
         loadComponent: () => import('./pages/diagnostics/diagnostics.component').then(m => m.DiagnosticsComponent),
         canActivate: [AuthGuard]

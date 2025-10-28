@@ -1,0 +1,75 @@
+<div class="detail-container" *ngIf="!loading && !error && exercise">
+  <!-- Header -->
+  <div class="header">
+    <button mat-icon-button (click)="goBack()" aria-label="Volver">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1>{{ exercise.name_es || exercise.name }}</h1>
+  </div>
+
+  <!-- Content -->
+  <mat-card>
+    <mat-card-content>
+      <div class="content-grid">
+        <!-- Basic Info -->
+        <div class="field-group">
+          <h3>Información Básica</h3>
+          <div class="field"><strong>ID:</strong> {{ exercise.id }}</div>
+          <div class="field"><strong>Nombre (ES):</strong> {{ exercise.name_es || 'N/A' }}</div>
+          <div class="field"><strong>Nombre (EN):</strong> {{ exercise.name_en || 'N/A' }}</div>
+          <div class="field"><strong>Categoría:</strong> {{ exercise.category || 'N/A' }}</div>
+          <div class="field"><strong>Grupo Muscular:</strong> {{ exercise.muscle_group || exercise.muscle || 'N/A' }}</div>
+          <div class="field"><strong>Tipo de Equipo:</strong> {{ exercise.equipment_type || exercise.equipment || 'N/A' }}</div>
+          <div class="field"><strong>Tipo de Ejercicio:</strong> {{ exercise.exercise_type || 'N/A' }}</div>
+          <div class="field"><strong>Dificultad:</strong> {{ exercise.difficulty || 'N/A' }}</div>
+        </div>
+
+        <!-- Description -->
+        <div class="field-group" *ngIf="exercise.description_es || exercise.description_en">
+          <h3>Descripción</h3>
+          <div class="field" *ngIf="exercise.description_es"><strong>ES:</strong> {{ exercise.description_es }}</div>
+          <div class="field" *ngIf="exercise.description_en"><strong>EN:</strong> {{ exercise.description_en }}</div>
+        </div>
+
+        <!-- Technical Info -->
+        <div class="field-group" *ngIf="(exercise.tips && exercise.tips.length) || (exercise.common_mistakes && exercise.common_mistakes.length)">
+          <h3>Información Técnica</h3>
+          <div class="field" *ngIf="exercise.tips && exercise.tips.length"><strong>Tips:</strong> {{ exercise.tips.join(', ') }}</div>
+          <div class="field" *ngIf="exercise.common_mistakes && exercise.common_mistakes.length"><strong>Errores Comunes:</strong> {{ exercise.common_mistakes.join(', ') }}</div>
+        </div>
+
+        <!-- Media -->
+        <div class="field-group" *ngIf="exercise.preview_url || exercise.youtube_url">
+          <h3>Multimedia</h3>
+          <video *ngIf="exercise.preview_url" [src]="exercise.preview_url" controls style="max-width: 100%;"></video>
+          <div class="field" *ngIf="exercise.youtube_url"><strong>YouTube:</strong> <a [href]="exercise.youtube_url" target="_blank">{{ exercise.youtube_url }}</a></div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="field-group">
+          <h3>Metadatos</h3>
+          <div class="field"><strong>Funcional:</strong> {{ exercise.functional ? 'Sí' : 'No' }}</div>
+          <div class="field"><strong>Proceso Status:</strong> {{ exercise.process_status || 'N/A' }}</div>
+          <div class="field"><strong>Creado:</strong> {{ exercise.created_at ? (exercise.created_at | date:'short') : 'N/A' }}</div>
+          <div class="field"><strong>Actualizado:</strong> {{ exercise.updated_at ? (exercise.updated_at | date:'short') : 'N/A' }}</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Loading -->
+<div class="loading" *ngIf="loading">
+  <mat-progress-spinner diameter="48" mode="indeterminate"></mat-progress-spinner>
+  <p>Cargando ejercicio...</p>
+</div>
+
+<!-- Error -->
+<div class="error" *ngIf="error">
+  <mat-card>
+    <mat-card-content>
+      <p>{{ error }}</p>
+      <button mat-button (click)="goBack()">Volver</button>
+    </mat-card-content>
+  </mat-card>
+</div>

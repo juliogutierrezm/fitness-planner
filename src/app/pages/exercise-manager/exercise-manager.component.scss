@@ -1,32 +1,19 @@
 .main-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 2rem auto;
   padding: 1rem;
   background: var(--bg-50);
   border-radius: var(--radius-md);
 
-  .header{
+  .header {
     display: flex;
     margin: 15px;
     align-items: center;
     gap: 5px;
-    span{
+
+    span {
       font-size: large;
       font-weight: 500;
     }
   }
-}
-
-/* Table polish */
-table.mat-mdc-table {
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-th.mat-mdc-header-cell {
-  background: var(--bg-100);
-}
-
-tr.mdc-data-table__row:hover {
-  background: #f8fbff;
 }

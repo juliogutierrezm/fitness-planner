@@ -6,11 +6,48 @@ import { catchError, tap, switchMap } from 'rxjs/operators';
 import { Exercise, Session } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
+import { sanitizeName } from './shared/shared-utils';
+
+// Allowed fields for exercise updates
+const ALLOWED_FIELDS = [
+  "name_es",
+  "difficulty",
+  "category",
+  "equipment_type",
+  "muscle_group",
+  "secondary_muscles",
+  "exercise_type",
+  "training_goal",
+  "common_mistakes",
+  "tips",
+  "functional",
+  "description_es",
+  "aliases"
+];
+
+// Protected fields that must be excluded from update payloads
+const PROTECTED_FIELDS = [
+  "id",
+  "name_en",
+  "s3_key",
+  "preview_url",
+  "thumbnail",
+  "process_status",
+  "processed_ai",
+  "created_at",
+  "updated_at"
+];
+
+interface ExerciseLibraryResponse {
+  count: number;
+  items: Exercise[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class ExerciseApiService {
   private apiBase     = environment.apiBase;
   private exerciseUrl = `${this.apiBase}/exercise`;
+  private exerciseLibUrl = `${this.apiBase}/exercise/library`;
   private planUrl     = `${this.apiBase}/workoutPlans`;
 
   constructor(
@@ -24,6 +61,47 @@ export class ExerciseApiService {
   }
 
   // =============== EXERCISES CRUD ===============
+  private sanitizeExerciseUpdatePayload(exercise: Exercise): any {
+    // Filter to only allowed fields and warn about protected fields
+    const sanitized = Object.fromEntries(
+      Object.entries(exercise).filter(([key]) => ALLOWED_FIELDS.includes(key))
+    );
+
+    const foundProtected = Object.keys(exercise).filter(key =>
+      PROTECTED_FIELDS.includes(key)
+    );
+
+    if (foundProtected.length > 0) {
+      console.warn('🚨 Protected fields detected (removed from payload):', foundProtected);
+    }
+
+    return sanitized; // Return only allowed fields, no id since it's in URL
+  }
+
+  getExerciseLibrary(): Observable<ExerciseLibraryResponse> {
+    return this.http.get<ExerciseLibraryResponse>(this.exerciseLibUrl).pipe(
+      tap(res => console.log('📋 Biblioteca de ejercicios obtenida:', res.count, 'ejercicios')),
+      catchError(err => {
+        console.error('❌ Error al obtener biblioteca de ejercicios:', err);
+        return of({ count: 0, items: [] });
+      })
+    );
+  }
+
+  updateExerciseLibraryItem(id: string, exercise: Exercise): Observable<{ok: boolean, updated: Partial<Exercise>}> {
+    const payload = this.sanitizeExerciseUpdatePayload(exercise);
+    const url = `${this.exerciseLibUrl}/${encodeURIComponent(id)}`;
+    return this.http.put<{ok: boolean, updated: Partial<Exercise>}>(url, payload).pipe(
+      tap(res => console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated)),
+      catchError(err => {
+        console.error('❌ Error al actualizar ejercicio de libreria:', err);
+        return of({ ok: false, updated: {} });
+      })
+    );
+  }
+
+
+
   getExercises(): Observable<Exercise[]> {
     return this.http.get<Exercise[]>(this.exerciseUrl).pipe(
       tap(exs => console.log('📋 Ejercicios obtenidos:', exs)),
@@ -34,11 +112,67 @@ export class ExerciseApiService {
     );
   }
 
-  createExercise(ex: Exercise): Observable<any> {
-    return this.http.post(this.exerciseUrl, ex).pipe(
-      tap(() => console.log('✅ Ejercicio creado:', ex)),
+  // Lambda-based exercise creation
+  createExercise(exerciseData: any): Observable<any> {
+    // Generate unique ID for new exercise
+    const generatedId = `${sanitizeName(exerciseData.name_es)}_${Date.now()}`;
+    console.info('Generated Exercise ID:', generatedId);
+
+    // Transform exercise data to match Lambda expectations
+    const payload: any = {
+      id: generatedId,
+      name_en: exerciseData.name_en,
+      name_es: exerciseData.name_es || '',
+      equipment_type: exerciseData.equipment_type,
+      muscle_group: exerciseData.muscle_group,
+      category: exerciseData.category,
+      description_en: exerciseData.description_en || '',
+      description_es: exerciseData.description_es || '',
+      exercise_type: exerciseData.exercise_type || '',
+      difficulty: exerciseData.difficulty || '',
+      movement_pattern: exerciseData.movement_pattern || '',
+      training_goal: exerciseData.training_goal || '',
+      functional: exerciseData.functional || false,
+      preview_url: exerciseData.preview_url || '',
+      s3_key: exerciseData.s3_key || '',
+      thumbnail: exerciseData.thumbnail || ''
+    };
+
+    // Handle arrays
+    if (exerciseData.aliases && Array.isArray(exerciseData.aliases)) {
+      payload.aliases = exerciseData.aliases;
+    }
+    if (exerciseData.secondary_muscles && Array.isArray(exerciseData.secondary_muscles)) {
+      payload.secondary_muscles = exerciseData.secondary_muscles;
+    }
+    if (exerciseData.tips && Array.isArray(exerciseData.tips)) {
+      payload.tips = exerciseData.tips;
+    }
+    if (exerciseData.common_mistakes && Array.isArray(exerciseData.common_mistakes)) {
+      payload.common_mistakes = exerciseData.common_mistakes;
+    }
+
+    return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
+      tap(() => console.log('✅ Ejercicio creado via Lambda:', generatedId)),
       catchError(err => {
-        console.error('❌ Error al crear ejercicio:', err);
+        console.error('❌ Error al crear ejercicio via Lambda:', err);
+        return of(null);
+      })
+    );
+  }
+
+  // Get presigned URL for video upload
+  getUploadUrl(filename: string, contentType: string): Observable<any> {
+    const payload = {
+      action: 'getUploadUrl',
+      filename: filename,
+      contentType: contentType
+    };
+
+    return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
+      tap(res => console.log('🔗 URL de subida obtenida:', res)),
+      catchError(err => {
+        console.error('❌ Error al obtener URL de subida:', err);
         return of(null);
       })
     );

@@ -1,0 +1,28 @@
+.filters-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+// Responsive design for mobile
+@media (max-width: 768px) {
+  .filters-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .action-buttons {
+    margin-left: 0;
+    justify-content: flex-end;
+    flex-direction: row-reverse; // Put "Nuevo Ejercicio" first
+  }
+}

@@ -39,7 +39,7 @@ export interface PlanItem {
   sets: number;
   reps: number | string;
   rest: number;
-  notes?: string;
+  weight?: number;
   selected?: boolean;
   isGroup?: boolean;
   children?: PlanItem[];

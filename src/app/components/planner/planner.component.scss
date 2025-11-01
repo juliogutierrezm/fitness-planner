@@ -56,6 +56,53 @@
   }
 }
 
+.filters-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+
+  .filters-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .search-field {
+    flex: 1 1 200px;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .clear-filters {
+    height: 36px;
+    line-height: 36px;
+  }
+
+  // Responsive design for mobile
+  @media (max-width: 768px) {
+    .filters-row {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .action-buttons {
+      margin-left: 0;
+      justify-content: flex-end;
+      flex-direction: row-reverse;
+    }
+  }
+}
+
 .planner-body {
   display: flex;
   gap: 1rem;
@@ -70,10 +117,10 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);
   color: var(--ink-900);
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e5e7eb;  overflow: hidden;
 
   h3 {
-    margin: 0 0 0.5rem;
+    margin: 0 0 1rem;
     text-align: center;
   }
   .favorites-recents { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
@@ -81,21 +128,17 @@
   .fav-list { display: flex; flex-wrap: wrap; gap: 6px; }
   .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-sm); background: #eef2ff; border: 1px solid #c7d2fe; font-size: 12px; }
   .block-title { font-size: 12px; color: var(--ink-500); margin: 4px 0; }
-  .vs { height: 52vh; width: 100%; }
-
-  .filters { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
-  .filter-field { width: 100%; }
-  .clear-filters { align-self: flex-end; }
+  .vs { height: 52vh; width: 100%; overflow-x: hidden; }
 
   .list {
     min-height: 300px;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    gap: 6px;
+    padding: 6px;
     border: 1px dashed #d1d5db;
     border-radius: var(--radius-sm);
-    background: var(--bg-50);
+    background: var(--bg-50);    overflow-y: auto;    overflow-x: hidden;
   }
   .cdk-drop-list-dragging.list {
     background: #f1f5f9;
@@ -124,6 +167,19 @@
 }
 
 .truncate { max-width: 280px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.exercise-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.aliases {
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-top: 2px;
+}
+
+
 
 /* Overlay de carga IA mejorado */
 .ai-overlay {
@@ -385,16 +441,67 @@
     text-align: left;
    // padding: 0.5rem;
     border-bottom: 1px solid #ddd;
+    vertical-align: middle;
   }
 
   th {
     font-weight: bold;
+    vertical-align: middle;
   }
 
   th[matColumnDef="select"],
   td[matColumnDef="select"] {
     width: 60px;
     text-align: center;
+  }
+
+  th[matColumnDef="name"],
+  td[matColumnDef="name"] {
+    width: 40%;
+  }
+
+  th[matColumnDef="equipment"],
+  td[matColumnDef="equipment"] {
+    width: 15%;
+  }
+
+  th[matColumnDef="sets"],
+  td[matColumnDef="sets"] {
+    width: 8%;
+  }
+
+  th[matColumnDef="reps"],
+  td[matColumnDef="reps"] {
+    width: 8%;
+  }
+
+  th[matColumnDef="rest"],
+  td[matColumnDef="rest"] {
+    width: 8%;
+  }
+
+  th[matColumnDef="weight"],
+  td[matColumnDef="weight"] {
+    width: 8%;
+  }
+
+  th[matColumnDef="actions"],
+  td[matColumnDef="actions"] {
+    width: 5%;
+    text-align: center;
+  }
+
+  .name-cell {
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  .exercise-name-text {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -460,11 +567,7 @@ button[mat-icon-button] {
 /* Distinct style for superserie group rows */
 .superserie-group { background: #f0f9ff !important; border-left: 4px solid var(--primary-600); }
 
-/* Inline editable affordance */
-.editable {
-  cursor: pointer;
-  border-bottom: 1px dotted #94a3b8;
-}
+
 
 /* Vertical superset badge aligned to left border */
 .superserie-group td:first-child { position: relative; }
@@ -472,6 +575,13 @@ button[mat-icon-button] {
 /* acciones de crear/eliminar superserie más intuitivas */
 .link-action { color: var(--accent-900); }
 .unlink-action { color: var(--warn-500); }
+
+/* Estilos para acciones de superserie */
+.superserie-group-actions {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #bbb;
+}
 
 /* removed floating session dock */
 

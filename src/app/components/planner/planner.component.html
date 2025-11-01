@@ -83,6 +83,47 @@
     </mat-form-field>
   </form>
 
+  <!-- Filtros -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Buscar por nombre</mat-label>
+        <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Categoría</mat-label>
+        <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todas</mat-option>
+          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ cat }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Grupo Muscular</mat-label>
+        <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ mg }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de Equipo</mat-label>
+        <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="action-buttons">
+        <button mat-raised-button color="primary" class="clear-filters" (click)="clearFilters()">
+          <mat-icon>filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Body -->
   <div class="planner-body">
@@ -90,10 +131,7 @@
     <!-- Sidebar de ejercicios -->
     <aside class="exercise-sidebar">
       <h3>Ejercicios</h3>
-      <mat-form-field appearance="outline" class="filter-field">
-        <mat-label>Buscar</mat-label>
-        <input matInput [(ngModel)]="filters.q" (ngModelChange)="onFilterChange()" placeholder="Nombre..." />
-      </mat-form-field>
+
       <!-- Submenú: a qué día agregar -->
       <mat-menu #addMenu="matMenu">
         <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
@@ -101,41 +139,22 @@
           <span>{{ s.name }}</span>
         </button>
       </mat-menu>
-      <div class="filters">
-        <mat-form-field appearance="fill" class="filter-field">
-          <mat-label>Grupo muscular</mat-label>
-          <mat-select [(ngModel)]="filters.muscle" (selectionChange)="onFilterChange()">
-            <mat-option [value]="">Todos</mat-option>
-            <mat-option *ngFor="let m of muscles" [value]="m">{{ m }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="filter-field">
-          <mat-label>Categoría</mat-label>
-          <mat-select [(ngModel)]="filters.category" (selectionChange)="onFilterChange()">
-            <mat-option [value]="">Todas</mat-option>
-            <mat-option *ngFor="let c of categories" [value]="c">{{ c }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field appearance="fill" class="filter-field">
-          <mat-label>Equipo</mat-label>
-          <mat-select [(ngModel)]="filters.equipment" (selectionChange)="onFilterChange()">
-            <mat-option [value]="">Todos</mat-option>
-            <mat-option *ngFor="let e of equipments" [value]="e">{{ e }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <button mat-button color="primary" class="clear-filters" (click)="clearFilters()">
-          <mat-icon>filter_alt_off</mat-icon>
-          Limpiar filtros
-        </button>
-      </div>
+
       <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
         <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
         <cdk-virtual-scroll-viewport itemSize="44" class="vs">
-          <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
+        <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
                cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
+            <div class="exercise-name">
+              {{ ex.name_es || ex.name }}
+            </div>
+            <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
             <div class="row">
-              <div class="name">{{ ex.name }} <small>({{ ex.equipment }})</small></div>
+              <small>({{ ex.equipment_type || ex.equipment || 'Sin equipo' }})</small>
               <div class="actions">
+                <button mat-icon-button (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
+                  <mat-icon>play_circle</mat-icon>
+                </button>
                 <button mat-icon-button (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
                   <mat-icon>{{ isFavorite(ex) ? 'star' : 'star_border' }}</mat-icon>
                 </button>
@@ -239,14 +258,14 @@
 
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Ejercicio</th>
-                  <td mat-cell *matCellDef="let item; let i = index">
+                  <td mat-cell *matCellDef="let item; let i = index" class="name-cell">
                     <ng-container *ngIf="!item.isGroup">
-                      {{ item.name }}
+                      <span class="exercise-name-text">{{ item.name_es || item.name }}</span>
                     </ng-container>
                 <ng-container *ngIf="item.isGroup && item.children as children">
                     <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
                     <div class="child-row" [ngClass]="{ 'with-divider': cIdx > 0 }">
-                      {{ child.name }}
+                      <span class="exercise-name-text">{{ child.name_es || child.name }}</span>
                     </div>
                   </ng-container>
                 </ng-container>
@@ -275,39 +294,22 @@
                 <th mat-header-cell *matHeaderCellDef>Sets</th>
                 <td mat-cell *matCellDef="let item; let i = index">
                   <ng-container *ngIf="!item.isGroup">
-                    <ng-container *ngIf="!isEditing(s.id, i, 'sets'); else editSets">
-                      <span class="editable" (dblclick)="startEdit(s.id, i, 'sets')">
-                        {{ item.sets }}
-                      </span>
-                    </ng-container>
-                    <ng-template #editSets>
-                      <input class="sets-input"
-                        matInput
-                        type="number"
-                        [(ngModel)]="item.sets"
-                        (blur)="finishEdit()"
-                        (keydown.enter)="finishEdit()"
-                      />
-                    </ng-template>
+                    <input class="sets-input"
+                      matInput
+                      type="number"
+                      [(ngModel)]="item.sets"
+                      (blur)="persist()"
+                    />
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
                     <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-
-                        <ng-container *ngIf="!isEditing(s.id, i + childIdx, 'sets'); else editSets">
-                          <span class="editable" (dblclick)="startEdit(s.id, i + childIdx, 'sets')">
-                            {{ child.sets }}
-                          </span>
-                        </ng-container>
-                        <ng-template #editSets>
-                          <input class="sets-input"
-                            matInput
-                            type="number"
-                            [(ngModel)]="child.sets"
-                            (blur)="finishEdit()"
-                            (keydown.enter)="finishEdit()"
-                          />
-                        </ng-template>
+                        <input class="sets-input"
+                          matInput
+                          type="number"
+                          [(ngModel)]="child.sets"
+                          (blur)="persist()"
+                        />
                       </div>
                     </ng-container>
                   </ng-container>
@@ -319,40 +321,22 @@
                 <th mat-header-cell *matHeaderCellDef>Reps</th>
                 <td mat-cell *matCellDef="let item; let i = index">
                   <ng-container *ngIf="!item.isGroup">
-                    <ng-container *ngIf="!isEditing(s.id, i, 'reps'); else editReps">
-                      <span class="editable" (dblclick)="startEdit(s.id, i, 'reps')">
-                        {{ item.reps }}
-                      </span>
-                    </ng-container>
-                    <ng-template #editReps>
-                      <input class="sets-input"
-                        matInput
-                        type="text"
-                        [(ngModel)]="item.reps"
-                        (blur)="finishEdit()"
-                        (keydown.enter)="finishEdit()"
-                        maxlength="20"
-                      />
-                    </ng-template>
+                    <input class="sets-input"
+                      matInput
+                      type="text"
+                      [(ngModel)]="item.reps"
+                      (blur)="persist()"
+                    />
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
                     <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-
-                        <ng-container *ngIf="!isEditing(s.id, i + childIdx, 'reps'); else editReps">
-                          <span class="editable" (dblclick)="startEdit(s.id, i + childIdx, 'reps')">
-                            {{ child.reps }}
-                          </span>
-                        </ng-container>
-                        <ng-template #editReps>
-                          <input class="sets-input"
-                            matInput
-                            type="number"
-                            [(ngModel)]="child.reps"
-                            (blur)="finishEdit()"
-                            (keydown.enter)="finishEdit()"
-                          />
-                        </ng-template>
+                        <input class="sets-input"
+                          matInput
+                          type="text"
+                          [(ngModel)]="child.reps"
+                          (blur)="persist()"
+                        />
                       </div>
                     </ng-container>
                   </ng-container>
@@ -364,63 +348,39 @@
                 <th mat-header-cell *matHeaderCellDef>Rest</th>
                 <td mat-cell *matCellDef="let item; let i = index">
                   <ng-container *ngIf="!item.isGroup">
-                    <ng-container *ngIf="!isEditing(s.id, i, 'rest'); else editRest">
-                      <span class="editable" (dblclick)="startEdit(s.id, i, 'rest')">
-                        {{ item.rest }}
-                      </span>
-                    </ng-container>
-                    <ng-template #editRest>
-                      <input class="sets-input"
-                        matInput
-                        type="number"
-                        [(ngModel)]="item.rest"
-                        (blur)="finishEdit()"
-                        (keydown.enter)="finishEdit()"
-                      />
-                    </ng-template>
+                    <input class="sets-input"
+                      matInput
+                      type="text"
+                      [(ngModel)]="item.rest"
+                      (blur)="persist()"
+                    />
                   </ng-container>
                   <ng-container *ngIf="item.isGroup">
                     <ng-container *ngFor="let child of item.children; let childIdx = index">
                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-
-                        <ng-container *ngIf="!isEditing(s.id, i + childIdx, 'rest'); else editRest">
-                          <span (dblclick)="startEdit(s.id, i + childIdx, 'rest')">
-                            {{ child.rest }}
-                          </span>
-                        </ng-container>
-                        <ng-template #editRest>
-                          <input
-                            matInput class="sets-input"
-                            type="number"
-                            [(ngModel)]="child.rest"
-                            (blur)="finishEdit()"
-                            (keydown.enter)="finishEdit()"
-                          />
-                        </ng-template>
+                        <input
+                          matInput class="sets-input"
+                          type="text"
+                          [(ngModel)]="child.rest"
+                          (blur)="persist()"
+                        />
                       </div>
                     </ng-container>
                   </ng-container>
                 </td>
               </ng-container>
-            <!-- Columna Observaciones -->
-            <ng-container matColumnDef="notes">
-              <th mat-header-cell *matHeaderCellDef>Obs.</th>
+              <!-- Columna Peso -->
+            <ng-container matColumnDef="weight">
+              <th mat-header-cell *matHeaderCellDef>Peso</th>
               <td mat-cell *matCellDef="let item; let i = index">
-                
+
                 <!-- 1) Ejercicio individual -->
                 <ng-container *ngIf="!item.isGroup">
-                  <ng-container *ngIf="!isEditing(s.id, item.id, 'notes'); else editNormalNotes">
-                    <span class="editable" (dblclick)="startEdit(s.id, item.id, 'notes')">
-                      {{ item.notes || '———' }}
-                    </span>
-                  </ng-container>
-                  <ng-template #editNormalNotes>
-                    <input matInput class="sets-input"
-                          type="text" maxlength="40"
-                          [(ngModel)]="item.notes"
-                          (blur)="finishEdit()"
-                          (keydown.enter)="finishEdit()" />
-                  </ng-template>
+                  <input matInput class="sets-input"
+                        type="text"
+                        [(ngModel)]="item.weight"
+                        (blur)="persist()"
+                        placeholder="———" />
                 </ng-container>
 
                 <!-- 2) Superserie -->
@@ -428,21 +388,11 @@
                   <ng-container *ngFor="let child of children; let c = index; trackBy: trackByChild">
                     <div class="superserie-child-row"
                         [ngClass]="{ 'with-divider': c > 0 }">
-                      
-                      <ng-container *ngIf="!isEditing(s.id, item.id, 'notes', c); else editChildNotes">
-                        <span class="editable" (dblclick)="startEdit(s.id, item.id, 'notes', c)">
-                          {{ child.notes || '———' }}
-                        </span>
-                      </ng-container>
-                      
-                      <ng-template #editChildNotes>
-                        <input matInput class="sets-input"
-                              type="text" maxlength="40"
-                              [(ngModel)]="child.notes"
-                              (blur)="finishEdit()"
-                              (keydown.enter)="finishEdit()" />
-                      </ng-template>
-
+                      <input matInput class="sets-input"
+                            type="text"
+                            [(ngModel)]="child.weight"
+                            (blur)="persist()"
+                            placeholder="———" />
                     </div>
                   </ng-container>
                 </ng-container>
@@ -451,25 +401,35 @@
             </ng-container>
               <!-- Acciones -->
               <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Acción</th>
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
                 <td mat-cell *matCellDef="let item; let i = index">
                   <ng-container *ngIf="!item.isGroup">
+                    <button mat-icon-button (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
+                      <mat-icon>play_circle</mat-icon>
+                    </button>
                     <button mat-icon-button color="warn" (click)="removeItem(s, i)">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </ng-container>
-                  <ng-container *ngIf="item.isGroup">
-                    <button mat-icon-button color="warn" (click)="removeGroup(s, i)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+                  <ng-container *ngIf="item.isGroup && item.children as children">
+                    <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
+                        <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
+                          <mat-icon>play_circle</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" (click)="removeItem(s, i)" [matTooltip]="'Eliminar'">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                    </ng-container>
                   </ng-container>
                 </td>
               </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'notes','actions']"></tr>
+              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions']"></tr>
               <tr
                 mat-row
-                *matRowDef="let row; columns: ['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'notes', 'actions']"
+                *matRowDef="let row; columns: ['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions']"
                 cdkDrag
                 [cdkDragData]="row"
                 [cdkDragDisabled]="row.isGroup && !canDragGroup(row)"

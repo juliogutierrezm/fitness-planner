@@ -1,0 +1,225 @@
+.ai-dialog-container {
+  padding: 24px;
+  min-height: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-dialog-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.ai-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+
+  .ai-icon {
+    color: var(--primary-600);
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+  }
+}
+
+.ai-dialog-divider {
+  height: 1px;
+  background: var(--bg-200);
+  margin-top: 16px;
+}
+
+.ai-dialog-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.ai-help-card {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-50);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-200);
+  flex-shrink: 0;
+
+  .help-icon {
+    color: var(--accent-500);
+    font-size: 1.25rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .help-content {
+    flex: 1;
+
+    .help-title {
+      color: var(--ink-900);
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .help-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      .help-item {
+        color: var(--ink-600);
+        margin-bottom: 6px;
+        line-height: 1.5;
+        padding-left: 16px;
+        position: relative;
+
+        &:before {
+          content: '•';
+          color: var(--accent-500);
+          font-weight: bold;
+          position: absolute;
+          left: 0;
+        }
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+.prompt-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+
+  ::ng-deep .mat-mdc-form-field-outline {
+    color: var(--ink-300);
+  }
+
+  ::ng-deep .mat-mdc-form-field-focus-overlay {
+    background-color: rgba(var(--primary-600), 0.04);
+  }
+
+  .prompt-textarea {
+    font-family: inherit;
+    line-height: 1.5;
+    resize: none;
+    min-height: 100px;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .mat-mdc-form-field-hint {
+    color: var(--ink-500);
+    margin-top: 4px;
+  }
+}
+
+.ai-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--bg-200);
+  flex-shrink: 0;
+
+  .cancel-btn {
+    color: var(--ink-600);
+    border-color: var(--ink-300);
+
+    &:hover {
+      background: var(--bg-50);
+      border-color: var(--ink-400);
+    }
+  }
+
+  .generate-btn {
+    min-width: 140px;
+
+    &[disabled] {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ai-dialog-container {
+    padding: 20px;
+    min-height: 450px;
+  }
+
+  .ai-dialog-title {
+    gap: 8px;
+
+    h2 {
+      font-size: 1.25rem;
+    }
+
+    .ai-icon {
+      font-size: 1.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+  }
+
+  .ai-help-card {
+    padding: 12px;
+    gap: 8px;
+
+    .help-content .help-list .help-item {
+      padding-left: 12px;
+      font-size: 0.9rem;
+    }
+  }
+
+  .ai-dialog-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+
+    button {
+      width: 100%;
+      margin: 0;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-dialog-container {
+    padding: 16px;
+  }
+
+  .ai-dialog-header {
+    margin-bottom: 16px;
+  }
+
+  .ai-dialog-content {
+    gap: 16px;
+  }
+
+  .ai-help-card {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+
+    .help-icon {
+      align-self: flex-start;
+    }
+  }
+}

@@ -1,0 +1,61 @@
+aws dynamodb describe-table --table-name Exercises
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "id",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "Exercises",
+        "KeySchema": [
+            {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-07-03T06:10:53.466000+00:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 13922,
+        "ItemCount": 141,
+        "TableArn": "arn:aws:dynamodb:us-east-1:750391387727:table/Exercises",
+        "TableId": "5876deb6-59a3-4189-8e08-5cea2a1235d9",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2025-07-03T06:10:53.466000+00:00"
+        },
+        "TableClassSummary": {
+            "TableClass": "STANDARD"
+        },
+        "DeletionProtectionEnabled": true,
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,
+            "WriteUnitsPerSecond": 4000,
+            "Status": "ACTIVE"
+        }
+    }
+}
+
+
+{
+  "id": {
+    "S": "ex-0092"
+  },
+  "category": {
+    "S": "Movilidad"
+  },
+  "equipment": {
+    "S": "Sin equipo"
+  },
+  "muscle": {
+    "S": "Pantorrillas"
+  },
+  "name": {
+    "S": "Estiramiento de gemelos (Calf stretch)"
+  }
+}

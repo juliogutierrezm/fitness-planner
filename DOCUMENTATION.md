@@ -264,16 +264,33 @@ canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
 8. **Construir para producción**: Ejecutar `npm run build` para generar assets optimizados
 9. **Desplegar**: Subir a servidor de producción, asegurar CORS y URLs correctas
 
+## Arquitectura del sistema
+
+### Integración con AWS Lambda y DynamoDB
+- **Función Lambda**: `generateWorkoutPlanAI.mjs` para generación de planes con IA usando Claude 3
+- **Tabla DynamoDB**: `ExerciseLibrary` para catálogo de ejercicios con normalización inteligente de nombres
+- **Procesamiento de nombres**: Normalización NFD para acentos, conversión a minúsculas, eliminación de paréntesis y espacios múltiples
+- **Índice de ejercicios**: Mapa normalizado → metadatos para matching exacto de nombres
+- **Límite de catálogo**: 300 ejercicios máximo en el prompt para optimizar el rendimiento
+
+### Funcionalidad de IA
+- **Modelo**: Anthropic Claude 3 Sonnet para generación de planes de entrenamiento
+- **Enrichment**: Planes generados incluyen todos los metadatos disponibles (tipo de equipo, grupo muscular, dificultad, etc.)
+- **Validación**: Verificación de ejercicios existentes en el catálogo antes de retornar el plan
+- **Formato estructurado**: Salida consistente con objetos plan y planLegacy para compatibilidad
+
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
 - **Dashboard principal**: Completo - Navegación básica implementada
-- **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes
+- **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios
 - **Vista de planes**: Completo - Visualización y gestión de planos existentes
-- **Gestión de ejercicios**: Completo - Administración de catálogo de ejercicios
+- **Gestión de ejercicios**: Completo - Administración de catálogo de ejercicios con paginación y filtros
 - **Gestión de usuarios**: Completo - Funciones administrativas para usuarios
 - **Plantillas**: Completo - Creación y gestión de plantillas
 - **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
 - **SSR y optimizaciones**: Completo - Compatible con server-side rendering
-- **Documentación**: Pendiente - Actualización de documentación técnica detallada para todas las APIs
+- **Generación de planes con IA**: Completo - Integración Lambda + Claude 3 con enriquecimiento de metadatos
+- **Planificador UI mejorado**: Completo - Tabla paginada, filtros avanzados, previsualización de videos
+- **Documentación**: Actualizada - Información completa sobre arquitectura y funcionalidades
 - **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
 - **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas

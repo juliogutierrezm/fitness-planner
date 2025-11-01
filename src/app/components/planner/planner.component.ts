@@ -26,20 +26,14 @@ import { finalize } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
-import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view.component';
 import { PreviousPlansDialogComponent } from './previous-plans-dialog.component';
 import { PlanPreviewDialogComponent } from './plan-preview-dialog.component';
+import { AiPromptDialogComponent } from './ai-prompt-dialog.component';
+import { ExercisePreviewDialogComponent } from './exercise-preview-dialog.component';
 import { AuthService } from '../../services/auth.service';
-import { Exercise, Session, PlanItem } from '../../shared/models';
+import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions } from '../../shared/models';
 
-type EditableField = 'sets' | 'reps' | 'rest' | 'notes';
 
-interface EditingRow {
-  sessionId: number;
-  itemId: number;
-  childIdx?: number;
-  field: EditableField;
-}
 
 @Component({
   selector: 'app-planner',
@@ -75,10 +69,24 @@ export class PlannerComponent implements OnInit {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
-  muscles: string[] = [];
-  categories: string[] = [];
-  equipments: string[] = [];
-  filters = { muscle: '', category: '', equipment: '', q: '' };
+
+  // Current filters data
+  currentFilters: ExerciseFilters = {
+    searchValue: '',
+    categoryFilter: '',
+    muscleGroupFilter: '',
+    equipmentTypeFilter: ''
+  };
+
+  // Filter options populated from data
+  filterOptions: FilterOptions = {
+    categoryOptions: [],
+    muscleGroupOptions: [],
+    equipmentTypeOptions: []
+  };
+
+  // Persistence key
+  private readonly STORAGE_KEY = 'planner-filters';
   favorites: Exercise[] = [];
   recents: Exercise[] = [];
   menuExercise: Exercise | null = null;
@@ -86,7 +94,7 @@ export class PlannerComponent implements OnInit {
   exerciseListConnectedTo: string[] = [];
   sessionsConnectedTo: Record<string, string[]> = {};
 
-  editingRow: EditingRow | null = null;
+
   planId: string | null = null;
   isEditMode = false;
   liveMessage = '';
@@ -219,7 +227,7 @@ export class PlannerComponent implements OnInit {
         sets: this.ensureAiNumber(raw.sets, children[0]?.sets ?? 3),
         reps: this.ensureAiReps(raw.reps, children[0]?.reps ?? 10),
         rest: this.ensureAiNumber(raw.rest, children[0]?.rest ?? 60),
-        notes: typeof raw.notes === 'string' ? raw.notes : '',
+        weight: typeof raw.weight === 'number' ? raw.weight : undefined,
         isGroup: true,
         selected: false,
         children
@@ -234,7 +242,7 @@ export class PlannerComponent implements OnInit {
       sets: this.ensureAiNumber(raw.sets, 3),
       reps: this.ensureAiReps(raw.reps, 10),
       rest: this.ensureAiNumber(raw.rest, 60),
-      notes: typeof raw.notes === 'string' ? raw.notes : '',
+      weight: typeof raw.weight === 'number' ? raw.weight : undefined,
       isGroup: false,
       selected: false
     };
@@ -326,14 +334,14 @@ export class PlannerComponent implements OnInit {
       });
     }
 
-    this.api.getExercises().subscribe(exs => {
-      this.exercises = exs;
-      // Build filter options
-      const uniq = (arr: (string|undefined)[]) => Array.from(new Set(arr.filter(Boolean) as string[])).sort();
-      this.muscles = uniq(exs.map(e => e.muscle));
-      this.categories = uniq(exs.map(e => e.category));
-      this.equipments = uniq(exs.map(e => e.equipment));
-      this.applyFilters();
+    this.api.getExerciseLibrary().subscribe(libraryResponse => {
+      // Handle DynamoDB format if needed and flatten data
+      const rawItems = libraryResponse.items;
+      this.exercises = this.transformExercises(rawItems);
+      // Build filter options and apply initial filtering
+      this.populateFilterOptions();
+      this.loadFiltersFromStorage();
+      this.applyCombinedFilter();
       this.cdr.markForCheck();
     });
 
@@ -416,23 +424,112 @@ export class PlannerComponent implements OnInit {
   }
 
   onFilterChange() {
-    this.applyFilters();
+    this.applyCombinedFilter();
+  }
+
+  onFiltersChanged(filters: ExerciseFilters): void {
+    this.currentFilters = filters;
+    this.applyCombinedFilter();
   }
 
   clearFilters() {
-    this.filters = { muscle: '', category: '', equipment: '', q: '' };
-    this.applyFilters();
+    this.currentFilters = {
+      searchValue: '',
+      categoryFilter: '',
+      muscleGroupFilter: '',
+      equipmentTypeFilter: ''
+    };
+    this.applyCombinedFilter();
   }
 
-  private applyFilters() {
-    const { muscle, category, equipment, q } = this.filters;
-    const qn = (q || '').trim().toLowerCase();
-    this.filteredExercises = this.exercises.filter(e =>
-      (!muscle || (e.muscle || '') === muscle) &&
-      (!category || (e.category || '') === category) &&
-      (!equipment || (e.equipment || '') === equipment) &&
-      (!qn || e.name.toLowerCase().includes(qn))
-    );
+  private populateFilterOptions(): void {
+    const categories = new Set<string>();
+    const muscleGroups = new Set<string>();
+    const equipmentTypes = new Set<string>();
+
+    this.exercises.forEach(ex => {
+      const category = this.getFieldValue(ex, 'category');
+      const muscleGroup = this.getFieldValue(ex, 'muscle_group');
+      const equipmentType = this.getFieldValue(ex, 'equipment_type');
+
+      if (category) categories.add(category);
+      if (muscleGroup) muscleGroups.add(muscleGroup);
+      if (equipmentType) equipmentTypes.add(equipmentType);
+    });
+
+    this.filterOptions = {
+      categoryOptions: Array.from(categories).sort(),
+      muscleGroupOptions: Array.from(muscleGroups).sort(),
+      equipmentTypeOptions: Array.from(equipmentTypes).sort()
+    };
+  }
+
+  private loadFiltersFromStorage(): void {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (saved) {
+        const filters = JSON.parse(saved);
+        this.currentFilters = {
+          searchValue: filters.searchValue || '',
+          categoryFilter: filters.categoryFilter || '',
+          muscleGroupFilter: filters.muscleGroupFilter || '',
+          equipmentTypeFilter: filters.equipmentTypeFilter || ''
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load filters from storage:', error);
+    }
+  }
+
+  private saveFiltersToStorage(): void {
+    try {
+      const filters = this.currentFilters;
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filters));
+    } catch (error) {
+      console.warn('Failed to save filters to storage:', error);
+    }
+  }
+
+  getFieldValue(exercise: Exercise, field: string): any {
+    // Handle field fallbacks for legacy data
+    switch (field) {
+      case 'name_es':
+        return exercise.name_es || exercise.name;
+      case 'equipment_type':
+        return exercise.equipment_type || exercise.equipment;
+      case 'muscle_group':
+        return exercise.muscle_group || exercise.muscle;
+      case 'exercise_type':
+        return exercise.exercise_type || exercise.category;
+      default:
+        return (exercise as any)[field];
+    }
+  }
+
+  private applyCombinedFilter(): void {
+    // Combine all filters and apply to data source
+    this.filteredExercises = this.exercises.filter(exercise => {
+      // Text search on name_es only
+      const matchesSearch = !this.currentFilters.searchValue.trim() ||
+        (this.getFieldValue(exercise, 'name_es') || '').toLowerCase()
+          .includes(this.currentFilters.searchValue.toLowerCase());
+
+      // Category filter
+      const matchesCategory = !this.currentFilters.categoryFilter ||
+        this.getFieldValue(exercise, 'category') === this.currentFilters.categoryFilter;
+
+      // Muscle group filter
+      const matchesMuscleGroup = !this.currentFilters.muscleGroupFilter ||
+        this.getFieldValue(exercise, 'muscle_group') === this.currentFilters.muscleGroupFilter;
+
+      // Equipment type filter
+      const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
+        this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
+
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
+    });
+
+    this.saveFiltersToStorage();
   }
 
   private applyUiState() {
@@ -450,6 +547,49 @@ export class PlannerComponent implements OnInit {
     const key = this.getUiKey();
     const minimal = this.sessions.map((s: any) => ({ id: s.id, collapsed: s.collapsed }));
     localStorage.setItem(key, JSON.stringify(minimal));
+  }
+
+  private transformExercises(rawItems: any[]): Exercise[] {
+    return rawItems.map(item => this.flattenDynamoItem(item));
+  }
+
+  private flattenDynamoItem(raw: any): Exercise {
+    // Flatten DynamoDB format (e.g., {name_es: {S: "value"}} => {name_es: "value"})
+    const flattened: any = {};
+
+    for (const [key, value] of Object.entries(raw)) {
+      if (value && typeof value === 'object') {
+        if ('S' in value) {
+          // String value
+          flattened[key] = (value as any).S || '';
+        } else if ('N' in value) {
+          // Number value
+          flattened[key] = Number((value as any).N) || 0;
+        } else if ('BOOL' in value) {
+          // Boolean value
+          flattened[key] = (value as any).BOOL;
+        } else if ('L' in value) {
+          // List/Array value
+          const list = (value as any).L || [];
+          flattened[key] = list.map((item: any) => {
+            if (item.S !== undefined) return item.S;
+            if (item.N !== undefined) return Number(item.N);
+            if (item.BOOL !== undefined) return item.BOOL;
+            return item;
+          });
+        } else if ('SS' in value) {
+          // String Set
+          flattened[key] = (value as any).SS || [];
+        } else {
+          // Other types, keep as is
+          flattened[key] = value;
+        }
+      } else {
+        flattened[key] = value;
+      }
+    }
+
+    return flattened as Exercise;
   }
 
   private getUiKey() {
@@ -474,7 +614,7 @@ export class PlannerComponent implements OnInit {
             sets: ex.sets,
             reps: ex.reps,
             rest: ex.rest,
-            notes: ex.notes,
+            weight: ex.weight,
             isGroup: false,
             selected: false
           }))
@@ -513,27 +653,16 @@ export class PlannerComponent implements OnInit {
     });
   }
 
-  /*** Inline editing ***/
-  startEdit(sessionId: number, itemId: number, field: EditableField, childIdx?: number) {
-    this.editingRow = { sessionId, itemId, field, childIdx };
+  openExercisePreview(exercise: Exercise) {
+    this.dialog.open(ExercisePreviewDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      maxHeight: '80vh',
+      data: { exercise }
+    });
   }
 
-  finishEdit() {
-    this.persist();
-    this.editingRow = null;
-    this.cdr.detectChanges();
-  }
 
-  isEditing(sessionId: number, itemId: number, field: EditableField, childIdx?: number): boolean {
-    if (!this.editingRow) return false;
-    return (
-      this.editingRow.sessionId === sessionId &&
-      this.editingRow.itemId === itemId &&
-      this.editingRow.field === field &&
-      (this.editingRow.childIdx ?? -1) === (childIdx ?? -1)
-    );
-  }
-  /*** End inline editing ***/
 
   private updateSessions(count: number) {
     const currentSessions = this.sessions || [];
@@ -588,6 +717,7 @@ export class PlannerComponent implements OnInit {
       const newItem: PlanItem = {
         ...ex,
         id: Date.now().toString(),
+        equipment: ex.equipment_type || ex.equipment || 'Sin equipo',
         sets: 3,
         reps: 10,
         rest: 60,
@@ -842,7 +972,9 @@ export class PlannerComponent implements OnInit {
     return formValue.userName || 'Usuario sin asignar';
   }
 
-  private persist() {
+
+
+  persist() {
     if (!this.isEditMode) {
       this.api.saveSessions(this.sessions);
     }
@@ -903,300 +1035,3 @@ export class PlannerComponent implements OnInit {
     });
   }
 }
-
-// Diálogo mejorado para prompt de IA con mejor UX
-@Component({
-  selector: 'app-ai-prompt-dialog',
-  standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, TextFieldModule],
-  template: `
-    <div class="ai-dialog-container">
-      <div class="ai-dialog-header">
-        <div class="ai-dialog-title">
-          <mat-icon class="ai-icon">psychology</mat-icon>
-          <h2>Generar plan con IA</h2>
-        </div>
-        <div class="ai-dialog-divider"></div>
-      </div>
-
-      <div class="ai-dialog-content">
-        <div class="ai-help-card">
-          <mat-icon class="help-icon">lightbulb</mat-icon>
-          <div class="help-content">
-            <strong class="help-title">Consejos para mejores resultados:</strong>
-            <ul class="help-list">
-              <li class="help-item">Nivel de experiencia (principiante, intermedio, avanzado)</li>
-              <li class="help-item">Días disponibles por semana</li>
-              <li class="help-item">Objetivos específicos (fuerza, masa muscular, pérdida de peso, etc.)</li>
-              <li class="help-item">Limitaciones físicas o equipo disponible</li>
-              <li class="help-item">Duración preferida de las sesiones</li>
-            </ul>
-          </div>
-        </div>
-
-        <mat-form-field appearance="outline" class="prompt-field">
-          <mat-label>Instrucciones detalladas para la IA</mat-label>
-          <textarea
-            matInput
-            [(ngModel)]="prompt"
-            class="prompt-textarea"
-            placeholder="Ejemplo: Soy principiante, tengo 3-4 días disponibles por semana, quiero enfocarme en fuerza general y mejorar mi movilidad. Cada sesión debería durar entre 45-60 minutos. Tengo acceso a mancuernas, barras y máquinas básicas. Me gustaría incluir calentamiento específico y trabajo de core en cada sesión."
-            rows="4"
-          ></textarea>
-          <mat-hint>Cuanto más detallado seas, mejor será el plan generado</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <div class="ai-dialog-actions">
-        <button mat-stroked-button (click)="close()" class="cancel-btn">
-          <mat-icon>close</mat-icon>
-          Cancelar
-        </button>
-        <button
-          mat-raised-button
-          color="primary"
-          [disabled]="!prompt.trim()"
-          (click)="confirm()"
-          class="generate-btn"
-        >
-          <mat-icon>auto_awesome</mat-icon>
-          Generar Plan
-        </button>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .ai-dialog-container {
-      padding: 24px;
-      min-height: 500px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .ai-dialog-header {
-      margin-bottom: 24px;
-      flex-shrink: 0;
-    }
-
-    .ai-dialog-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-
-      h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--ink-900);
-      }
-
-      .ai-icon {
-        color: var(--primary-600);
-        font-size: 2rem;
-        width: 2rem;
-        height: 2rem;
-        flex-shrink: 0;
-      }
-    }
-
-    .ai-dialog-divider {
-      height: 1px;
-      background: var(--bg-200);
-      margin-top: 16px;
-    }
-
-    .ai-dialog-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      min-height: 0;
-    }
-
-    .ai-help-card {
-      display: flex;
-      gap: 12px;
-      background: var(--bg-50);
-      padding: 16px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--bg-200);
-      flex-shrink: 0;
-
-      .help-icon {
-        color: var(--accent-500);
-        font-size: 1.25rem;
-        margin-top: 2px;
-        flex-shrink: 0;
-      }
-
-      .help-content {
-        flex: 1;
-
-        .help-title {
-          color: var(--ink-900);
-          display: block;
-          margin-bottom: 8px;
-          font-weight: 600;
-        }
-
-        .help-list {
-          margin: 0;
-          padding: 0;
-          list-style: none;
-
-          .help-item {
-            color: var(--ink-600);
-            margin-bottom: 6px;
-            line-height: 1.5;
-            padding-left: 16px;
-            position: relative;
-
-            &:before {
-              content: '•';
-              color: var(--accent-500);
-              font-weight: bold;
-              position: absolute;
-              left: 0;
-            }
-
-            &:last-child {
-              margin-bottom: 0;
-            }
-          }
-        }
-      }
-    }
-
-    .prompt-field {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 120px;
-
-      ::ng-deep .mat-mdc-form-field-outline {
-        color: var(--ink-300);
-      }
-
-      ::ng-deep .mat-mdc-form-field-focus-overlay {
-        background-color: rgba(var(--primary-600), 0.04);
-      }
-
-      .prompt-textarea {
-        font-family: inherit;
-        line-height: 1.5;
-        resize: none;
-        min-height: 100px;
-        padding: 12px;
-        border-radius: var(--radius-sm);
-      }
-
-      .mat-mdc-form-field-hint {
-        color: var(--ink-500);
-        margin-top: 4px;
-      }
-    }
-
-    .ai-dialog-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      padding-top: 24px;
-      margin-top: 24px;
-      border-top: 1px solid var(--bg-200);
-      flex-shrink: 0;
-
-      .cancel-btn {
-        color: var(--ink-600);
-        border-color: var(--ink-300);
-
-        &:hover {
-          background: var(--bg-50);
-          border-color: var(--ink-400);
-        }
-      }
-
-      .generate-btn {
-        min-width: 140px;
-
-        &[disabled] {
-          opacity: 0.6;
-        }
-      }
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .ai-dialog-container {
-        padding: 20px;
-        min-height: 450px;
-      }
-
-      .ai-dialog-title {
-        gap: 8px;
-
-        h2 {
-          font-size: 1.25rem;
-        }
-
-        .ai-icon {
-          font-size: 1.5rem;
-          width: 1.5rem;
-          height: 1.5rem;
-        }
-      }
-
-      .ai-help-card {
-        padding: 12px;
-        gap: 8px;
-
-        .help-content .help-list .help-item {
-          padding-left: 12px;
-          font-size: 0.9rem;
-        }
-      }
-
-      .ai-dialog-actions {
-        flex-direction: column-reverse;
-        gap: 8px;
-
-        button {
-          width: 100%;
-          margin: 0;
-        }
-      }
-    }
-
-    @media (max-width: 480px) {
-      .ai-dialog-container {
-        padding: 16px;
-      }
-
-      .ai-dialog-header {
-        margin-bottom: 16px;
-      }
-
-      .ai-dialog-content {
-        gap: 16px;
-      }
-
-      .ai-help-card {
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px;
-
-        .help-icon {
-          align-self: flex-start;
-        }
-      }
-    }
-  `]
-})
-export class AiPromptDialogComponent {
-  prompt = '';
-  constructor(public dialogRef: MatDialogRef<AiPromptDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: any) {}
-  close(){ this.dialogRef.close(); }
-  confirm(){ this.dialogRef.close(this.prompt); }
-}
-

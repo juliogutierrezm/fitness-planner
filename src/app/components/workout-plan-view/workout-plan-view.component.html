@@ -16,6 +16,7 @@
         <div>Series</div>
         <div>Reps</div>
         <div>Descanso</div>
+        <div>Peso</div>
         <div>Equipo</div>
       </div>
 
@@ -30,6 +31,7 @@
             <div>{{ item.sets }}</div>
             <div>{{ item.reps }}</div>
             <div>{{ item.rest }}s</div>
+            <div>{{ item.weight || '-' }}</div>
             <div>{{ item.equipment }}</div>
           </div>
         </ng-container>
@@ -45,6 +47,7 @@
               <div>{{ child.sets }}</div>
               <div>{{ child.reps }}</div>
               <div>{{ child.rest }}s</div>
+              <div>{{ child.weight || '-' }}</div>
               <div>{{ child.equipment }}</div>
             </div>
           </div>

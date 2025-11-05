@@ -111,7 +111,7 @@
 
 /* ── sidebar ── */
 .exercise-sidebar {
-  width: 260px; /* más ancho para que no se corten iconos */
+  width: 300px; /* más ancho para mejor visibilidad de ejercicios */
   background: var(--bg-0);
   padding: 0.75rem;
   border-radius: var(--radius-sm);
@@ -151,10 +151,21 @@
     background: #fff;
     border: 1px solid #ddd;
     border-radius: var(--radius-sm);
-    cursor: move;
+    cursor: grab;
     box-shadow: var(--shadow-1);
+    transition: all 0.2s ease;
 
-    &:hover { background: #f8fafc; }
+    &:hover {
+      background: #f8fafc;
+      border-color: var(--primary-300);
+      box-shadow: var(--shadow-2);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      cursor: grabbing;
+      transform: translateY(0);
+    }
 
     .row { display: flex; align-items: center; justify-content: space-between; gap: 6px; overflow: visible; }
     .row .actions { display: inline-flex; gap: 4px; }
@@ -171,6 +182,7 @@
 .exercise-name {
   font-weight: 500;
   font-size: 13px;
+  
 }
 
 .aliases {
@@ -181,7 +193,7 @@
 
 
 
-/* Overlay de carga IA mejorado */
+/* Overlay de carga IA */
 .ai-overlay {
   position: fixed;
   inset: 0;
@@ -294,15 +306,13 @@
   }
 }
 
-.ai-dumbbell-icon {
-  .dumbbell-icon {
-    font-size: 3rem;
-    width: 3rem;
-    height: 3rem;
-    color: var(--accent-500);
-    animation: dumbbellBounce 2s ease-in-out infinite;
-    filter: drop-shadow(0 4px 8px rgba(6, 182, 212, 0.3));
-  }
+.ai-dumbbell-icon .dumbbell-icon {
+  font-size: 3rem;
+  width: 3rem;
+  height: 3rem;
+  color: var(--accent-500);
+  animation: dumbbellBounce 2s ease-in-out infinite;
+  filter: drop-shadow(0 4px 8px rgba(6, 182, 212, 0.3));
 }
 
 @keyframes dumbbellBounce {
@@ -359,7 +369,6 @@
   }
 }
 
-/* Responsive design */
 @media (max-width: 480px) {
   .ai-overlay-content {
     padding: 32px 24px;
@@ -372,12 +381,7 @@
     min-height: 60px;
   }
 
-  .ai-brain-icon .brain-icon {
-    font-size: 3rem;
-    width: 3rem;
-    height: 3rem;
-  }
-
+  .ai-brain-icon .brain-icon,
   .ai-dumbbell-icon .dumbbell-icon {
     font-size: 2.5rem;
     width: 2.5rem;
@@ -434,12 +438,13 @@
 /* ── tabla ── */
 .session-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 
   th,
   td {
     text-align: left;
-   // padding: 0.5rem;
+    padding: 0.5rem 0.25rem;
     border-bottom: 1px solid #ddd;
     vertical-align: middle;
   }
@@ -447,48 +452,68 @@
   th {
     font-weight: bold;
     vertical-align: middle;
+    padding: 0.75rem 0.25rem;
   }
 
   th[matColumnDef="select"],
   td[matColumnDef="select"] {
     width: 60px;
     text-align: center;
+    padding: 0.5rem 0.125rem;
   }
 
   th[matColumnDef="name"],
   td[matColumnDef="name"] {
-    width: 40%;
+    width: 35%;
+    min-width: 150px;
   }
 
   th[matColumnDef="equipment"],
   td[matColumnDef="equipment"] {
-    width: 15%;
+    width: 12%;
+    min-width: 80px;
   }
 
   th[matColumnDef="sets"],
   td[matColumnDef="sets"] {
-    width: 8%;
+    width: 7%;
+    min-width: 60px;
+    text-align: center;
   }
 
   th[matColumnDef="reps"],
   td[matColumnDef="reps"] {
-    width: 8%;
+    width: 7%;
+    min-width: 60px;
+    text-align: center;
   }
 
   th[matColumnDef="rest"],
   td[matColumnDef="rest"] {
-    width: 8%;
+    width: 7%;
+    min-width: 60px;
+    text-align: center;
   }
 
   th[matColumnDef="weight"],
   td[matColumnDef="weight"] {
-    width: 8%;
+    width: 7%;
+    min-width: 60px;
+    text-align: center;
   }
 
   th[matColumnDef="actions"],
   td[matColumnDef="actions"] {
-    width: 5%;
+    width: 4%;
     text-align: center;
+    padding: 0.5rem 0.125rem;
+  }
+
+  th[matColumnDef="superserieDelete"],
+  td[matColumnDef="superserieDelete"] {
+    width: 4%;
+    text-align: center;
+    padding: 0.5rem 0.125rem;
   }
 
   .name-cell {
@@ -502,6 +527,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: move;
   }
 }
 
@@ -573,8 +599,35 @@ button[mat-icon-button] {
 .superserie-group td:first-child { position: relative; }
 
 /* acciones de crear/eliminar superserie más intuitivas */
-.link-action { color: var(--accent-900); }
+.link-action {
+  background: var(--ink-200);
+  color: var(--ink-500);
+  border-radius: 50%;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.link-action-active {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--primary-200);
+  opacity: 1;
+  font-size: 20px;
+}
+
 .unlink-action { color: var(--warn-500); }
+
+.group-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
 
 /* Estilos para acciones de superserie */
 .superserie-group-actions {
@@ -607,28 +660,94 @@ button[mat-icon-button] {
   margin-top: 1rem;
 }
 
-.plan-info {
+.plan-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin: 4px 0;
+  background: var(--bg-0);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-1);
+
+  &:hover {
+    background: var(--bg-50);
+    border-color: var(--primary-300);
+    box-shadow: var(--shadow-2);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-1);
+  }
+}
+
+.plan-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--primary-600);
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 14px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.plan-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.plan-name {
-  font-weight: 500;
+.plan-date {
+  font-weight: 600;
   color: var(--ink-900);
   font-size: 14px;
   line-height: 1.2;
 }
 
-.plan-meta {
-  display: flex;
-  gap: 8px;
+.plan-sessions {
   font-size: 12px;
   color: var(--ink-600);
+  line-height: 1.2;
 }
 
-.plan-date,
-.plan-sessions {
-  white-space: nowrap;
+.plan-arrow {
+  color: var(--ink-400);
+  transition: color 0.2s ease;
+  margin-left: 8px;
+
+  .plan-item:hover & {
+    color: var(--primary-600);
+  }
+}
+
+/* Header Icon for Superserie Creation */
+.superserie-header-icon {
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-50);
+  border: 2px solid var(--ink-300);
+  color: var(--ink-600);
+  cursor: pointer;
+  margin: 0 auto;
+}
+
+.superserie-header-icon-active {
+  background-color: var(--primary-600) !important;
+  border-color: var(--primary-600) !important;
+  color: white !important;
 }

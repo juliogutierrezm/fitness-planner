@@ -888,11 +888,13 @@ export class PlannerComponent implements OnInit {
 
   addExerciseToSession(session: Session, ex: Exercise) {
     const item: PlanItem = {
-      ...ex,
       id: Date.now().toString(),
+      name: ex.name_es || ex.name || 'Ejercicio sin nombre',
+      equipment: ex.equipment_type || ex.equipment || 'Sin equipo',
       sets: 3,
       reps: 10,
       rest: 60,
+      weight: undefined,
       selected: false,
       isGroup: false
     };

@@ -128,70 +128,79 @@
   <!-- Body -->
   <div class="planner-body">
     <div class="visually-hidden" aria-live="polite">{{ liveMessage }}</div>
-    <!-- Sidebar de ejercicios -->
-    <aside class="exercise-sidebar">
-      <h3>Ejercicios</h3>
+    <!-- Columna izquierda: Ejercicios y Planes anteriores -->
+    <div class="left-column">
+      <!-- Sidebar de ejercicios -->
+      <aside class="exercise-sidebar">
+        <h3>Ejercicios</h3>
 
-      <!-- Submenú: a qué día agregar -->
-      <mat-menu #addMenu="matMenu">
-        <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
-          <mat-icon>add</mat-icon>
-          <span>{{ s.name }}</span>
-        </button>
-      </mat-menu>
+        <!-- Submenú: a qué día agregar -->
+        <mat-menu #addMenu="matMenu">
+          <button mat-menu-item *ngFor="let s of sessions; trackBy: trackBySession" (click)="addExerciseToSession(s, menuExercise!)" [disabled]="!menuExercise">
+            <mat-icon>add</mat-icon>
+            <span>{{ s.name }}</span>
+          </button>
+        </mat-menu>
 
-      <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
-        <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-        <cdk-virtual-scroll-viewport itemSize="44" class="vs">
-        <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
-               cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
-            <div class="exercise-name">
-              {{ ex.name_es || ex.name }}
-            </div>
-            <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
-            <div class="row">
-              <small>({{ ex.equipment_type || ex.equipment || 'Sin equipo' }})</small>
-              <div class="actions">
-                <button mat-icon-button (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
-                  <mat-icon>play_circle</mat-icon>
-                </button>
-                <button mat-icon-button (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
-                  <mat-icon>{{ isFavorite(ex) ? 'star' : 'star_border' }}</mat-icon>
-                </button>
-                <button mat-icon-button [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()" [matTooltip]="'Añadir a sesión'">
-                  <mat-icon>playlist_add</mat-icon>
-                </button>
+        <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
+          <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
+          <cdk-virtual-scroll-viewport itemSize="44" class="vs">
+          <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
+                 cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
+              <div class="exercise-name">
+                {{ ex.name_es || ex.name }}
               </div>
-            </div>
-            <ng-container *cdkDragPreview>
-              <div class="drag-preview">
-                <mat-icon>fitness_center</mat-icon>
-                {{ ex.name }}
+              <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
+              <div class="row">
+                <small>({{ ex.equipment_type || ex.equipment || 'Sin equipo' }})</small>
+                <div class="actions">
+                  <button mat-icon-button (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
+                    <mat-icon>play_circle</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
+                    <mat-icon>{{ isFavorite(ex) ? 'star' : 'star_border' }}</mat-icon>
+                  </button>
+                  <button mat-icon-button [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()" [matTooltip]="'Añadir a sesión'">
+                    <mat-icon>playlist_add</mat-icon>
+                  </button>
+                </div>
               </div>
-            </ng-container>
-          </div>
-        </cdk-virtual-scroll-viewport>
-      </div>
+              <ng-container *cdkDragPreview>
+                <div class="drag-preview">
+                  <mat-icon>fitness_center</mat-icon>
+                  {{ ex.name }}
+                </div>
+              </ng-container>
+            </div>
+          </cdk-virtual-scroll-viewport>
+        </div>
+
+      </aside>
 
       <!-- Planes anteriores -->
-      <h3>Planes anteriores</h3>
-      <div class="list" *ngIf="previousPlans.length > 0; else noPreviousPlans">
-        <div class="empty" *ngIf="previousPlans.length === 0">No hay planes anteriores</div>
-        <cdk-virtual-scroll-viewport itemSize="44" class="vs-plans">
-          <div *cdkVirtualFor="let plan of previousPlans; let i = index; trackBy: trackByPlan"
-               class="list-item" (click)="openPlanPreview(plan)">
-            <div class="row">
-              <div class="plan-info">
-                <div class="plan-name">{{ i + 1 }}. {{ plan.date | date:'dd/MM/yyyy' }} - {{ plan.sessions?.length || 0 }} sesiones</div>
+      <div class="previous-plans-section">
+        <h3>Planes anteriores</h3>
+        <div class="list" *ngIf="previousPlans.length > 0; else noPreviousPlans">
+          <div class="empty" *ngIf="previousPlans.length === 0">No hay planes anteriores</div>
+          <cdk-virtual-scroll-viewport itemSize="60" class="vs-plans">
+            <div *cdkVirtualFor="let plan of previousPlans; let i = index; trackBy: trackByPlan"
+                 class="plan-item" (click)="openPlanPreview(plan)">
+              <div class="plan-number">{{ i + 1 }}</div>
+              <div class="plan-content">
+                <div class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</div>
+                <div class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</div>
+              </div>
+              <div class="plan-arrow">
+                <mat-icon>chevron_right</mat-icon>
               </div>
             </div>
-          </div>
-        </cdk-virtual-scroll-viewport>
+          </cdk-virtual-scroll-viewport>
+        </div>
+        <ng-template #noPreviousPlans>
+          <div class="empty">No hay planes anteriores</div>
+        </ng-template>
       </div>
-      <ng-template #noPreviousPlans>
-        <div class="empty">No hay planes anteriores</div>
-      </ng-template>
-    </aside>
+    </div>
 
     <!-- Sesiones verticales (drag & drop de sesiones) -->
     <section
@@ -227,30 +236,32 @@
               <!-- Checkbox-->
               <ng-container matColumnDef="select">
                 <th mat-header-cell *matHeaderCellDef>
-                  <button mat-icon-button 
-                          class="link-action"
-                          matTooltip="Crear superserie" 
-                          (click)="groupSelected(s)" 
-                          [disabled]="!hasSelectedItems(s)">
-                        <mat-icon>link</mat-icon>
-                  </button>
+                  <mat-icon class="superserie-header-icon"
+                            [ngClass]="{'superserie-header-icon-active': hasSelectedItems(s)}"
+                            (click)="groupSelected(s)"
+                            [style.cursor]="hasSelectedItems(s) ? 'pointer' : 'not-allowed'"
+                            [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
+                            matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">link</mat-icon>
                 </th>
                 <td mat-cell *matCellDef="let item; let i = index">
-                  <mat-checkbox
-                    *ngIf="!item.isGroup"
-                    [(ngModel)]="item.selected"
-                    (change)="updateSelection(s)"
-                  ></mat-checkbox>
+                  <ng-container *ngIf="!item.isGroup">
+                    <mat-checkbox
+                      [(ngModel)]="item.selected"
+                      (change)="updateSelection(s)"
+                    ></mat-checkbox>
+                  </ng-container>
                   <ng-container *ngIf="item.isGroup">
                     <span class="superset-label">Superserie</span>
-                    <button
-                      mat-icon-button
-                      class="unlink-action"
-                      (click)="ungroupGroup(s, i)"
-                      matTooltip="Eliminar superserie"
-                    >
-                      <mat-icon>link_off</mat-icon>
-                    </button>
+                    <div class="group-actions">
+                      <button
+                        mat-icon-button
+                        class="unlink-action"
+                        (click)="ungroupGroup(s, i)"
+                        matTooltip="Desagrupar superserie"
+                      >
+                        <mat-icon>link_off</mat-icon>
+                      </button>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>
@@ -379,8 +390,7 @@
                   <input matInput class="sets-input"
                         type="text"
                         [(ngModel)]="item.weight"
-                        (blur)="persist()"
-                        placeholder="———" />
+                        (blur)="persist()" />
                 </ng-container>
 
                 <!-- 2) Superserie -->
@@ -391,8 +401,7 @@
                       <input matInput class="sets-input"
                             type="text"
                             [(ngModel)]="child.weight"
-                            (blur)="persist()"
-                            placeholder="———" />
+                            (blur)="persist()" />
                     </div>
                   </ng-container>
                 </ng-container>
@@ -417,19 +426,28 @@
                         <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
                           <mat-icon>play_circle</mat-icon>
                         </button>
-                        <button mat-icon-button color="warn" (click)="removeItem(s, i)" [matTooltip]="'Eliminar'">
-                          <mat-icon>delete</mat-icon>
-                        </button>
                       </div>
                     </ng-container>
                   </ng-container>
                 </td>
               </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions']"></tr>
+              <!-- Eliminar Superserie -->
+              <ng-container matColumnDef="superserieDelete">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let item; let i = index">
+                  <ng-container *ngIf="item.isGroup">
+                    <button mat-icon-button color="warn" (click)="removeItem(s, i)" matTooltip="Eliminar superserie">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </ng-container>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions', 'superserieDelete']"></tr>
               <tr
                 mat-row
-                *matRowDef="let row; columns: ['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions']"
+                *matRowDef="let row; columns: ['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions', 'superserieDelete']"
                 cdkDrag
                 [cdkDragData]="row"
                 [cdkDragDisabled]="row.isGroup && !canDragGroup(row)"
@@ -441,6 +459,7 @@
         </div>
       </mat-card>
     </section>
+
 
 
   </div>

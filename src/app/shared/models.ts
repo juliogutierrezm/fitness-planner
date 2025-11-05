@@ -41,8 +41,13 @@ export interface PlanItem {
   rest: number;
   weight?: number;
   selected?: boolean;
+  // Legacy grouping (will be phased out)
   isGroup?: boolean;
   children?: PlanItem[];
+  // New flattened grouping flags
+  isGroupHeader?: boolean; // true only for virtual header rows
+  isChild?: boolean;       // true for items belonging to a group
+  groupId?: string;        // identifier shared by header and its children
 }
 
 

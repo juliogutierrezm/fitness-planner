@@ -65,6 +65,10 @@ fitness-planner/
 │   │   │   │   ├── login.component.scss
 │   │   │   │   └── login.component.ts
 │   │   │   ├── planner/
+│   │   │   │   ├── ai-prompt-dialog.component.html
+│   │   │   │   ├── ai-prompt-dialog.component.scss
+│   │   │   │   ├── ai-prompt-dialog.component.ts
+│   │   │   │   ├── exercise-preview-dialog.component.ts
 │   │   │   │   ├── plan-preview-dialog.component.ts
 │   │   │   │   ├── planner.component.html
 │   │   │   │   ├── planner.component.scss
@@ -107,6 +111,27 @@ fitness-planner/
 │   │   │   │   ├── diagnostics.component.scss
 │   │   │   │   └── diagnostics.component.ts
 │   │   │   ├── exercise-manager/
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── exercise-detail/
+│   │   │   │   │   │   ├── exercise-detail.component.html
+│   │   │   │   │   │   ├── exercise-detail.component.scss
+│   │   │   │   │   │   └── exercise-detail.component.ts
+│   │   │   │   │   ├── exercise-edit-dialog/
+│   │   │   │   │   │   ├── exercise-edit-dialog.component.html
+│   │   │   │   │   │   ├── exercise-edit-dialog.component.scss
+│   │   │   │   │   │   └── exercise-edit-dialog.component.ts
+│   │   │   │   │   ├── exercise-filters/
+│   │   │   │   │   │   ├── exercise-filters.component.html
+│   │   │   │   │   │   ├── exercise-filters.component.scss
+│   │   │   │   │   │   └── exercise-filters.component.ts
+│   │   │   │   │   ├── exercise-table/
+│   │   │   │   │   │   ├── exercise-table.component.html
+│   │   │   │   │   │   ├── exercise-table.component.scss
+│   │   │   │   │   │   └── exercise-table.component.ts
+│   │   │   │   │   └── exercise-video-dialog/
+│   │   │   │   │       ├── exercise-video-dialog.component.html
+│   │   │   │   │       ├── exercise-video-dialog.component.scss
+│   │   │   │   │       └── exercise-video-dialog.component.ts
 │   │   │   │   ├── exercise-manager.component.html
 │   │   │   │   ├── exercise-manager.component.scss
 │   │   │   │   ├── exercise-manager.component.spec.ts
@@ -135,7 +160,9 @@ fitness-planner/
 │   │   ├── services/
 │   │   │   └── auth.service.ts
 │   │   └── shared/
+│   │       ├── feedback-utils.ts
 │   │       ├── models.ts
+│   │       ├── shared-utils.ts
 │   │       └── user-display-name.pipe.ts
 │   └── environments/
 │       ├── environment.prod.ts
@@ -200,15 +227,25 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Autenticación con AWS Cognito**: Sistema de login/logout con flujo OAuth 2.0 vía Hosted UI
 - **Rutas protegidas**: Acceso condicional a páginas basado en estado de autenticación
 - **Dashboard principal**: Panel de control para navegación y resúmenes
-- **Planificador de entrenamientos**: Creación y edición de planes de ejercicios personalizados
+- **Planificador de entrenamientos**: Creación y edición de planes de ejercicios personalizados con generación IA
+- **Generación de planes con IA**: Creación automática de planes usando prompts personalizados y Claude 3
+- **Previsualización de planes**: Vista previa inline y en diálogo de planes de entrenamiento
+- **Vista de planes anteriores**: Diálogo para reutilizar planes existentes
+- **Previsualización de ejercicios**: Diálogos para ver detalles y videos de ejercicios
 - **Visualización de planes**: Interfaz para ver detalles de planes existentes
-- **Gestión de ejercicios**: Administración de catálogo de ejercicios del sistema
+- **Gestión de ejercicios**: Administración completa del catálogo de ejercicios con filtros avanzados, tabla paginada y edición
+- **Filtros de ejercicios**: Búsqueda y filtrado por categoría, grupo muscular y tipo de equipo
+- **Edición de ejercicios**: Diálogos para crear y editar ejercicios del catálogo
+- **Vista de detalle de ejercicios**: Páginas dedicadas para ver información completa de ejercicios
+- **Videos de ejercicios**: Diálogos integrados para reproducción de videos demostrativos
 - **Plantillas de entrenamientos**: Creación y gestión de plantillas reutilizables
 - **Gestión de usuarios**: Funciones administrativas para ver y gestionar usuarios
 - **Diagnósticos**: Herramientas de depuración para verificar autenticación y conexiones API
 - **Vista de detalle de usuario**: Información detallada de usuarios individuales
 - **Confirmación de acciones**: Diálogos modales para confirmar operaciones críticas
 - **Notificaciones de no autorizado**: Manejo de accesos no permitidos
+- **Sistema de feedback centralizado**: Manejo consistente de mensajes de éxito, error e información
+- **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres y procesamiento de datos
 
 ## Ejemplos de uso
 ### Iniciar sesión y acceder a rutas protegidas
@@ -253,6 +290,80 @@ canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
 }
 ```
 
+### Generar planes con IA
+```typescript
+// Uso del PlannerComponent para generación con IA
+openAIDialog() {
+  const dialogRef = this.dialog.open(AiPromptDialogComponent, {
+    width: '600px',
+    data: { userPrompt: '' }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      this.runGenerateAI(result);
+    }
+  });
+}
+
+private async runGenerateAI(userPrompt: string) {
+  // Llamada a Lambda function con Claude 3
+  const response = await this.exerciseApi.generateWorkoutPlanAI({
+    prompt: userPrompt,
+    // ... otros parámetros
+  });
+  this.createSessionsFromAI(response);
+}
+```
+
+### Gestionar ejercicios con filtros
+```typescript
+// Uso del ExerciseManagerComponent
+onFiltersChanged(filters: ExerciseFilters): void {
+  this.filters = filters;
+  this.applyCombinedFilter();
+  this.saveFiltersToStorage();
+}
+
+private applyCombinedFilter(): void {
+  this.filteredExercises = this.exercises.filter(exercise => {
+    const matchesSearch = !this.filters.searchValue ||
+      exercise.name.toLowerCase().includes(this.filters.searchValue.toLowerCase());
+    const matchesCategory = !this.filters.categoryFilter ||
+      exercise.category === this.filters.categoryFilter;
+    // ... otros filtros
+    return matchesSearch && matchesCategory;
+  });
+}
+```
+
+### Sistema de feedback centralizado
+```typescript
+// Uso de FeedbackUtils para mensajes consistentes
+import { FeedbackUtils } from '../shared/feedback-utils';
+
+// Mostrar mensaje de éxito
+this.snackBar.open(
+  FeedbackUtils.ExerciseMessages.CREATED_SUCCESS,
+  'Cerrar',
+  FeedbackUtils.FeedbackConfig.successConfig()
+);
+
+// Manejar errores de API
+catch (error) {
+  const message = FeedbackUtils.ErrorMapper.mapHttpError(error);
+  this.snackBar.open(message, 'Cerrar', FeedbackUtils.FeedbackConfig.errorConfig());
+}
+```
+
+### Utilidades compartidas
+```typescript
+// Uso de SharedUtils para sanitización de nombres
+import { sanitizeName } from '../shared/shared-utils';
+
+const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "press_banca_inclinado"
+```
+
 ## Flujo de trabajo de desarrollo
 1. **Clonar el repositorio**: Obtener el código fuente desde el repositorio Git
 2. **Instalar dependencias**: Ejecutar `npm install` para configurar el entorno
@@ -279,18 +390,32 @@ canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
 - **Validación**: Verificación de ejercicios existentes en el catálogo antes de retornar el plan
 - **Formato estructurado**: Salida consistente con objetos plan y planLegacy para compatibilidad
 
+### Utilidades compartidas
+- **FeedbackUtils**: Sistema centralizado de manejo de feedback con temas semánticos (éxito, error, información)
+- **ErrorMapper**: Mapeo de códigos de error HTTP a mensajes amigables para el usuario
+- **DevLogger**: Utilidades de logging para desarrollo con contexto estructurado
+- **SharedUtils**: Funciones auxiliares como sanitización de nombres de ejercicios para IDs consistentes
+
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
 - **Dashboard principal**: Completo - Navegación básica implementada
 - **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios
+- **Generación de planes con IA**: Completo - Diálogo de prompts personalizados con integración Claude 3
+- **Previsualización de planes**: Completo - Vista previa inline y diálogos para planes de entrenamiento
+- **Vista de planes anteriores**: Completo - Diálogo para reutilizar planes existentes
+- **Previsualización de ejercicios**: Completo - Diálogos para ver detalles y videos de ejercicios
 - **Vista de planes**: Completo - Visualización y gestión de planos existentes
-- **Gestión de ejercicios**: Completo - Administración de catálogo de ejercicios con paginación y filtros
+- **Gestión de ejercicios**: Completo - Sistema completo con tabla paginada, filtros avanzados, edición y videos
+- **Filtros de ejercicios**: Completo - Búsqueda y filtrado por categoría, grupo muscular y tipo de equipo
+- **Edición de ejercicios**: Completo - Diálogos para crear y editar ejercicios del catálogo
+- **Vista de detalle de ejercicios**: Completo - Páginas dedicadas para ver información completa de ejercicios
+- **Videos de ejercicios**: Completo - Diálogos integrados para reproducción de videos demostrativos
 - **Gestión de usuarios**: Completo - Funciones administrativas para usuarios
 - **Plantillas**: Completo - Creación y gestión de plantillas
 - **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
+- **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
+- **Utilidades compartidas**: Completo - Funciones auxiliares para sanitización y procesamiento de datos
 - **SSR y optimizaciones**: Completo - Compatible con server-side rendering
-- **Generación de planes con IA**: Completo - Integración Lambda + Claude 3 con enriquecimiento de metadatos
-- **Planificador UI mejorado**: Completo - Tabla paginada, filtros avanzados, previsualización de videos
 - **Documentación**: Actualizada - Información completa sobre arquitectura y funcionalidades
 - **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
 - **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas

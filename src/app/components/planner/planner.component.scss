@@ -555,103 +555,178 @@ button[mat-icon-button] {
   margin-left: 5px;
 }
 
-/* ── superserie ── */
-.superset-child {
-  padding-left: 2rem;
+/* ── superserie unified layout system ── */
+
+/* Container for all superserie child rows - establishes flex column layout for consistent vertical alignment */
+.superserie-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0; /* Gap handled by divider elements */
 }
 
+/* Individual child row within superserie - uniform height and vertical centering */
+.superserie-child-row {
+  display: flex;
+  align-items: center; /* Vertical centering for all content */
+  min-height: 32px; /* Consistent row height prevents jumping on input focus */
+  padding: 4px 0; /* Minimal padding for tight layout */
+  position: relative;
+}
+
+/* Divider between superserie children - replaces dashed borders for cleaner separation */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
+  margin: 2px 0;
+  opacity: 0.6;
+}
+
+/* Normalized mat-icon sizing across all superserie columns - ensures consistent visual weight */
+.superserie-child-row mat-icon,
+.superserie-container mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px; /* Prevents baseline misalignment */
+}
+
+/* Input styling for superserie - matches regular row inputs for consistency */
 .sets-input {
   width: 50px;
   text-align: center;
-  border: 1px solid #ccc;
+  border: 1px solid #d1d5db;
   border-radius: var(--radius-sm);
-  padding: 0.25rem;
+  padding: 4px 6px;
+  font-size: 14px;
+  line-height: 1.2;
+  transition: border-color 0.2s ease;
 }
 
+.sets-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Notes input for future use */
 .notes-input {
   max-width: 60px;
   font-size: 13px;
   padding: 2px;
   border: 1px solid #ccc;
   border-radius: var(--radius-sm);
-
 }
 
+/* Mat cell input constraints */
 .mat-cell input[type="text"] {
   max-width: 100px;
 }
 
-.superset-label { display: inline-block; }
+/* Superserie group row background and border */
+.superserie-group {
+  background: #f0f9ff !important;
+  border-left: 4px solid var(--primary-600);
+}
 
+/* Vertical superset badge aligned to left border */
+.superserie-group td:first-child {
+  position: relative;
+}
+
+/* Superserie label styling */
+.superset-label {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--primary-700);
+  font-size: 13px;
+}
+
+/* Group actions container */
+.group-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* Unlink action button */
+.unlink-action {
+  color: var(--warn-500);
+}
+
+.unlink-action mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Legacy styles for backward compatibility - to be removed after testing */
 .child-row.with-divider,
 .superserie-child-row.with-divider {
+  /* These are replaced by .divider - keeping for transition */
   border-top: 1px dashed #bbb;
   margin-top: 0.4rem;
   padding-top: 0.4rem;
 }
 
-/* Distinct style for superserie group rows */
-.superserie-group { background: #f0f9ff !important; border-left: 4px solid var(--primary-600); }
+/* Responsive behavior for superserie layout on mobile devices */
+@media (max-width: 768px) {
+  .superserie-child-row {
+    min-height: 36px; /* Slightly taller on mobile for touch targets */
+    padding: 6px 0; /* More padding for easier touch interaction */
+  }
 
+  .superserie-container mat-icon,
+  .superserie-child-row mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+  }
 
-
-/* Vertical superset badge aligned to left border */
-.superserie-group td:first-child { position: relative; }
-
-/* acciones de crear/eliminar superserie más intuitivas */
-.link-action {
-  background: var(--ink-200);
-  color: var(--ink-500);
-  border-radius: 50%;
-  font-size: 18px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
+  .sets-input {
+    width: 45px; /* Slightly narrower on mobile */
+    padding: 6px 4px; /* More padding for touch */
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }
 
-.link-action-active {
-  background: var(--primary-50);
-  color: var(--primary-700);
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--primary-200);
-  opacity: 1;
-  font-size: 20px;
-}
-
-.unlink-action { color: var(--warn-500); }
-
-.group-actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-/* Estilos para acciones de superserie */
-.superserie-group-actions {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed #bbb;
-}
-
-/* removed floating session dock */
-
-/* extra: vertical chip for superseries over left bar */
-.superserie-group td:first-child .superset-label {
-  position: absolute;
-  left: 0;
-  top: 8px;
-  transform: translateX(-120%);
-  writing-mode: vertical-rl;
-  background: var(--primary-600);
-  color: #fff;
-  font-size: 10px;
-  line-height: 1;
-  padding: 4px 3px;
-  border-radius: 6px;
-}
+/* Documentation of superserie layout fixes per DEVELOPER.md and AGENT_RULES.md:
+ *
+ * 1. .superserie-container: Establishes flex column layout for consistent vertical alignment across all columns
+ *    - Fixes mixed display flows (block vs flex) that caused misalignments
+ *    - Ensures all child rows in a column have identical visual treatment
+ *
+ * 2. .superserie-child-row: Uniform 32px min-height prevents content jumping on input focus
+ *    - display: flex with align-items: center provides consistent vertical centering
+ *    - Fixes vertical alignment disparities between text, inputs, and icons
+ *    - Maintains optical column alignment across superserie children
+ *
+ * 3. .divider: Dedicated separator element replaces inconsistent dashed borders
+ *    - Gradient background provides subtle visual separation without heavy lines
+ *    - Uniform 4px spacing between children in all columns
+ *    - Fixes varying margin/padding that caused layout shifts
+ *
+ * 4. Normalized mat-icon sizing: 20px font-size/width/height with matching line-height
+ *    - Fixes inconsistent icon sizes in actions column (play_circle buttons)
+ *    - Ensures baseline alignment with adjacent text and inputs
+ *    - Provides minimum 20px touch target for accessibility
+ *
+ * 5. Enhanced .sets-input styling: Consistent with regular row inputs
+ *    - Focus states prevent layout shifts during user interaction
+ *    - Proper border radius and padding match design system
+ *    - Fixes input width inconsistencies across superserie columns
+ *
+ * 6. Responsive adjustments: Mobile-optimized touch targets and spacing
+ *    - 36px min-height on mobile for better touch interaction
+ *    - Prevents iOS zoom with 16px font-size on inputs
+ *    - Maintains visual consistency across viewport sizes
+ *
+ * Result: All superserie rows now appear as coherent nested table with mat-table,
+ *         centered icons, aligned inputs, and consistent dividers. No content jumping
+ *         on focus/input changes. Maintains table semantics and drag functionality.
+ */
 
 /* Planes anteriores en sidebar */
 .vs-plans {

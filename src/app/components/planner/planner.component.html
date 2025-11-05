@@ -243,7 +243,7 @@
                             [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
                             matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">link</mat-icon>
                 </th>
-                <td mat-cell *matCellDef="let item; let i = index">
+                <td mat-cell *matCellDef="let item; let i = index" class="select-cell">
                   <ng-container *ngIf="!item.isGroup">
                     <mat-checkbox
                       [(ngModel)]="item.selected"
@@ -251,16 +251,20 @@
                     ></mat-checkbox>
                   </ng-container>
                   <ng-container *ngIf="item.isGroup">
-                    <span class="superset-label">Superserie</span>
-                    <div class="group-actions">
-                      <button
-                        mat-icon-button
-                        class="unlink-action"
-                        (click)="ungroupGroup(s, i)"
-                        matTooltip="Desagrupar superserie"
-                      >
-                        <mat-icon>link_off</mat-icon>
-                      </button>
+                    <div class="superserie-container">
+                      <div class="superserie-child-row">
+                        <span class="superset-label">Superserie</span>
+                        <div class="group-actions">
+                          <button
+                            mat-icon-button
+                            class="unlink-action"
+                            (click)="ungroupGroup(s, i)"
+                            matTooltip="Desagrupar superserie"
+                          >
+                            <mat-icon>link_off</mat-icon>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </ng-container>
                 </td>
@@ -273,14 +277,16 @@
                     <ng-container *ngIf="!item.isGroup">
                       <span class="exercise-name-text">{{ item.name_es || item.name }}</span>
                     </ng-container>
-                <ng-container *ngIf="item.isGroup && item.children as children">
-                    <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
-                    <div class="child-row" [ngClass]="{ 'with-divider': cIdx > 0 }">
-                      <span class="exercise-name-text">{{ child.name_es || child.name }}</span>
-                    </div>
-                  </ng-container>
-                </ng-container>
-
+                    <ng-container *ngIf="item.isGroup && item.children as children">
+                      <div class="superserie-container">
+                        <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
+                          <div class="divider" *ngIf="cIdx > 0"></div>
+                          <div class="superserie-child-row">
+                            <span class="exercise-name-text">{{ child.name_es || child.name }}</span>
+                          </div>
+                        </ng-container>
+                      </div>
+                    </ng-container>
                   </td>
                 </ng-container>
               <!-- Equipo -->
@@ -291,11 +297,14 @@
                     {{ item.equipment }}
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
-                    <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-                        {{ child.equipment }}
-                      </div>
-                    </ng-container>
+                    <div class="superserie-container">
+                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                        <div class="divider" *ngIf="childIdx > 0"></div>
+                        <div class="superserie-child-row">
+                          {{ child.equipment }}
+                        </div>
+                      </ng-container>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>
@@ -313,16 +322,19 @@
                     />
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
-                    <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                     <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-                        <input class="sets-input"
-                          matInput
-                          type="number"
-                          [(ngModel)]="child.sets"
-                          (blur)="persist()"
-                        />
-                      </div>
-                    </ng-container>
+                    <div class="superserie-container">
+                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                        <div class="divider" *ngIf="childIdx > 0"></div>
+                        <div class="superserie-child-row">
+                          <input class="sets-input"
+                            matInput
+                            type="number"
+                            [(ngModel)]="child.sets"
+                            (blur)="persist()"
+                          />
+                        </div>
+                      </ng-container>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>
@@ -340,16 +352,19 @@
                     />
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
-                    <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                     <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-                        <input class="sets-input"
-                          matInput
-                          type="text"
-                          [(ngModel)]="child.reps"
-                          (blur)="persist()"
-                        />
-                      </div>
-                    </ng-container>
+                    <div class="superserie-container">
+                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                        <div class="divider" *ngIf="childIdx > 0"></div>
+                        <div class="superserie-child-row">
+                          <input class="sets-input"
+                            matInput
+                            type="text"
+                            [(ngModel)]="child.reps"
+                            (blur)="persist()"
+                          />
+                        </div>
+                      </ng-container>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>
@@ -366,17 +381,20 @@
                       (blur)="persist()"
                     />
                   </ng-container>
-                  <ng-container *ngIf="item.isGroup">
-                    <ng-container *ngFor="let child of item.children; let childIdx = index">
-                     <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-                        <input
-                          matInput class="sets-input"
-                          type="text"
-                          [(ngModel)]="child.rest"
-                          (blur)="persist()"
-                        />
-                      </div>
-                    </ng-container>
+                  <ng-container *ngIf="item.isGroup && item.children as children">
+                    <div class="superserie-container">
+                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                        <div class="divider" *ngIf="childIdx > 0"></div>
+                        <div class="superserie-child-row">
+                          <input
+                            matInput class="sets-input"
+                            type="text"
+                            [(ngModel)]="child.rest"
+                            (blur)="persist()"
+                          />
+                        </div>
+                      </ng-container>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>
@@ -384,7 +402,6 @@
             <ng-container matColumnDef="weight">
               <th mat-header-cell *matHeaderCellDef>Peso</th>
               <td mat-cell *matCellDef="let item; let i = index">
-
                 <!-- 1) Ejercicio individual -->
                 <ng-container *ngIf="!item.isGroup">
                   <input matInput class="sets-input"
@@ -395,17 +412,18 @@
 
                 <!-- 2) Superserie -->
                 <ng-container *ngIf="item.isGroup && item.children as children">
-                  <ng-container *ngFor="let child of children; let c = index; trackBy: trackByChild">
-                    <div class="superserie-child-row"
-                        [ngClass]="{ 'with-divider': c > 0 }">
-                      <input matInput class="sets-input"
-                            type="text"
-                            [(ngModel)]="child.weight"
-                            (blur)="persist()" />
-                    </div>
-                  </ng-container>
+                  <div class="superserie-container">
+                    <ng-container *ngFor="let child of children; let c = index; trackBy: trackByChild">
+                      <div class="divider" *ngIf="c > 0"></div>
+                      <div class="superserie-child-row">
+                        <input matInput class="sets-input"
+                              type="text"
+                              [(ngModel)]="child.weight"
+                              (blur)="persist()" />
+                      </div>
+                    </ng-container>
+                  </div>
                 </ng-container>
-
               </td>
             </ng-container>
               <!-- Acciones -->
@@ -421,13 +439,16 @@
                     </button>
                   </ng-container>
                   <ng-container *ngIf="item.isGroup && item.children as children">
-                    <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                      <div class="superserie-child-row" [ngClass]="{ 'with-divider': childIdx > 0 }">
-                        <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
-                          <mat-icon>play_circle</mat-icon>
-                        </button>
-                      </div>
-                    </ng-container>
+                    <div class="superserie-container">
+                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
+                        <div class="divider" *ngIf="childIdx > 0"></div>
+                        <div class="superserie-child-row">
+                          <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
+                            <mat-icon>play_circle</mat-icon>
+                          </button>
+                        </div>
+                      </ng-container>
+                    </div>
                   </ng-container>
                 </td>
               </ng-container>

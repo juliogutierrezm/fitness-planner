@@ -336,9 +336,15 @@ export class ExerciseApiService {
     );
   }
 
-generateWorkoutPlanAI(prompt: string): Observable<any> {
+generateWorkoutPlanAI(promptOrParams: string | { params: any; generalNotes?: string }): Observable<any> {
   const url = `${this.apiBase}/generatePlanFromAI`;
-  return this.http.post(url, { prompt }).pipe(
+
+  // Support both legacy string prompt and new parametric format
+  const payload = typeof promptOrParams === 'string'
+    ? { prompt: promptOrParams }
+    : promptOrParams;
+
+  return this.http.post(url, payload).pipe(
     tap(plan => console.log('🧠 Plan generado por IA:', plan)),
     catchError(err => {
       console.error('❌ Error al generar plan IA:', err);

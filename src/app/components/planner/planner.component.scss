@@ -54,14 +54,44 @@
   mat-form-field {
     flex: 1 1 200px;
   }
+
+  .field-objective {
+    flex: 2 1 300px;
+  }
+
+  .field-notes {
+    flex: 2 1 300px;
+  }
+
+  .narrow-fields {
+    display: flex;
+    gap: 1rem;
+    flex: 0 0 auto;
+
+    .field-date {
+      flex: 0 0 150px;
+    }
+
+    .field-sessions {
+      flex: 0 0 120px;
+    }
+  }
 }
 
 .filters-section {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 1rem;
   justify-content: center;
   margin-bottom: 1.5rem;
+
+  .filters-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+    text-align: center;
+  }
 
   .filters-row {
     display: flex;
@@ -656,9 +686,9 @@ button[mat-icon-button] {
 }
 
 .unlink-action mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  font-size: 25px;
+  width: 25px;
+  height: 25px;
 }
 
 /* Legacy styles for backward compatibility - to be removed after testing */

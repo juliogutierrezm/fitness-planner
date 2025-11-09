@@ -24,10 +24,10 @@ import { Exercise } from '../../shared/models';
         </button>
       </div>
       <div class="preview-content">
-        <ng-container *ngIf="data.exercise.preview_url; else noPreview">
+        <ng-container *ngIf="getVideoUrl(); else noPreview">
           <video
             class="preview-video"
-            [src]="data.exercise.preview_url"
+            [src]="getVideoUrl()"
             controls
             autoplay
             muted
@@ -164,6 +164,10 @@ export class ExercisePreviewDialogComponent {
   }
 
   onVideoLoaded(): void {
-    console.log('Video preview loaded:', this.data.exercise.preview_url);
+    console.log('Video preview loaded:', this.getVideoUrl());
+  }
+
+  getVideoUrl(): string | null {
+    return this.data.exercise.preview_url || null;
   }
 }

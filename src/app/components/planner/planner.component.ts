@@ -29,6 +29,7 @@ import { UserApiService, AppUser } from '../../user-api.service';
 import { PreviousPlansDialogComponent } from './previous-plans-dialog.component';
 import { PlanPreviewDialogComponent } from './plan-preview-dialog.component';
 import { AiPromptDialogComponent } from './ai-prompt-dialog.component';
+import { AiParametricDialogComponent } from './ai-parametric-dialog.component';
 import { ExercisePreviewDialogComponent } from './exercise-preview-dialog.component';
 import { AuthService } from '../../services/auth.service';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions } from '../../shared/models';
@@ -131,29 +132,42 @@ export class PlannerComponent implements OnInit {
     private userApi: UserApiService
   ) {}
 
-  // Abre un diálogo amplio para escribir el prompt de IA
+  // Abre un diálogo parametrico para configurar el plan con IA
   openAIDialog() {
-    const ref = this.dialog.open(AiPromptDialogComponent, {
-      width: '720px',
-      maxWidth: '90vw',
+    const ref = this.dialog.open(AiParametricDialogComponent, {
+      width: '1000px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
       data: {}
     });
-    ref.afterClosed().subscribe((userPrompt?: string) => {
-      if (userPrompt) {
-        this.runGenerateAI(userPrompt);
+    ref.afterClosed().subscribe((result?: { params: any; generalNotes?: string; planFormData?: any }) => {
+      if (result?.params) {
+        // Auto-fill form with data from AI dialog
+        if (result.planFormData) {
+          this.form.patchValue({
+            objective: result.planFormData.objective,
+            sessionCount: result.planFormData.sessions,
+            notes: result.planFormData.generalNotes
+          });
+          // Update userName with generated plan name if not in edit mode
+          if (!this.isEditMode) {
+            this.form.patchValue({ userName: result.planFormData.name });
+          }
+        }
+        this.runGenerateAI(result);
       }
     });
   }
 
   // Genera plan con indicador de carga mejorado
-  private runGenerateAI(userPrompt: string) {
+  private runGenerateAI(paramsOrPrompt: { params: any; generalNotes?: string } | string) {
     this.isGenerating = true;
     this.generationStepIndex = 0;
     this.generationStep = this.generationSteps[0];
 
     this.startStepRotation();
 
-    this.api.generateWorkoutPlanAI(userPrompt)
+    this.api.generateWorkoutPlanAI(paramsOrPrompt)
       .pipe(finalize(() => {
         this.isGenerating = false;
         this.stopStepRotation();
@@ -169,9 +183,15 @@ export class PlannerComponent implements OnInit {
 
         this.sessions = sessionsFromAI;
         const patch: any = { sessionCount: this.sessions.length };
-        if (typeof res?.generalNotes === 'string' && res.generalNotes.trim()) {
-          patch.notes = res.generalNotes.trim();
+
+        // Use generalNotes from the parametric response if available
+        const generalNotes = (typeof paramsOrPrompt === 'object' && paramsOrPrompt.generalNotes) ||
+                           (typeof res?.generalNotes === 'string' && res.generalNotes.trim());
+
+        if (generalNotes) {
+          patch.notes = generalNotes;
         }
+
         this.form.patchValue(patch);
         this.rebuildDropLists();
         this.persist();

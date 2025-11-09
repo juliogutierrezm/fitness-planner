@@ -48,6 +48,9 @@ export interface PlanItem {
   isGroupHeader?: boolean; // true only for virtual header rows
   isChild?: boolean;       // true for items belonging to a group
   groupId?: string;        // identifier shared by header and its children
+  // Video fields for consistency with Exercise
+  preview_url?: string;
+  thumbnail?: string;
 }
 
 

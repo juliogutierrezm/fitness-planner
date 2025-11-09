@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-workout-plan-view',
@@ -13,6 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
     MatCardModule,
     MatDividerModule,
     MatTableModule,
+    MatTooltipModule,
   ],
   templateUrl: './workout-plan-view.component.html',
   styleUrls: ['./workout-plan-view.component.scss']
@@ -35,4 +37,3 @@ export class WorkoutPlanViewComponent {
     return [];
   }
 }
-

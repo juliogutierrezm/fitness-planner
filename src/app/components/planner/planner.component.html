@@ -51,7 +51,7 @@
         </mat-select>
       </mat-form-field>
     </ng-container>
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="field-objective">
       <mat-label>Objetivo</mat-label>
       <textarea
         matInput
@@ -60,19 +60,21 @@
         rows="2"
       ></textarea>
     </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Fecha</mat-label>
-      <input matInput [matDatepicker]="picker" formControlName="date"/>
-      <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-datepicker #picker></mat-datepicker>
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Sesiones</mat-label>
-      <input matInput type="number" formControlName="sessionCount" min="1"/>
-    </mat-form-field>
+    <div class="narrow-fields">
+      <mat-form-field appearance="outline" class="field-date">
+        <mat-label>Fecha</mat-label>
+        <input matInput [matDatepicker]="picker" formControlName="date"/>
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="field-sessions">
+        <mat-label>Sesiones</mat-label>
+        <input matInput type="number" formControlName="sessionCount" min="1"/>
+      </mat-form-field>
+    </div>
 
     <!-- ➤ Nuevo campo para las notas generales -->
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="field-notes">
       <mat-label>Notas generales</mat-label>
       <textarea
         matInput
@@ -85,6 +87,7 @@
 
   <!-- Filtros -->
   <div class="filters-section">
+    <h3 class="filters-title">Filtros</h3>
     <div class="filters-row">
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Buscar por nombre</mat-label>
@@ -253,7 +256,6 @@
                   <ng-container *ngIf="item.isGroup">
                     <div class="superserie-container">
                       <div class="superserie-child-row">
-                        <span class="superset-label">Superserie</span>
                         <div class="group-actions">
                           <button
                             mat-icon-button
@@ -275,14 +277,14 @@
                   <th mat-header-cell *matHeaderCellDef>Ejercicio</th>
                   <td mat-cell *matCellDef="let item; let i = index" class="name-cell">
                     <ng-container *ngIf="!item.isGroup">
-                      <span class="exercise-name-text">{{ item.name_es || item.name }}</span>
+                      <span class="exercise-name-text" [matTooltip]="item.name_es || item.name">{{ item.name_es || item.name }}</span>
                     </ng-container>
                     <ng-container *ngIf="item.isGroup && item.children as children">
                       <div class="superserie-container">
                         <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
                           <div class="divider" *ngIf="cIdx > 0"></div>
                           <div class="superserie-child-row">
-                            <span class="exercise-name-text">{{ child.name_es || child.name }}</span>
+                            <span class="exercise-name-text" [matTooltip]="child.name_es || child.name">{{ child.name_es || child.name }}</span>
                           </div>
                         </ng-container>
                       </div>

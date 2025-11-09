@@ -24,7 +24,7 @@
         <ng-container *ngIf="!item.isGroup; else supersetBlock">
           <div class="table-row">
             <div>
-              <strong>{{ item.name }}</strong>
+              <strong [matTooltip]="item.name">{{ item.name }}</strong>
               <div *ngIf="item.notes" class="notes">💬 {{ item.notes }}</div>
             </div>
 
@@ -41,7 +41,7 @@
             <div class="superset-label">Superserie</div>
             <div *ngFor="let child of item.children" class="table-row">
               <div>
-                <strong>{{ child.name }}</strong>
+                <strong [matTooltip]="child.name">{{ child.name }}</strong>
                 <div *ngIf="child.notes" class="notes">💬 {{ child.notes }}</div>
               </div>
               <div>{{ child.sets }}</div>

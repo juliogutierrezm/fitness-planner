@@ -75,6 +75,27 @@ export interface WorkoutPlan {
   trainerId?: string;
 }
 
+/* ---------- AI Plan Generation ---------- */
+export interface AiPlanRequest {
+  gender: string;
+  difficulty: string;
+  trainingGoal: string;
+  totalSessions: number;
+  sessionDuration: number;
+  availableEquipment: string[];
+  excludeMuscles: string[];
+  includeSupersets: boolean;
+  includeMobility: boolean;
+  includeCardio: boolean;
+  expectedExercisesPerSession: number;
+  sessionBlueprint: {
+    name: string;
+    muscleGroups: string[];
+  }[];
+  generalNotes: string;
+  userId?: string;
+}
+
 /* ---------- Exercise Manager Component Interfaces ---------- */
 
 export interface ExerciseFilters {

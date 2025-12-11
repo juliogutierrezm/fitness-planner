@@ -14,20 +14,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-
-export interface WorkoutPlanParams {
-  gender: 'Masculino' | 'Femenino';
-  difficulty: 'Principiante' | 'Intermedio' | 'Avanzado' | 'Élite' | 'Recuperación';
-  trainingGoal: 'Hipertrofia' | 'Pérdida de peso' | 'Resistencia' | 'Potencia' | 'Funcional' | 'Cardiovascular';
-  daysPerWeek: number;
-  sessionDuration: number;
-  availableEquipment: string[];
-  includeSupersets: boolean;
-  excludeMuscles: string[];
-  planStructure: 'Torso-Pierna' | 'Full-Body' | 'Funcional' | 'Personalizado';
-  customStructure?: { [day: string]: string[] };
-  customNotes?: string;
-}
+import { AiPlanRequest } from '../../shared/models';
+import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-ai-parametric-dialog',
@@ -96,10 +85,18 @@ export class AiParametricDialogComponent implements OnInit {
     { value: 'Personalizado', label: 'Personalizado', desc: 'Configura manualmente' }
   ];
 
+  cardioPlacementOptions = [
+    { value: 'inicio', label: 'Inicio', desc: 'Al inicio de la sesión' },
+    { value: 'medio', label: 'Medio', desc: 'En el medio de la sesión' },
+    { value: 'fin', label: 'Fin', desc: 'Al final de la sesión' }
+  ];
+
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<AiParametricDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any
+    @Inject(MAT_DIALOG_DATA) public data: any,
+    private api: ExerciseApiService,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -114,69 +111,74 @@ export class AiParametricDialogComponent implements OnInit {
       trainingGoal: ['Hipertrofia', Validators.required],
 
       // Availability
-      daysPerWeek: [3, [Validators.required, Validators.min(1), Validators.max(7)]],
+      totalSessions: [4, [Validators.required, Validators.min(1), Validators.max(8)]],
       sessionDuration: [60, [Validators.required, Validators.min(30), Validators.max(180)]],
+      expectedExercisesPerSession: [8, [Validators.min(4), Validators.max(20)]],
 
       // Preferences
       availableEquipment: [[]],
       includeSupersets: [true],
       excludeMuscles: [[]],
+      includeMobility: [true],
+      includeCardio: [false],
+      cardioPlacement: ['medio'],
+      cardioDuration: [10, [Validators.min(5), Validators.max(30)]],
 
       // Structure
       planStructure: ['Torso-Pierna', Validators.required],
-      customStructure: this.fb.group({}),
+      sessionBlueprint: this.fb.array([]),
 
       // Custom Notes
       customNotes: ['', [Validators.maxLength(150)]]
     });
 
-    // Watch for plan structure changes to show/hide custom structure
+    // Watch for plan structure changes to show/hide session blueprint
     this.form.get('planStructure')?.valueChanges.subscribe(value => {
-      this.updateCustomStructure(value);
+      this.updateSessionBlueprint(value);
     });
 
-    // Watch for days per week changes to update custom structure
-    this.form.get('daysPerWeek')?.valueChanges.subscribe(() => {
+    // Watch for totalSessions changes to update session blueprint
+    this.form.get('totalSessions')?.valueChanges.subscribe(() => {
       if (this.form.get('planStructure')?.value === 'Personalizado') {
-        this.updateCustomStructure('Personalizado');
+        this.updateSessionBlueprint('Personalizado');
       }
     });
 
-    // Initialize custom structure for default selection
-    this.updateCustomStructure(this.form.get('planStructure')?.value);
+    // Initialize session blueprint for default selection
+    this.updateSessionBlueprint(this.form.get('planStructure')?.value);
   }
 
-  private updateCustomStructure(planStructure: string) {
-    const customStructureGroup = this.form.get('customStructure') as FormGroup;
+  private updateSessionBlueprint(planStructure: string) {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
 
     // Clear existing controls
-    Object.keys(customStructureGroup.controls).forEach(key => {
-      customStructureGroup.removeControl(key);
-    });
+    while (sessionBlueprintArray.length > 0) {
+      sessionBlueprintArray.removeAt(0);
+    }
 
     if (planStructure === 'Personalizado') {
-      const daysPerWeek = this.form.get('daysPerWeek')?.value || 3;
-      for (let i = 1; i <= daysPerWeek; i++) {
-        customStructureGroup.addControl(
-          `day${i}`,
-          this.fb.control([], Validators.required)
-        );
+      const totalSessions = this.form.get('totalSessions')?.value || 4;
+      for (let i = 1; i <= totalSessions; i++) {
+        sessionBlueprintArray.push(this.fb.group({
+          name: [`Sesión ${i}`, Validators.required],
+          muscleGroups: [[], Validators.required]
+        }));
       }
     }
   }
 
-  getCustomStructureDays(): string[] {
-    const daysPerWeek = this.form.get('daysPerWeek')?.value || 3;
-    return Array.from({ length: daysPerWeek }, (_, i) => `day${i + 1}`);
+  getSessionBlueprintControls(): FormGroup[] {
+    return (this.form.get('sessionBlueprint') as FormArray).controls as FormGroup[];
   }
 
-  getCustomStructureDayLabel(dayKey: string): string {
-    const dayNumber = dayKey.replace('day', '');
-    return `Día ${dayNumber}`;
+  getSessionNameControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('name') as FormControl;
   }
 
-  getCustomDayControl(dayKey: string): FormControl {
-    return this.form.get(`customStructure.${dayKey}`) as FormControl;
+  getSessionMuscleGroupsControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('muscleGroups') as FormControl;
   }
 
 
@@ -209,43 +211,67 @@ export class AiParametricDialogComponent implements OnInit {
 
     const formValue = this.form.value;
 
-    // Build the params object for Lambda
-    const params: WorkoutPlanParams = {
+    // Build the AiPlanRequest object for the backend
+    const request: AiPlanRequest = {
       gender: formValue.gender,
       difficulty: formValue.difficulty,
       trainingGoal: formValue.trainingGoal,
-      daysPerWeek: formValue.daysPerWeek,
+      totalSessions: formValue.totalSessions,
       sessionDuration: formValue.sessionDuration,
       availableEquipment: formValue.availableEquipment || [],
-      includeSupersets: formValue.includeSupersets,
       excludeMuscles: formValue.excludeMuscles || [],
-      planStructure: formValue.planStructure,
-      customNotes: formValue.customNotes?.trim() || undefined
+      includeSupersets: formValue.includeSupersets,
+      includeMobility: formValue.includeMobility,
+      includeCardio: formValue.includeCardio,
+      expectedExercisesPerSession: formValue.expectedExercisesPerSession,
+      sessionBlueprint: this.buildSessionBlueprint(formValue),
+      generalNotes: formValue.customNotes?.trim() || '',
+      userId: this.authService.getCurrentUserId() || undefined
     };
 
-    // Add custom structure if applicable
-    if (formValue.planStructure === 'Personalizado' && formValue.customStructure) {
-      params.customStructure = {};
-      Object.keys(formValue.customStructure).forEach(dayKey => {
-        const dayNumber = dayKey.replace('day', '');
-        params.customStructure![`Día ${dayNumber}`] = formValue.customStructure[dayKey] || [];
-      });
+    // Show generating state
+    this.isGenerating = true;
+
+    // Send POST request to start plan generation
+    this.api.generatePlanFromAI(request).subscribe({
+      next: (response) => {
+        if (response.executionArn) {
+          // Return executionArn to planner for polling
+          this.dialogRef.close({
+            executionArn: response.executionArn,
+            planFormData: {
+              name: this.generatePlanName(formValue.trainingGoal),
+              objective: formValue.trainingGoal,
+              sessions: formValue.totalSessions,
+              generalNotes: request.generalNotes
+            }
+          });
+        } else {
+          console.error('No executionArn received from backend');
+          this.isGenerating = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error starting plan generation:', error);
+        this.isGenerating = false;
+      }
+    });
+  }
+
+  private buildSessionBlueprint(formValue: any): { name: string; muscleGroups: string[] }[] {
+    if (formValue.planStructure === 'Personalizado' && formValue.sessionBlueprint) {
+      return formValue.sessionBlueprint;
     }
 
-    // Prepare data for subsequent forms (plan editing/saving)
-    const planFormData = {
-      name: this.generatePlanName(formValue.trainingGoal),
-      objective: formValue.trainingGoal,
-      sessions: formValue.daysPerWeek,
-      generalNotes: formValue.customNotes?.trim() || ''
-    };
-
-    this.isGenerating = true;
-    this.dialogRef.close({
-      params,
-      generalNotes: params.customNotes,
-      planFormData
-    });
+    // For pre-defined structures, create basic session blueprints
+    const blueprints: { name: string; muscleGroups: string[] }[] = [];
+    for (let i = 1; i <= formValue.totalSessions; i++) {
+      blueprints.push({
+        name: `Sesión ${i}`,
+        muscleGroups: [] // Let the backend decide the structure
+      });
+    }
+    return blueprints;
   }
 
 

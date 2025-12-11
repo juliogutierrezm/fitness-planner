@@ -399,8 +399,8 @@ const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "p
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
 - **Dashboard principal**: Completo - Navegación básica implementada
-- **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios
-- **Generación de planes con IA**: Completo - Diálogo de prompts personalizados con integración Claude 3
+- **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
+- **Generación de planes con IA**: Completo - Diálogo parametric con interfaz avanzada para configuración detallada de planes
 - **Previsualización de planes**: Completo - Vista previa inline y diálogos para planes de entrenamiento
 - **Vista de planes anteriores**: Completo - Diálogo para reutilizar planes existentes
 - **Previsualización de ejercicios**: Completo - Diálogos para ver detalles y videos de ejercicios
@@ -416,6 +416,21 @@ const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "p
 - **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
 - **Utilidades compartidas**: Completo - Funciones auxiliares para sanitización y procesamiento de datos
 - **SSR y optimizaciones**: Completo - Compatible con server-side rendering
-- **Documentación**: Actualizada - Información completa sobre arquitectura y funcionalidades
+- **Documentación**: Completa - Información detallada sobre arquitectura, funcionalidades y estructura del código
+- **Gestión de superseries**: Implementado - Creación y gestión visual de superseries con mejoras pendientes de visualización
+- **Gestión de asignación de usuarios**: Completo - Sistema para que entrenadores asignen planes a clientes específicos
 - **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
 - **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas
+
+## Mejoras Pendientes
+
+### Funcionalidad de Superseries
+- **Visualización mejorada**: Implementar wrapper visual externo para superseries que muestre "Superserie" como etiqueta
+- **Remoción de checkboxes**: Los ejercicios dentro de superseries no deberían tener checkboxes individuales
+- **Drag & drop grupal**: Permitir arrastrar superseries completas como unidades
+- **Persistencia visual**: Mantener el estado visual de superserie al recargar la página
+
+### Optimizaciones de Rendimiento
+- **Virtualización de listas**: Aplicar virtualización a listas largas de ejercicios
+- **Lazy loading**: Implementar carga diferida para módulos no críticos
+- **Optimización de API**: Mejorar eficiencia de llamadas a servicios backend

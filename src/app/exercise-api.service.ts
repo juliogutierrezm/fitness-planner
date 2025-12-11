@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
-import { Exercise, Session } from './shared/models';
+import { Exercise, Session, AiPlanRequest } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
 import { sanitizeName } from './shared/shared-utils';
@@ -336,10 +336,10 @@ export class ExerciseApiService {
     );
   }
 
-generateWorkoutPlanAI(promptOrParams: string | { params: any; generalNotes?: string }): Observable<any> {
+generateWorkoutPlanAI(promptOrParams: string | any): Observable<any> {
   const url = `${this.apiBase}/generatePlanFromAI`;
 
-  // Support both legacy string prompt and new parametric format
+  // Support both legacy string prompt and new flat object format
   const payload = typeof promptOrParams === 'string'
     ? { prompt: promptOrParams }
     : promptOrParams;
@@ -349,6 +349,34 @@ generateWorkoutPlanAI(promptOrParams: string | { params: any; generalNotes?: str
     catchError(err => {
       console.error('❌ Error al generar plan IA:', err);
       return of(null);
+    })
+  );
+}
+
+// New method for parameterized AI plan generation
+generatePlanFromAI(params: AiPlanRequest): Observable<{ status: string; executionArn: string }> {
+  return this.http.post<{ status: string; executionArn: string }>(
+    `${this.apiBase}/generatePlanFromAI`,
+    params
+  ).pipe(
+    tap(res => console.log('🚀 Plan generation started:', res)),
+    catchError(err => {
+      console.error('❌ Error starting plan generation:', err);
+      return of({ status: 'failed', executionArn: '' });
+    })
+  );
+}
+
+// Polling method to get generated plan
+getGeneratedPlan(executionArn: string): Observable<any> {
+  const params = encodeURIComponent(executionArn);
+  return this.http.get<any>(
+    `${this.apiBase}/generatePlanFromAI?executionArn=${params}`
+  ).pipe(
+    tap(res => console.log('📊 Polling plan status:', res.status)),
+    catchError(err => {
+      console.error('❌ Error polling plan:', err);
+      return of({ status: 'failed' });
     })
   );
 }

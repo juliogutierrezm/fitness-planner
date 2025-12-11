@@ -23,6 +23,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Inject } from '@angular/core';
 import { finalize } from 'rxjs/operators';
+import { timer, switchMap, takeWhile, filter } from 'rxjs';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
@@ -102,6 +103,7 @@ export class PlannerComponent implements OnInit {
   isGenerating = false;
   generationStep = '';
   generationStepIndex = 0;
+  currentExecutionArn = '';
   previousPlans: any[] = [];
   selectedPreviewPlan: any | null = null;
   private readonly prevLimit = 8;
@@ -140,34 +142,95 @@ export class PlannerComponent implements OnInit {
       maxHeight: '90vh',
       data: {}
     });
-    ref.afterClosed().subscribe((result?: { params: any; generalNotes?: string; planFormData?: any }) => {
-      if (result?.params) {
+    ref.afterClosed().subscribe((result?: { executionArn: string; planFormData?: any }) => {
+      if (result?.executionArn && result?.planFormData) {
         // Auto-fill form with data from AI dialog
-        if (result.planFormData) {
-          this.form.patchValue({
-            objective: result.planFormData.objective,
-            sessionCount: result.planFormData.sessions,
-            notes: result.planFormData.generalNotes
-          });
-          // Update userName with generated plan name if not in edit mode
-          if (!this.isEditMode) {
-            this.form.patchValue({ userName: result.planFormData.name });
-          }
+        this.form.patchValue({
+          objective: result.planFormData.objective,
+          sessionCount: result.planFormData.sessions,
+          notes: result.planFormData.generalNotes
+        });
+        // Update userName with generated plan name if not in edit mode
+        if (!this.isEditMode) {
+          this.form.patchValue({ userName: result.planFormData.name });
         }
-        this.runGenerateAI(result);
+        // Start polling for the plan
+        this.startPollingPlan(result.executionArn);
       }
     });
   }
 
+  // Polling implementation for AI plan generation
+  startPollingPlan(executionArn: string): void {
+    this.isGenerating = true;
+    this.currentExecutionArn = executionArn;
+    this.generationStep = 'Generando plan con IA...';
+
+    timer(0, 3000).pipe(
+      switchMap(() => this.api.getGeneratedPlan(executionArn)),
+      filter(res => res.status !== 'running'),
+      takeWhile(res => res.status === 'running', true)
+    ).subscribe({
+      next: (res) => {
+        if (res.status === 'succeeded') {
+          // Plan is ready, load it into the planner
+          this.loadPlanIntoPlanner(res);
+          this.isGenerating = false;
+          this.generationStep = '';
+          this.currentExecutionArn = '';
+          this.snackBar.open('Plan generado exitosamente!', undefined, { duration: 2000 });
+        } else if (res.status === 'failed') {
+          this.isGenerating = false;
+          this.generationStep = '';
+          this.currentExecutionArn = '';
+          this.snackBar.open('Error al generar el plan. Por favor, inténtalo de nuevo.', undefined, { duration: 4000 });
+        }
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error polling plan:', error);
+        this.isGenerating = false;
+        this.generationStep = '';
+        this.currentExecutionArn = '';
+        this.snackBar.open('Error de conexión. Por favor, verifica tu conexión a internet.', undefined, { duration: 4000 });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  // Load generated plan into planner
+  loadPlanIntoPlanner(planResponse: any): void {
+    const sessions = this.createSessionsFromAI(planResponse);
+    if (!sessions.length) {
+      this.snackBar.open('No se pudo interpretar el plan generado.', undefined, { duration: 3000 });
+      return;
+    }
+
+    this.sessions = sessions;
+    const patch: any = { sessionCount: this.sessions.length };
+
+    // Use generalNotes from the response if available
+    const generalNotes = planResponse.generalNotes ||
+                        (typeof planResponse.generalNotes === 'string' && planResponse.generalNotes.trim());
+
+    if (generalNotes) {
+      patch.notes = generalNotes;
+    }
+
+    this.form.patchValue(patch);
+    this.rebuildDropLists();
+    this.persist();
+  }
+
   // Genera plan con indicador de carga mejorado
-  private runGenerateAI(paramsOrPrompt: { params: any; generalNotes?: string } | string) {
+  private runGenerateAI(params: any) {
     this.isGenerating = true;
     this.generationStepIndex = 0;
     this.generationStep = this.generationSteps[0];
 
     this.startStepRotation();
 
-    this.api.generateWorkoutPlanAI(paramsOrPrompt)
+    this.api.generateWorkoutPlanAI(params)
       .pipe(finalize(() => {
         this.isGenerating = false;
         this.stopStepRotation();
@@ -184,8 +247,8 @@ export class PlannerComponent implements OnInit {
         this.sessions = sessionsFromAI;
         const patch: any = { sessionCount: this.sessions.length };
 
-        // Use generalNotes from the parametric response if available
-        const generalNotes = (typeof paramsOrPrompt === 'object' && paramsOrPrompt.generalNotes) ||
+        // Use generalNotes from the response or params
+        const generalNotes = params.generalNotes ||
                            (typeof res?.generalNotes === 'string' && res.generalNotes.trim());
 
         if (generalNotes) {
@@ -209,7 +272,7 @@ export class PlannerComponent implements OnInit {
 
     return source.map((day: any, idx: number) => ({
       id: idx + 1,
-      name: day?.name || day?.day || 'Dia ' + (idx + 1),
+      name: day?.name || day?.day || 'Sesión ' + (idx + 1),
       items: this.normaliseAiItems(day?.items, plan.length > 0)
     }));
   }
@@ -688,7 +751,7 @@ export class PlannerComponent implements OnInit {
     const currentSessions = this.sessions || [];
     this.sessions = Array.from({ length: count }, (_, i) => ({
       id: i + 1,
-      name: `Día ${i + 1}`,
+      name: `Sesión ${i + 1}`,
       items: currentSessions[i]?.items || []
     }));
     this.rebuildDropLists();
@@ -712,7 +775,7 @@ export class PlannerComponent implements OnInit {
       moveItemInArray(this.sessions, event.previousIndex, event.currentIndex);
       this.sessions.forEach((s, i) => {
         s.id = i + 1;
-        s.name = `Día ${i + 1}`;
+        s.name = `Sesión ${i + 1}`;
       });
       this.rebuildDropLists();
       this.persist();

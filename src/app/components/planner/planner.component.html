@@ -60,6 +60,18 @@
         rows="2"
       ></textarea>
     </mat-form-field>
+
+    <!-- ➤ Nuevo campo para las notas generales -->
+    <mat-form-field appearance="outline" class="field-notes">
+      <mat-label>Notas generales</mat-label>
+      <textarea
+        matInput
+        formControlName="notes"
+        placeholder="Descripción, objetivos o comentarios para todo el plan"
+        rows="2"
+      ></textarea>
+    </mat-form-field>
+
     <div class="narrow-fields">
       <mat-form-field appearance="outline" class="field-date">
         <mat-label>Fecha</mat-label>
@@ -72,22 +84,17 @@
         <input matInput type="number" formControlName="sessionCount" min="1"/>
       </mat-form-field>
     </div>
-
-    <!-- ➤ Nuevo campo para las notas generales -->
-    <mat-form-field appearance="outline" class="field-notes">
-      <mat-label>Notas generales</mat-label>
-      <textarea
-        matInput
-        formControlName="notes"
-        placeholder="Descripción, objetivos o comentarios para todo el plan"
-        rows="2"
-      ></textarea>
-    </mat-form-field>
   </form>
 
   <!-- Filtros -->
   <div class="filters-section">
-    <h3 class="filters-title">Filtros</h3>
+    <div class="filters-header">
+      <h3 class="filters-title">Filtro de ejercicios</h3>
+      <button mat-raised-button color="primary" class="clear-filters" (click)="clearFilters()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpiar filtros
+      </button>
+    </div>
     <div class="filters-row">
       <mat-form-field appearance="outline" class="search-field">
         <mat-label>Buscar por nombre</mat-label>
@@ -118,13 +125,6 @@
           <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
         </mat-select>
       </mat-form-field>
-
-      <div class="action-buttons">
-        <button mat-raised-button color="primary" class="clear-filters" (click)="clearFilters()">
-          <mat-icon>filter_alt_off</mat-icon>
-          Limpiar filtros
-        </button>
-      </div>
     </div>
   </div>
 

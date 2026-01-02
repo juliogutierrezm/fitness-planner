@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -14,9 +14,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { AiPlanRequest } from '../../shared/models';
 import { ExerciseApiService } from '../../exercise-api.service';
-import { AuthService } from '../../services/auth.service';
+import { finalize, switchMap, catchError, filter, take, scan } from 'rxjs/operators';
+import { timer, of, Subscription, EMPTY } from 'rxjs';
 
 @Component({
   selector: 'app-ai-parametric-dialog',
@@ -39,24 +41,19 @@ import { AuthService } from '../../services/auth.service';
     MatDividerModule
   ],
   templateUrl: './ai-parametric-dialog.component.html',
-  styleUrls: ['./ai-parametric-dialog.component.scss']
+  styleUrls: ['./ai-parametric-dialog.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AiParametricDialogComponent implements OnInit {
   form!: FormGroup;
   isGenerating = false;
 
-  // Form options
-  genderOptions = [
-    { value: 'Masculino', label: 'Masculino' },
-    { value: 'Femenino', label: 'Femenino' }
-  ];
+
 
   difficultyOptions = [
     { value: 'Principiante', label: 'Principiante', desc: 'Nuevo en el entrenamiento' },
     { value: 'Intermedio', label: 'Intermedio', desc: '6-12 meses de experiencia' },
-    { value: 'Avanzado', label: 'Avanzado', desc: '1-3 años de experiencia' },
-    { value: 'Élite', label: 'Élite', desc: 'Más de 3 años, atleta' },
-    { value: 'Recuperación', label: 'Recuperación', desc: 'Vuelta al entrenamiento' }
+    { value: 'Avanzado', label: 'Avanzado', desc: 'Más de 3 años' },
   ];
 
   trainingGoalOptions = [
@@ -69,44 +66,49 @@ export class AiParametricDialogComponent implements OnInit {
   ];
 
   equipmentOptions = [
-    'Mancuernas', 'Barras', 'Máquinas', 'Bandas elásticas', 'Pesas rusas',
-    'TRX', 'Anillas', 'Banco', 'Rack de sentadillas', 'Sin equipo'
+    'Mancuerna', 'Barra', 'Máquina', 'Bandas', 'Kettlebell',
+    'TRX', 'Anillas', 'Banco', 'Peso corporal'
   ];
 
   muscleGroupOptions = [
-    'Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps',
-    'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Pantorrillas', 'Core'
+    // Musculares
+    'Pectorales', 'Dorsales', 'Deltoides', 'Bíceps', 'Tríceps',
+    'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Pantorrillas',
+    'Trapecio', 'Antebrazos', 'Core',
+    // Tipos / categorías
+    'Cardio', 'Mobility', 'Push', 'Pull', 'Squat', 'Lunge', 'Bend', 'Funcional'
   ];
 
-  planStructureOptions = [
-    { value: 'Torso-Pierna', label: 'Torso-Pierna', desc: 'Día torso + día piernas' },
-    { value: 'Full-Body', label: 'Full-Body', desc: 'Todo el cuerpo cada día' },
-    { value: 'Funcional', label: 'Funcional', desc: 'Movimientos naturales' },
-    { value: 'Personalizado', label: 'Personalizado', desc: 'Configura manualmente' }
-  ];
-
-  cardioPlacementOptions = [
-    { value: 'inicio', label: 'Inicio', desc: 'Al inicio de la sesión' },
-    { value: 'medio', label: 'Medio', desc: 'En el medio de la sesión' },
-    { value: 'fin', label: 'Fin', desc: 'Al final de la sesión' }
-  ];
+  // Purpose: store planner-supplied user context for AI requests.
+  // Input/Output: userId/userProfile/userAge set from MAT_DIALOG_DATA, used in payload.
+  // Error handling: validated in confirm() before HTTP execution.
+  // Standards Check: SRP OK | DRY OK | Tests Pending
+  userId: string | null = null;
+  userProfile: any = null;
+  userAge: number | null = null;
 
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<AiParametricDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private api: ExerciseApiService,
-    private authService: AuthService
-  ) {}
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.userId = data?.userId ?? null;
+    this.userProfile = data?.userProfile ?? null;
+    this.userAge = data?.userAge ?? null;
+  }
 
   ngOnInit() {
     this.initForm();
   }
 
+
+
   private initForm() {
     this.form = this.fb.group({
       // General Data
-      gender: ['Masculino', Validators.required],
       difficulty: ['Intermedio', Validators.required],
       trainingGoal: ['Hipertrofia', Validators.required],
 
@@ -118,37 +120,27 @@ export class AiParametricDialogComponent implements OnInit {
       // Preferences
       availableEquipment: [[]],
       includeSupersets: [true],
-      excludeMuscles: [[]],
       includeMobility: [true],
-      includeCardio: [false],
-      cardioPlacement: ['medio'],
-      cardioDuration: [10, [Validators.min(5), Validators.max(30)]],
 
-      // Structure
-      planStructure: ['Torso-Pierna', Validators.required],
+      // Session Blueprint
       sessionBlueprint: this.fb.array([]),
 
       // Custom Notes
       customNotes: ['', [Validators.maxLength(150)]]
     });
 
-    // Watch for plan structure changes to show/hide session blueprint
-    this.form.get('planStructure')?.valueChanges.subscribe(value => {
-      this.updateSessionBlueprint(value);
-    });
-
     // Watch for totalSessions changes to update session blueprint
     this.form.get('totalSessions')?.valueChanges.subscribe(() => {
-      if (this.form.get('planStructure')?.value === 'Personalizado') {
-        this.updateSessionBlueprint('Personalizado');
-      }
+      this.updateSessionBlueprint();
     });
 
-    // Initialize session blueprint for default selection
-    this.updateSessionBlueprint(this.form.get('planStructure')?.value);
+    // Initialize session blueprint
+    this.updateSessionBlueprint();
   }
+  
 
-  private updateSessionBlueprint(planStructure: string) {
+
+  private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
 
     // Clear existing controls
@@ -156,16 +148,17 @@ export class AiParametricDialogComponent implements OnInit {
       sessionBlueprintArray.removeAt(0);
     }
 
-    if (planStructure === 'Personalizado') {
-      const totalSessions = this.form.get('totalSessions')?.value || 4;
-      for (let i = 1; i <= totalSessions; i++) {
-        sessionBlueprintArray.push(this.fb.group({
-          name: [`Sesión ${i}`, Validators.required],
-          muscleGroups: [[], Validators.required]
-        }));
-      }
+    const totalSessions = this.form.get('totalSessions')?.value || 4;
+    for (let i = 1; i <= totalSessions; i++) {
+      sessionBlueprintArray.push(this.fb.group({
+        name: [`Sesión ${i}`, Validators.required],
+        targets: [[], Validators.required]
+      }));
     }
+    //this.getWorkoutPlanFromAI();
   }
+
+
 
   getSessionBlueprintControls(): FormGroup[] {
     return (this.form.get('sessionBlueprint') as FormArray).controls as FormGroup[];
@@ -176,14 +169,16 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('name') as FormControl;
   }
 
-  getSessionMuscleGroupsControl(index: number): FormControl {
+  getSessionTargetsControl(index: number): FormControl {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
-    return sessionBlueprintArray.at(index).get('muscleGroups') as FormControl;
+    return sessionBlueprintArray.at(index).get('targets') as FormControl;
   }
 
-
-
-
+  removeTarget(sessionIndex: number, target: string) {
+    const control = this.getSessionTargetsControl(sessionIndex);
+    const current = control.value as string[];
+    control.setValue(current.filter(t => t !== target));
+  }
 
   isFormValid(): boolean {
     return this.form.valid && !this.isGenerating;
@@ -206,14 +201,43 @@ export class AiParametricDialogComponent implements OnInit {
     return goalNames[trainingGoal] || `Plan de Entrenamiento - ${trainingGoal}`;
   }
 
+  /**
+   * Purpose: submit AI plan generation request and notify planner on acceptance.
+   * Input/Output: uses form values + user context, closes dialog with {started:true}.
+   * Error handling: userId pre-check + snackbar on API failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   confirm() {
     if (!this.isFormValid()) return;
 
     const formValue = this.form.value;
+    const requestStartMs = Date.now();
 
-    // Build the AiPlanRequest object for the backend
+    // Build userContext only with valid string values
+    let userContext: { injuries?: string; notes?: string } | undefined;
+    if (this.userProfile) {
+      const injuries =
+        typeof this.userProfile.injuries === 'string' &&
+        this.userProfile.injuries.trim().length > 0
+          ? this.userProfile.injuries.trim()
+          : undefined;
+
+      const notes =
+        typeof this.userProfile.notes === 'string' &&
+        this.userProfile.notes.trim().length > 0
+          ? this.userProfile.notes.trim()
+          : undefined;
+
+      if (injuries || notes) {
+        userContext = {};
+        if (injuries) userContext.injuries = injuries;
+        if (notes) userContext.notes = notes;
+      }
+    }
+
+    // Build the AI payload with planner-supplied user context
     const request: AiPlanRequest = {
-      gender: formValue.gender,
+      gender: this.userProfile?.gender,
       difficulty: formValue.difficulty,
       trainingGoal: formValue.trainingGoal,
       totalSessions: formValue.totalSessions,
@@ -222,59 +246,64 @@ export class AiParametricDialogComponent implements OnInit {
       excludeMuscles: formValue.excludeMuscles || [],
       includeSupersets: formValue.includeSupersets,
       includeMobility: formValue.includeMobility,
-      includeCardio: formValue.includeCardio,
       expectedExercisesPerSession: formValue.expectedExercisesPerSession,
       sessionBlueprint: this.buildSessionBlueprint(formValue),
       generalNotes: formValue.customNotes?.trim() || '',
-      userId: this.authService.getCurrentUserId() || undefined
+      userId: this.userId || undefined,
+      ...(this.userAge !== null && { age: this.userAge }),
+      ...(userContext && { userContext })
     };
 
-    // Show generating state
-    this.isGenerating = true;
-
-    // Send POST request to start plan generation
-    this.api.generatePlanFromAI(request).subscribe({
-      next: (response) => {
-        if (response.executionArn) {
-          // Return executionArn to planner for polling
-          this.dialogRef.close({
-            executionArn: response.executionArn,
-            planFormData: {
-              name: this.generatePlanName(formValue.trainingGoal),
-              objective: formValue.trainingGoal,
-              sessions: formValue.totalSessions,
-              generalNotes: request.generalNotes
-            }
-          });
-        } else {
-          console.error('No executionArn received from backend');
-          this.isGenerating = false;
-        }
-      },
-      error: (error) => {
-        console.error('Error starting plan generation:', error);
-        this.isGenerating = false;
-      }
-    });
-  }
-
-  private buildSessionBlueprint(formValue: any): { name: string; muscleGroups: string[] }[] {
-    if (formValue.planStructure === 'Personalizado' && formValue.sessionBlueprint) {
-      return formValue.sessionBlueprint;
-    }
-
-    // For pre-defined structures, create basic session blueprints
-    const blueprints: { name: string; muscleGroups: string[] }[] = [];
-    for (let i = 1; i <= formValue.totalSessions; i++) {
-      blueprints.push({
-        name: `Sesión ${i}`,
-        muscleGroups: [] // Let the backend decide the structure
+    if (!request.userId) {
+      console.error('AI Plan generation blocked: userId missing before request', {
+        userId: this.userId,
+        userProfile: this.userProfile
       });
+      this.snackBar.open('No se pudo generar: usuario no asignado.', undefined, { duration: 3500 });
+      return;
     }
-    return blueprints;
+
+    // Start plan generation
+    this.isGenerating = true;
+    console.log('[AI] generatePlanFromAI: request ready', {
+      userId: request.userId,
+      difficulty: request.difficulty,
+      trainingGoal: request.trainingGoal
+    });
+    this.snackBar.open('Generando plan con IA...', undefined, { duration: 2000 });
+    this.cdr.markForCheck();
+
+    this.api.generatePlanFromAI(request)
+      .pipe(
+        finalize(() => {
+          this.isGenerating = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          console.log('[AI] generatePlanFromAI accepted', {
+            userId: request.userId,
+            elapsedMs: Date.now() - requestStartMs,
+            response
+          });
+          // Close dialog and notify planner to start polling
+          this.dialogRef.close({ started: true, executionId: response.executionId });
+        },
+        error: (error) => {
+          console.error('[AI] generatePlanFromAI failed to start', {
+            userId: request.userId,
+            elapsedMs: Date.now() - requestStartMs,
+            error
+          });
+          this.snackBar.open('Error al iniciar la generación del plan. Intenta nuevamente.', undefined, { duration: 3500 });
+        }
+      });
   }
 
-
+  private buildSessionBlueprint(formValue: any): { name: string; targets: string[] }[] {
+    return formValue.sessionBlueprint;
+  }
 
   // Get form field error messages
   getFieldError(fieldName: string): string {

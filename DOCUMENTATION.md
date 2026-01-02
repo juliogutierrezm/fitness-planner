@@ -290,29 +290,82 @@ canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
 }
 ```
 
-### Generar planes con IA
+### Generar planes con IA (Diálogo Parametric)
 ```typescript
-// Uso del PlannerComponent para generación con IA
+// Uso del PlannerComponent para generación con IA usando diálogo parametric
 openAIDialog() {
-  const dialogRef = this.dialog.open(AiPromptDialogComponent, {
-    width: '600px',
-    data: { userPrompt: '' }
+  const dialogRef = this.dialog.open(AiParametricDialogComponent, {
+    width: '1000px',
+    maxWidth: '95vw',
+    maxHeight: '90vh',
+    data: {
+      userId: this.selectedUser?.id,
+      userProfile: this.selectedUser,
+      userAge: this.selectedUser?.age
+    }
   });
 
   dialogRef.afterClosed().subscribe(result => {
-    if (result) {
-      this.runGenerateAI(result);
+    if (result?.executionArn) {
+      this.handleAIGeneration(result);
     }
   });
 }
 
-private async runGenerateAI(userPrompt: string) {
-  // Llamada a Lambda function con Claude 3
-  const response = await this.exerciseApi.generateWorkoutPlanAI({
-    prompt: userPrompt,
-    // ... otros parámetros
-  });
-  this.createSessionsFromAI(response);
+private handleAIGeneration(result: any) {
+  // Crear plan básico con metadatos
+  const planData = {
+    name: result.planFormData.name,
+    objective: result.planFormData.objective,
+    sessions: result.planFormData.sessions,
+    generalNotes: result.planFormData.generalNotes
+  };
+
+  // Iniciar polling para el resultado de IA
+  this.pollAIResult(result.executionArn, planData);
+}
+
+private pollAIResult(executionArn: string, planData: any) {
+  // Polling cada 3 segundos hasta que el plan esté listo
+  const pollInterval = setInterval(() => {
+    this.exerciseApi.checkAIPlanStatus(executionArn).subscribe(status => {
+      if (status.status === 'SUCCEEDED') {
+        clearInterval(pollInterval);
+        this.loadCompletedPlan(status.planId);
+      } else if (status.status === 'FAILED') {
+        clearInterval(pollInterval);
+        this.showError('Error en la generación del plan');
+      }
+    });
+  }, 3000);
+}
+```
+
+### Interfaz AiPlanRequest
+```typescript
+// Interfaz para solicitudes de generación de planes con IA
+export interface AiPlanRequest {
+  gender: string;                    // Género del usuario
+  difficulty: string;                // Nivel de dificultad ('Principiante', 'Intermedio', 'Avanzado', etc.)
+  trainingGoal: string;              // Objetivo de entrenamiento ('Hipertrofia', 'Pérdida de peso', etc.)
+  totalSessions: number;             // Número total de sesiones por semana
+  sessionDuration: number;           // Duración de cada sesión en minutos
+  availableEquipment: string[];      // Equipo disponible para entrenar
+  excludeMuscles: string[];          // Grupos musculares a excluir
+  includeSupersets: boolean;         // Incluir superseries en el plan
+  includeMobility: boolean;          // Incluir trabajo de movilidad
+  expectedExercisesPerSession: number; // Número esperado de ejercicios por sesión
+  sessionBlueprint: {                // Plano de sesiones personalizado
+    name: string;                    // Nombre de la sesión
+    targets: string[];               // Grupos musculares objetivo
+  }[];
+  generalNotes: string;              // Notas generales del plan
+  userId?: string;                   // ID del usuario (opcional)
+  age?: number;                      // Edad del usuario (opcional)
+  userContext?: {                    // Contexto adicional del usuario
+    injuries?: string;               // Lesiones o limitaciones
+    notes?: string;                  // Notas adicionales
+  };
 }
 ```
 
@@ -400,7 +453,7 @@ const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "p
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
 - **Dashboard principal**: Completo - Navegación básica implementada
 - **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
-- **Generación de planes con IA**: Completo - Diálogo parametric con interfaz avanzada para configuración detallada de planes
+- **Generación de planes con IA**: Incompleto - Diálogo parametric implementado, pero la recuperación de planes generados desde S3 no funciona correctamente. El polling no trae los planes de entrenamiento creados por IA.
 - **Previsualización de planes**: Completo - Vista previa inline y diálogos para planes de entrenamiento
 - **Vista de planes anteriores**: Completo - Diálogo para reutilizar planes existentes
 - **Previsualización de ejercicios**: Completo - Diálogos para ver detalles y videos de ejercicios

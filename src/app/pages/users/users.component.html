@@ -3,7 +3,14 @@
     <h2>Usuarios</h2>
   </div>
 
-  <mat-card class="form-card" *ngIf="canCreate">
+  <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
+    <button mat-raised-button color="primary" (click)="showCreateForm = true">
+      <mat-icon>add</mat-icon>
+      Crear nuevo usuario
+    </button>
+  </div>
+
+  <mat-card class="form-card" *ngIf="canCreate && showCreateForm">
     <h3>Crear usuario</h3>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-grid">
@@ -19,9 +26,32 @@
           <mat-label>Apellidos</mat-label>
           <input matInput formControlName="familyName" />
         </mat-form-field>
-        <mat-form-field appearance="outline">
+        <!-- Campo Teléfono -->
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>Teléfono</mat-label>
-          <input matInput formControlName="telephone" type="tel" />
+          <input matInput formControlName="telephone" placeholder="+56912345678" type="tel" required>
+          <mat-error *ngIf="form.get('telephone')?.hasError('required')">
+            El teléfono es obligatorio
+          </mat-error>
+        </mat-form-field>
+        <!-- Campo Género -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Género</mat-label>
+          <mat-select formControlName="gender" required>
+            <mat-option value="Masculino">Masculino</mat-option>
+            <mat-option value="Femenino">Femenino</mat-option>
+            <mat-option value="Otro">Otro</mat-option>
+            <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
+          </mat-select>
+          <mat-error *ngIf="form.get('gender')?.hasError('required')">
+            El género es obligatorio
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Fecha de nacimiento</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="dateOfBirth">
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
         </mat-form-field>
         <mat-form-field appearance="outline" *ngIf="isAdmin">
           <mat-label>Rol</mat-label>
@@ -31,7 +61,21 @@
           </mat-select>
         </mat-form-field>
       </div>
+      <div class="form-grid">
+        <div class="injury-section">
+          <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Lesiones o limitaciones</mat-label>
+            <textarea matInput formControlName="injuries" rows="3" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Notas internas</mat-label>
+          <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas del entrenador"></textarea>
+        </mat-form-field>
+      </div>
       <div class="actions">
+        <button mat-stroked-button type="button" (click)="showCreateForm = false">Cancelar</button>
         <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Guardar</button>
       </div>
     </form>
@@ -81,9 +125,32 @@
             <mat-label>Apellidos</mat-label>
             <input matInput formControlName="familyName" />
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <!-- Campo Teléfono -->
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Teléfono</mat-label>
-            <input matInput formControlName="telephone" type="tel" />
+            <input matInput formControlName="telephone" placeholder="+56912345678" type="tel" required>
+            <mat-error *ngIf="editForm.get('telephone')?.hasError('required')">
+              El teléfono es obligatorio
+            </mat-error>
+          </mat-form-field>
+          <!-- Campo Género -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Género</mat-label>
+            <mat-select formControlName="gender" required>
+              <mat-option value="Masculino">Masculino</mat-option>
+              <mat-option value="Femenino">Femenino</mat-option>
+              <mat-option value="Otro">Otro</mat-option>
+              <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
+            </mat-select>
+            <mat-error *ngIf="editForm.get('gender')?.hasError('required')">
+              El género es obligatorio
+            </mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Fecha de nacimiento</mat-label>
+            <input matInput [matDatepicker]="editPicker" formControlName="dateOfBirth">
+            <mat-datepicker-toggle matSuffix [for]="editPicker"></mat-datepicker-toggle>
+            <mat-datepicker #editPicker></mat-datepicker>
           </mat-form-field>
           <mat-form-field appearance="outline" *ngIf="isAdmin">
             <mat-label>Rol</mat-label>
@@ -92,6 +159,17 @@
               <mat-option value="trainer">Entrenador</mat-option>
               <mat-option value="admin">Admin</mat-option>
             </mat-select>
+          </mat-form-field>
+          <div class="injury-section">
+            <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Lesiones o limitaciones</mat-label>
+              <textarea matInput formControlName="injuries" rows="2" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Notas internas</mat-label>
+            <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas del entrenador"></textarea>
           </mat-form-field>
           <div class="edit-actions">
             <button mat-stroked-button type="button" (click)="cancelEdit()">Cancelar</button>

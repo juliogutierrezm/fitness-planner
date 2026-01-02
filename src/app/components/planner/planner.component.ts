@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
@@ -18,12 +18,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { Inject } from '@angular/core';
-import { finalize } from 'rxjs/operators';
-import { timer, switchMap, takeWhile, filter } from 'rxjs';
+import { interval, Subscription, of } from 'rxjs';
+import { switchMap, catchError, tap } from 'rxjs/operators';
+
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
@@ -31,9 +31,12 @@ import { PreviousPlansDialogComponent } from './previous-plans-dialog.component'
 import { PlanPreviewDialogComponent } from './plan-preview-dialog.component';
 import { AiPromptDialogComponent } from './ai-prompt-dialog.component';
 import { AiParametricDialogComponent } from './ai-parametric-dialog.component';
+import { AiGenerationDialogComponent } from './ai-generation-dialog.component';
 import { ExercisePreviewDialogComponent } from './exercise-preview-dialog.component';
+import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
-import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions } from '../../shared/models';
+import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
+import { calculateAge } from '../../shared/shared-utils';
 
 
 
@@ -67,7 +70,7 @@ import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions } from '../
   templateUrl: './planner.component.html',
   styleUrls: ['./planner.component.scss']
 })
-export class PlannerComponent implements OnInit {
+export class PlannerComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
@@ -77,7 +80,8 @@ export class PlannerComponent implements OnInit {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: ''
+    equipmentTypeFilter: '',
+    functionalOnly: false
   };
 
   // Filter options populated from data
@@ -100,10 +104,6 @@ export class PlannerComponent implements OnInit {
   planId: string | null = null;
   isEditMode = false;
   liveMessage = '';
-  isGenerating = false;
-  generationStep = '';
-  generationStepIndex = 0;
-  currentExecutionArn = '';
   previousPlans: any[] = [];
   selectedPreviewPlan: any | null = null;
   private readonly prevLimit = 8;
@@ -111,16 +111,32 @@ export class PlannerComponent implements OnInit {
   clients: AppUser[] = [];
   isSpecificUser = false;
   isClientNameReadonly = false;
-  private generationSteps = [
-    'Estamos creando tu plan de entrenamiento con IA...',
-    'Generando sesiones de entrenamiento...',
-    'Seleccionando ejercicios apropiados...',
-    'Ajustando series y repeticiones...',
-    'Optimizando tiempos de descanso...',
-    'Finalizando plan personalizado...'
-  ];
-  private stepInterval: any;
-  private aiTempIdCounter = 0;
+  userProfile: AppUser | null = null;
+  userAge: number | null = null;
+
+  // AI generation state
+  isGenerating: boolean = false;
+  currentAiStep?: AiStep;
+  private pollingSub?: Subscription;
+  private currentUserId: string | null = null;
+  currentExecutionId!: string;
+  private aiGenDialogRef: any = null;
+  /**
+   * Purpose: track AI dialog flow timing + last visible signal for debugging.
+   * Input: set on user interaction; Output: consumed by recordAiFlowSignal and template.
+   * Error handling: none; direct state updates only.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private aiFlowStartMs: number | null = null;
+  aiFlowSignal: string | null = null;
+  /**
+   * Purpose: store AI generation start timestamp to filter stale polling results.
+   * Input/Output: set on startAIGeneration; used in startPolling comparisons.
+   * Error handling: null prevents accepting plans without valid timestamps.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private aiGenerationStartedAt: number | null = null;
+
 
   constructor(
     private fb: FormBuilder,
@@ -132,250 +148,243 @@ export class PlannerComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private userApi: UserApiService
-  ) {}
+  ) {
+    console.log('PlannerComponent constructor called');
+  }
 
-  // Abre un diálogo parametrico para configurar el plan con IA
-  openAIDialog() {
-    const ref = this.dialog.open(AiParametricDialogComponent, {
-      width: '1000px',
-      maxWidth: '95vw',
-      maxHeight: '90vh',
-      data: {}
-    });
-    ref.afterClosed().subscribe((result?: { executionArn: string; planFormData?: any }) => {
-      if (result?.executionArn && result?.planFormData) {
-        // Auto-fill form with data from AI dialog
-        this.form.patchValue({
-          objective: result.planFormData.objective,
-          sessionCount: result.planFormData.sessions,
-          notes: result.planFormData.generalNotes
-        });
-        // Update userName with generated plan name if not in edit mode
-        if (!this.isEditMode) {
-          this.form.patchValue({ userName: result.planFormData.name });
+  // Load user profile and calculate age
+  loadUser(userId: string): void {
+    this.userApi.getUserById(userId).subscribe(user => {
+      // Validate response - check if it's a valid user object with id
+      if (!user || !user.id) {
+        console.error('Invalid user response:', user);
+        // If response contains error message, log it specifically
+        if (user && (user as any).message === 'userId requerido') {
+          console.error('API returned error: userId requerido for userId:', userId);
         }
-        // Start polling for the plan
-        this.startPollingPlan(result.executionArn);
+        // Don't assign userProfile if invalid
+        this.userProfile = null;
+        this.userAge = null;
+        this.form.patchValue({ userName: '' });
+        this.cdr.markForCheck();
+        return;
       }
+
+      this.userProfile = user;
+      this.userAge = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
+      console.log('Loaded user profile:', userId, user);
+
+      // Update userName in form
+      const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
+      this.form.patchValue({ userName: displayName });
+
+      this.cdr.markForCheck();
     });
   }
 
-  // Polling implementation for AI plan generation
-  startPollingPlan(executionArn: string): void {
-    this.isGenerating = true;
-    this.currentExecutionArn = executionArn;
-    this.generationStep = 'Generando plan con IA...';
+  openAIDialog(): void {
+    console.log('Click en "Generar plan"');
+    this.aiFlowStartMs = Date.now();
+    this.recordAiFlowSignal('ai-dialog-click', 'openAIDialog');
+    const userId = this.userProfile?.id;
+    if (!userId) {
+      console.warn('Cannot open AI dialog: user profile not loaded');
+      this.recordAiFlowSignal('ai-dialog-blocked', 'missing-user');
+      this.snackBar.open('Debe cargar un usuario antes de generar un plan con IA.', undefined, { duration: 4000 });
+      return;
+    }
+    this.currentUserId = userId;
+    console.log('[AI] Dialog opened with userId', userId);
 
-    timer(0, 3000).pipe(
-      switchMap(() => this.api.getGeneratedPlan(executionArn)),
-      filter(res => res.status !== 'running'),
-      takeWhile(res => res.status === 'running', true)
-    ).subscribe({
-      next: (res) => {
-        if (res.status === 'succeeded') {
-          // Plan is ready, load it into the planner
-          this.loadPlanIntoPlanner(res);
-          this.isGenerating = false;
-          this.generationStep = '';
-          this.currentExecutionArn = '';
-          this.snackBar.open('Plan generado exitosamente!', undefined, { duration: 2000 });
-        } else if (res.status === 'failed') {
-          this.isGenerating = false;
-          this.generationStep = '';
-          this.currentExecutionArn = '';
-          this.snackBar.open('Error al generar el plan. Por favor, inténtalo de nuevo.', undefined, { duration: 4000 });
-        }
-        this.cdr.markForCheck();
-      },
-      error: (error) => {
-        console.error('Error polling plan:', error);
-        this.isGenerating = false;
-        this.generationStep = '';
-        this.currentExecutionArn = '';
-        this.snackBar.open('Error de conexión. Por favor, verifica tu conexión a internet.', undefined, { duration: 4000 });
-        this.cdr.markForCheck();
+    const dialogRef = this.dialog.open(AiParametricDialogComponent, {
+      width: '900px',
+      disableClose: true,
+      data: { userId, userProfile: this.userProfile, userAge: this.userAge }
+    });
+
+    dialogRef.afterClosed().subscribe((result: { started?: boolean; executionId?: string } | null) => {
+      console.log('Cierre del modal', result);
+      if (!result?.executionId) {
+        console.warn('[AI] Dialog closed without executionId');
+        return;
       }
+
+      this.currentExecutionId = result.executionId;
+      this.startPolling();
     });
   }
 
-  // Load generated plan into planner
-  loadPlanIntoPlanner(planResponse: any): void {
-    const sessions = this.createSessionsFromAI(planResponse);
-    if (!sessions.length) {
-      this.snackBar.open('No se pudo interpretar el plan generado.', undefined, { duration: 3000 });
+  /**
+   * Purpose: emit a visible + logged signal for the AI dialog flow.
+   * Input: stage (string), detail (string | null | undefined). Output: void.
+   * Error handling: none; state updates and logging only.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private recordAiFlowSignal(stage: string, detail?: string | null): void {
+    const elapsedMs = this.aiFlowStartMs ? Date.now() - this.aiFlowStartMs : undefined;
+    const message = detail ? `${stage}: ${detail}` : stage;
+    this.aiFlowSignal = message;
+    console.log('[AI_FLOW]', { stage, detail, elapsedMs });
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: apply AI plan sessions (array or wrapped object) to planner state.
+   * Input/Output: accepts sessions array or plan object; updates form + sessions.
+   * Error handling: assumes caller validates non-empty sessions.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private applyPlanToPlanner(aiPlan: any): void {
+    const sessions = Array.isArray(aiPlan)
+      ? aiPlan
+      : Array.isArray(aiPlan?.sessions)
+        ? aiPlan.sessions
+        : [];
+    const patch: Partial<{ userName: string; objective: string; sessionCount: number; notes: string }> = {
+      sessionCount: sessions.length
+    };
+
+    if (!Array.isArray(aiPlan)) {
+      if (aiPlan?.name) patch.userName = aiPlan.name;
+      if (aiPlan?.objective) patch.objective = aiPlan.objective;
+      if (aiPlan?.generalNotes) patch.notes = aiPlan.generalNotes;
+    }
+
+    // Update form with plan data
+    this.form.patchValue(patch);
+
+    // Normalize equipment_type to equipment in all sessions and items
+    const normalizedSessions = sessions.map((session: Session) => ({
+      ...session,
+      items: session.items.map((item: PlanItem) => ({
+        ...item,
+        equipment: item.equipment ?? item.equipment_type ?? ''
+      }))
+    }));
+
+    // Load sessions
+    this.sessions = normalizedSessions;
+    this.rebuildDropLists();
+    this.persist();
+    this.applyUiState();
+
+    this.snackBar.open('Plan de IA cargado exitosamente!', undefined, { duration: 2000 });
+    this.cdr.markForCheck();
+  }
+
+  private resetAiGenerationState(): void {
+    this.stopPolling();
+    this.isGenerating = false;
+    this.currentAiStep = undefined;
+    this.aiGenerationStartedAt = null;
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
+
+
+  startPolling() {
+    if (!this.currentUserId || !this.currentExecutionId) {
+      console.error('[AI] Missing userId or executionId for polling');
       return;
     }
 
-    this.sessions = sessions;
-    const patch: any = { sessionCount: this.sessions.length };
+    console.log(
+      '[AI] Starting polling for execution:',
+      this.currentExecutionId
+    );
 
-    // Use generalNotes from the response if available
-    const generalNotes = planResponse.generalNotes ||
-                        (typeof planResponse.generalNotes === 'string' && planResponse.generalNotes.trim());
-
-    if (generalNotes) {
-      patch.notes = generalNotes;
-    }
-
-    this.form.patchValue(patch);
-    this.rebuildDropLists();
-    this.persist();
-  }
-
-  // Genera plan con indicador de carga mejorado
-  private runGenerateAI(params: any) {
     this.isGenerating = true;
-    this.generationStepIndex = 0;
-    this.generationStep = this.generationSteps[0];
 
-    this.startStepRotation();
+    // Open the blocking modal dialog
+    this.aiGenDialogRef = this.dialog.open(AiGenerationDialogComponent, {
+      disableClose: true,
+      autoFocus: false,
+      panelClass: 'ai-generation-dialog',
+      backdropClass: 'ai-generation-backdrop',
+      width: '760px',
+      maxWidth: '92vw',
+      data: { currentAiStep: this.currentAiStep }
+    });
 
-    this.api.generateWorkoutPlanAI(params)
-      .pipe(finalize(() => {
-        this.isGenerating = false;
-        this.stopStepRotation();
-        this.generationStep = '';
-        this.cdr.markForCheck();
-      }))
-      .subscribe(res => {
-        const sessionsFromAI = this.createSessionsFromAI(res);
-        if (!sessionsFromAI.length) {
-          this.snackBar.open('No se pudo interpretar la respuesta de la IA.', undefined, { duration: 3000 });
-          return;
-        }
+    this.pollingSub = interval(2500).pipe(
+      switchMap(() =>
+        this.api
+          .pollPlanByExecution(
+            this.currentUserId!,
+            this.currentExecutionId
+          )
+          .pipe(
+            catchError(err => {
+              if (err.status === 404) {
+                console.log('[AI] Plan not ready yet, continuing polling');
+                return of(null);
+              }
 
-        this.sessions = sessionsFromAI;
-        const patch: any = { sessionCount: this.sessions.length };
+              console.error('[AI] Polling error', err);
+              return of(null);
+            })
+          )
+      )
+  ).subscribe(res => {
+    if (!res) return;
 
-        // Use generalNotes from the response or params
-        const generalNotes = params.generalNotes ||
-                           (typeof res?.generalNotes === 'string' && res.generalNotes.trim());
-
-        if (generalNotes) {
-          patch.notes = generalNotes;
-        }
-
-        this.form.patchValue(patch);
-        this.rebuildDropLists();
-        this.persist();
-        this.snackBar.open('Plan generado exitosamente!', undefined, { duration: 2000 });
-        this.cdr.markForCheck();
-      });
-  }
-
-  private createSessionsFromAI(res: any): Session[] {
-    this.aiTempIdCounter = 0;
-
-    const plan = Array.isArray(res?.plan) ? res.plan : [];
-    const planLegacy = Array.isArray(res?.planLegacy) ? res.planLegacy : [];
-    const source = plan.length ? plan : planLegacy;
-
-    return source.map((day: any, idx: number) => ({
-      id: idx + 1,
-      name: day?.name || day?.day || 'Sesión ' + (idx + 1),
-      items: this.normaliseAiItems(day?.items, plan.length > 0)
-    }));
-  }
-
-  private normaliseAiItems(items: any, treatGroups: boolean): PlanItem[] {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-    return items
-      .map(item => this.normaliseAiItem(item, treatGroups))
-      .filter((item: PlanItem | null): item is PlanItem => !!item);
-  }
-
-  private normaliseAiItem(raw: any, treatGroups: boolean): PlanItem | null {
-    if (!raw) {
-      return null;
-    }
-
-    if (treatGroups && (raw.isGroup || Array.isArray(raw.children))) {
-      const children = Array.isArray(raw.children)
-        ? raw.children
-            .map((child: any) => this.normaliseAiItem({ ...child, isGroup: false }, treatGroups))
-            .filter((child: PlanItem | null): child is PlanItem => !!child)
-        : [];
-
-      if (!children.length) {
-        return null;
+    // 🔁 Estado intermedio: continuar polling
+    if (res.status === 'IN_PROGRESS') {
+      console.log('[AI] Generation in progress:', res.currentStep);
+      this.currentAiStep = res.currentStep;
+      // Update dialog data with current step
+      if (this.aiGenDialogRef) {
+        this.aiGenDialogRef.componentInstance.data = { currentAiStep: this.currentAiStep };
       }
-
-      return {
-        ...(raw as any),
-        id: this.ensureAiId(raw.id, 'group'),
-        name: raw.name || raw.displayName || 'Superserie',
-        equipment: '',
-        sets: this.ensureAiNumber(raw.sets, children[0]?.sets ?? 3),
-        reps: this.ensureAiReps(raw.reps, children[0]?.reps ?? 10),
-        rest: this.ensureAiNumber(raw.rest, children[0]?.rest ?? 60),
-        weight: typeof raw.weight === 'number' ? raw.weight : undefined,
-        isGroup: true,
-        selected: false,
-        children
-      };
-    }
-
-    const base: PlanItem = {
-      ...(raw as any),
-      id: this.ensureAiId(raw.id, 'item'),
-      name: raw.name || 'Ejercicio',
-      equipment: raw.equipment || '',
-      sets: this.ensureAiNumber(raw.sets, 3),
-      reps: this.ensureAiReps(raw.reps, 10),
-      rest: this.ensureAiNumber(raw.rest, 60),
-      weight: typeof raw.weight === 'number' ? raw.weight : undefined,
-      isGroup: false,
-      selected: false
-    };
-
-    delete (base as any).children;
-    return base;
-  }
-
-  private ensureAiId(source: any, prefix: 'item' | 'group' = 'item'): string {
-    if (typeof source === 'string' && source.trim()) {
-      return source.trim();
-    }
-    if (typeof source === 'number' && Number.isFinite(source)) {
-      return source.toString();
-    }
-    const suffix = Date.now().toString(36) + '-' + this.aiTempIdCounter++;
-    return prefix + '-' + suffix;
-  }
-
-  private ensureAiNumber(value: any, fallback: number): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-
-  private ensureAiReps(value: any, fallback: number | string): number | string {
-    if (typeof value === 'number' || typeof value === 'string') {
-      return value;
-    }
-    return fallback;
-  }
-
-  private startStepRotation() {
-    this.stepInterval = setInterval(() => {
-      this.generationStepIndex = (this.generationStepIndex + 1) % this.generationSteps.length;
-      this.generationStep = this.generationSteps[this.generationStepIndex];
       this.cdr.markForCheck();
-    }, 2000); // Change message every 2 seconds
+      return; // ⚠️ NO detener polling
+    }
+
+    // ✅ Estado final: aplicar plan y detener polling
+    if (res.status === 'COMPLETED') {
+      console.log('[AI] Generation completed, applying plan');
+
+      this.applyPlanToPlanner(res.plan);
+      this.stopPolling();
+      this.isGenerating = false;
+      // Close the modal dialog
+      if (this.aiGenDialogRef) {
+        this.aiGenDialogRef.close();
+        this.aiGenDialogRef = null;
+      }
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // 🟡 Cualquier otro estado se ignora
+  });
   }
 
-  private stopStepRotation() {
-    if (this.stepInterval) {
-      clearInterval(this.stepInterval);
-      this.stepInterval = null;
+  private stopPolling(): void {
+    if (this.pollingSub) {
+      this.pollingSub.unsubscribe();
+      this.pollingSub = undefined;
+      console.log('[AI] Polling stopped');
     }
   }
+
+  // REMOVED: loadFinalPlan method - plan now comes from polling
+
+  private getGenderFromUser(user: AppUser): string {
+    // For now, we'll default to 'Masculino' since the form defaults to that
+    // In a real implementation, you might want to add gender to the user model
+    return 'Masculino';
+  }
+
+
 
   ngOnInit() {
     this.planId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.planId;
-
+this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     this.form = this.fb.group({
       userName: [''],
       date: [null],
@@ -385,37 +394,26 @@ export class PlannerComponent implements OnInit {
       objective: ['']
     });
 
+    // Read userId from queryParams and load user immediately if valid
+    const qpUserId = this.route.snapshot.queryParamMap.get('userId');
+    this.isSpecificUser = !!qpUserId;
+    if (qpUserId && qpUserId.trim()) {
+      this.form.patchValue({ targetUserId: qpUserId });
+      this.loadUser(qpUserId);
+    }
+
     // Subscribe to targetUserId changes to populate userName and set readonly
     this.form.get('targetUserId')!.valueChanges.subscribe(userId => {
       this.isClientNameReadonly = !!userId;
-      if (userId) {
-        this.userApi.getUserById(userId).subscribe(user => {
-          if (user) {
-            const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
-            this.form.patchValue({ userName: displayName });
-            this.cdr.markForCheck();
-          }
-        });
+      if (userId && userId.trim()) {
+        this.loadUser(userId);
       } else {
+        this.userProfile = null;
+        this.userAge = null;
         this.form.patchValue({ userName: '' });
         this.cdr.markForCheck();
       }
     });
-
-    // Check if arriving from user detail
-    const qpUserId = this.route.snapshot.queryParamMap.get('userId');
-    this.isSpecificUser = !!qpUserId;
-    if (qpUserId) {
-      this.form.patchValue({ targetUserId: qpUserId });
-      // Fetch user details to prefill userName
-      this.userApi.getUserById(qpUserId).subscribe(user => {
-        if (user) {
-          const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
-          this.form.patchValue({ userName: displayName });
-          this.cdr.markForCheck();
-        }
-      });
-    }
 
     this.api.getExerciseLibrary().subscribe(libraryResponse => {
       // Handle DynamoDB format if needed and flatten data
@@ -520,7 +518,8 @@ export class PlannerComponent implements OnInit {
       searchValue: '',
       categoryFilter: '',
       muscleGroupFilter: '',
-      equipmentTypeFilter: ''
+      equipmentTypeFilter: '',
+      functionalOnly: false
     };
     this.applyCombinedFilter();
   }
@@ -556,7 +555,8 @@ export class PlannerComponent implements OnInit {
           searchValue: filters.searchValue || '',
           categoryFilter: filters.categoryFilter || '',
           muscleGroupFilter: filters.muscleGroupFilter || '',
-          equipmentTypeFilter: filters.equipmentTypeFilter || ''
+          equipmentTypeFilter: filters.equipmentTypeFilter || '',
+          functionalOnly: filters.functionalOnly || false
         };
       }
     } catch (error) {
@@ -609,7 +609,10 @@ export class PlannerComponent implements OnInit {
       const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
         this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
 
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
+      // Functional filter
+      const matchesFunctional = !this.currentFilters.functionalOnly || exercise.functional === true;
+
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesFunctional;
     });
 
     this.saveFiltersToStorage();
@@ -681,32 +684,7 @@ export class PlannerComponent implements OnInit {
 
 
 
-  generateWithAI() {
-    const userPrompt = prompt('Describe el objetivo del plan (ej: Principiante, 4 días, fuerza + movilidad)');
-    if (!userPrompt) return;
-
-    this.api.generateWorkoutPlanAI(userPrompt).subscribe(res => {
-      if (res?.plan) {
-        this.sessions = res.plan.map((day: any, idx: number) => ({
-          id: idx + 1,
-          name: day.day,
-          items: day.items.map((ex: any) => ({
-            id: Date.now() + Math.random(),
-            name: ex.name,
-            equipment: '', // si no viene, se puede dejar vacío
-            sets: ex.sets,
-            reps: ex.reps,
-            rest: ex.rest,
-            weight: ex.weight,
-            isGroup: false,
-            selected: false
-          }))
-        }));
-        this.form.patchValue({ sessionCount: this.sessions.length });
-        this.persist();
-      }
-    });
-  }
+  // REMOVED: generateWithAI method that used forbidden generateWorkoutPlanAI
 
   openPreviewInline(plan: any) { this.selectedPreviewPlan = plan; this.cdr.markForCheck(); }
   closePreviewInline() { this.selectedPreviewPlan = null; this.cdr.markForCheck(); }
@@ -786,6 +764,13 @@ export class PlannerComponent implements OnInit {
   drop(event: CdkDragDrop<any, any>, session?: Session) {
     const prevId = event.previousContainer.id;
     const currId = event.container.id;
+    const draggedItem = event.item.data;
+
+    // Handle child items being dragged out of groups
+    if (this.isChildItem(draggedItem, session!)) {
+      this.handleChildDrop(draggedItem, event, session!);
+      return;
+    }
 
     if (prevId === currId && session) {
       moveItemInArray(session.items, event.previousIndex, event.currentIndex);
@@ -825,6 +810,31 @@ export class PlannerComponent implements OnInit {
       this.persist();
       this.cdr.detectChanges();
     }
+  }
+
+  private isChildItem(item: any, session: Session): boolean {
+    return session.items.some(group => group.isGroup && group.children?.includes(item));
+  }
+
+  private handleChildDrop(child: PlanItem, event: CdkDragDrop<any, any>, session: Session) {
+    // Find the group containing this child
+    const group = session.items.find(g => g.isGroup && g.children?.includes(child));
+    if (!group) return;
+
+    const childIndex = group.children!.indexOf(child);
+    group.children!.splice(childIndex, 1);
+
+    // If group becomes empty, remove it
+    if (group.children!.length === 0) {
+      const groupIndex = session.items.indexOf(group);
+      session.items.splice(groupIndex, 1);
+    }
+
+    // Insert child as normal item at target position
+    session.items.splice(event.currentIndex, 0, child);
+    session.items = [...session.items];
+    this.persist();
+    this.cdr.detectChanges();
   }
 
   removeItem(session: Session, idx: number) {
@@ -951,7 +961,7 @@ export class PlannerComponent implements OnInit {
   }
 
   canDragGroup(item: PlanItem): boolean {
-    return item.isGroup === true;
+    return true; // Superserie blocks are now draggable as units
   }
 
   removeGroup(session: Session, idx: number) {
@@ -1055,6 +1065,15 @@ export class PlannerComponent implements OnInit {
       }
     }
     return formValue.userName || 'Usuario sin asignar';
+  }
+
+  goBack(): void {
+    const userId = this.route.snapshot.queryParamMap.get('userId');
+    if (userId) {
+      this.router.navigate(['/users', userId]);
+    } else {
+      this.router.navigate(['/users']);
+    }
   }
 
 

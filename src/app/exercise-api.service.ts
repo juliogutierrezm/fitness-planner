@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
-import { Exercise, Session, AiPlanRequest } from './shared/models';
+import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
 import { sanitizeName } from './shared/shared-utils';
@@ -354,18 +354,35 @@ generateWorkoutPlanAI(promptOrParams: string | any): Observable<any> {
 }
 
 // New method for parameterized AI plan generation
-generatePlanFromAI(params: AiPlanRequest): Observable<{ status: string; executionArn: string }> {
-  return this.http.post<{ status: string; executionArn: string }>(
+generatePlanFromAI(params: AiPlanRequest): Observable<{ executionId: string }> {
+  return this.http.post<{ executionId: string }>(
     `${this.apiBase}/generatePlanFromAI`,
     params
   ).pipe(
-    tap(res => console.log('🚀 Plan generation started:', res)),
+    tap(response => console.log('🚀 Plan generation started with executionId:', response.executionId)),
     catchError(err => {
       console.error('❌ Error starting plan generation:', err);
-      return of({ status: 'failed', executionArn: '' });
+      throw err;
     })
   );
 }
+
+// Polling method for plan generation status - uses userId
+pollPlanGeneration(userId: string): Observable<any> {
+  return this.http.get(
+    `${this.apiBase}/generatePlanFromAI/${userId}`
+  );
+}
+
+pollPlanByExecution(
+  userId: string,
+  executionId: string
+): Observable<any> {
+  return this.http.get(
+    `${this.apiBase}/generatePlanFromAI/${userId}/${executionId}`
+  );
+}
+
 
 // Polling method to get generated plan
 getGeneratedPlan(executionArn: string): Observable<any> {
@@ -380,6 +397,16 @@ getGeneratedPlan(executionArn: string): Observable<any> {
     })
   );
 }
+
+getWorkoutPlanFromAI(userId: string): Observable<any> {
+  return this.http.get<any>(
+    `${this.apiBase}/generatePlanFromAI/${userId}`
+  );
+}
+
+// REMOVED: getAiProgress - forbidden method
+// REMOVED: getLatestPlan - forbidden method
+
 
   // =============== ADMIN/TRAINER AGGREGATES ===============
   getPlansByTrainer(trainerId?: string): Observable<any[]> {

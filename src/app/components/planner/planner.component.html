@@ -1,44 +1,33 @@
 <div class="main-container">
   <div class="planner-actions">
+    <div class="actions-left">
+      <button mat-icon-button (click)="goBack()" matTooltip="Volver a la lista de planes">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    </div>
     <div class="user-label">
       <span class="user-name">{{ getUserDisplayName() }}</span>
     </div>
     <div class="spacer"></div>
     <div class="actions-right">
-      <button mat-stroked-button color="accent" (click)="openAIDialog()" matTooltip="Generar plan con IA">
+      <button
+        mat-stroked-button
+        color="accent"
+        (click)="openAIDialog()"
+        [disabled]="!userProfile?.id"
+        [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+      >
         <mat-icon>psychology</mat-icon>
         Generar plan
       </button>
+      <span *ngIf="!userProfile?.id" class="ai-user-warning">Debe cargar un usuario antes de generar un plan con IA.</span>
       <button mat-raised-button color="primary" (click)="submitPlan()" matTooltip="Guardar el plan actual">
         <mat-icon>save</mat-icon>
         Guardar plan
       </button>
     </div>
   </div>
-  <div class="ai-overlay" *ngIf="isGenerating" role="dialog" aria-live="assertive" aria-label="Generando plan con IA">
-    <div class="ai-overlay-content">
-      <div class="ai-animation-container">
-        <div class="ai-brain-icon">
-          <mat-icon class="brain-icon">psychology</mat-icon>
-          <div class="thinking-dots">
-            <span class="dot dot-1"></span>
-            <span class="dot dot-2"></span>
-            <span class="dot dot-3"></span>
-          </div>
-        </div>
-        <div class="ai-dumbbell-icon">
-          <mat-icon class="dumbbell-icon">fitness_center</mat-icon>
-        </div>
-      </div>
-      <div class="ai-msg" [attr.aria-live]="generationStep ? 'polite' : null">
-        {{ generationStep || 'Estamos creando tu plan de entrenamiento con IA...' }}
-      </div>
-      <div class="ai-subtitle">Esto puede tomar unos momentos</div>
-      <div class="ai-progress-container">
-        <mat-progress-bar mode="indeterminate" color="primary" class="ai-progress-bar"></mat-progress-bar>
-      </div>
-    </div>
-  </div>
+
   <form [formGroup]="form" class="planner-header">
     <ng-container *ngIf="canAssignUser && !isSpecificUser">
       <mat-form-field appearance="outline">
@@ -125,8 +114,16 @@
           <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <div class="functional-filter">
+        <mat-checkbox [(ngModel)]="currentFilters.functionalOnly" (change)="onFilterChange()">
+          Solo funcionales
+        </mat-checkbox>
+      </div>
     </div>
   </div>
+
+
 
   <!-- Body -->
   <div class="planner-body">
@@ -235,248 +232,167 @@
             </div>
           </mat-card-header>
           <mat-card-content *ngIf="!s.collapsed">
-            <table mat-table [dataSource]="s.items" class="session-table">
-              <!-- Checkbox-->
-              <ng-container matColumnDef="select">
-                <th mat-header-cell *matHeaderCellDef>
-                  <mat-icon class="superserie-header-icon"
-                            [ngClass]="{'superserie-header-icon-active': hasSelectedItems(s)}"
-                            (click)="groupSelected(s)"
-                            [style.cursor]="hasSelectedItems(s) ? 'pointer' : 'not-allowed'"
-                            [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
-                            matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">link</mat-icon>
-                </th>
-                <td mat-cell *matCellDef="let item; let i = index" class="select-cell">
+            <table class="mat-table session-table">
+              <thead>
+                <tr class="mat-header-row">
+                  <th class="mat-header-cell">
+                    <mat-icon class="superserie-header-icon"
+                              [ngClass]="{'superserie-header-icon-active': hasSelectedItems(s)}"
+                              (click)="groupSelected(s)"
+                              [style.cursor]="hasSelectedItems(s) ? 'pointer' : 'not-allowed'"
+                              [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
+                              matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">link</mat-icon>
+                  </th>
+                  <th class="mat-header-cell">Ejercicio</th>
+                  <th class="mat-header-cell">Equipo</th>
+                  <th class="mat-header-cell">Sets</th>
+                  <th class="mat-header-cell">Reps</th>
+                  <th class="mat-header-cell">Rest</th>
+                  <th class="mat-header-cell">Peso</th>
+                  <th class="mat-header-cell">Acciones</th>
+                  <th class="mat-header-cell"></th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <ng-container *ngFor="let item of s.items; let i = index; trackBy: trackByItem">
                   <ng-container *ngIf="!item.isGroup">
-                    <mat-checkbox
-                      [(ngModel)]="item.selected"
-                      (change)="updateSelection(s)"
-                    ></mat-checkbox>
-                  </ng-container>
-                  <ng-container *ngIf="item.isGroup">
-                    <div class="superserie-container">
-                      <div class="superserie-child-row">
-                        <div class="group-actions">
-                          <button
-                            mat-icon-button
-                            class="unlink-action"
-                            (click)="ungroupGroup(s, i)"
-                            matTooltip="Desagrupar superserie"
-                          >
-                            <mat-icon>link_off</mat-icon>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
-
-
-                <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>Ejercicio</th>
-                  <td mat-cell *matCellDef="let item; let i = index" class="name-cell">
-                    <ng-container *ngIf="!item.isGroup">
-                      <span class="exercise-name-text" [matTooltip]="item.name_es || item.name">{{ item.name_es || item.name }}</span>
-                    </ng-container>
-                    <ng-container *ngIf="item.isGroup && item.children as children">
-                      <div class="superserie-container">
-                        <ng-container *ngFor="let child of children; let cIdx = index; trackBy: trackByChild">
-                          <div class="divider" *ngIf="cIdx > 0"></div>
-                          <div class="superserie-child-row">
-                            <span class="exercise-name-text" [matTooltip]="child.name_es || child.name">{{ child.name_es || child.name }}</span>
-                          </div>
-                        </ng-container>
-                      </div>
-                    </ng-container>
-                  </td>
-                </ng-container>
-              <!-- Equipo -->
-              <ng-container matColumnDef="equipment">
-                <th mat-header-cell *matHeaderCellDef>Equipo</th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <ng-container *ngIf="!item.isGroup">
-                    {{ item.equipment }}
-                  </ng-container>
-                  <ng-container *ngIf="item.isGroup && item.children as children">
-                    <div class="superserie-container">
-                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                        <div class="divider" *ngIf="childIdx > 0"></div>
-                        <div class="superserie-child-row">
-                          {{ child.equipment }}
-                        </div>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
-
-              <!-- Series -->
-              <ng-container matColumnDef="sets">
-                <th mat-header-cell *matHeaderCellDef>Sets</th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <ng-container *ngIf="!item.isGroup">
-                    <input class="sets-input"
-                      matInput
-                      type="number"
-                      [(ngModel)]="item.sets"
-                      (blur)="persist()"
-                    />
-                  </ng-container>
-                  <ng-container *ngIf="item.isGroup && item.children as children">
-                    <div class="superserie-container">
-                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                        <div class="divider" *ngIf="childIdx > 0"></div>
-                        <div class="superserie-child-row">
-                          <input class="sets-input"
-                            matInput
-                            type="number"
-                            [(ngModel)]="child.sets"
-                            (blur)="persist()"
-                          />
-                        </div>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
-
-              <!-- Reps -->
-              <ng-container matColumnDef="reps">
-                <th mat-header-cell *matHeaderCellDef>Reps</th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <ng-container *ngIf="!item.isGroup">
-                    <input class="sets-input"
-                      matInput
-                      type="text"
-                      [(ngModel)]="item.reps"
-                      (blur)="persist()"
-                    />
-                  </ng-container>
-                  <ng-container *ngIf="item.isGroup && item.children as children">
-                    <div class="superserie-container">
-                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                        <div class="divider" *ngIf="childIdx > 0"></div>
-                        <div class="superserie-child-row">
-                          <input class="sets-input"
-                            matInput
-                            type="text"
-                            [(ngModel)]="child.reps"
-                            (blur)="persist()"
-                          />
-                        </div>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
-
-              <!-- Descanso -->
-              <ng-container matColumnDef="rest">
-                <th mat-header-cell *matHeaderCellDef>Rest</th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <ng-container *ngIf="!item.isGroup">
-                    <input class="sets-input"
-                      matInput
-                      type="text"
-                      [(ngModel)]="item.rest"
-                      (blur)="persist()"
-                    />
-                  </ng-container>
-                  <ng-container *ngIf="item.isGroup && item.children as children">
-                    <div class="superserie-container">
-                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                        <div class="divider" *ngIf="childIdx > 0"></div>
-                        <div class="superserie-child-row">
-                          <input
-                            matInput class="sets-input"
-                            type="text"
-                            [(ngModel)]="child.rest"
-                            (blur)="persist()"
-                          />
-                        </div>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
-              <!-- Columna Peso -->
-            <ng-container matColumnDef="weight">
-              <th mat-header-cell *matHeaderCellDef>Peso</th>
-              <td mat-cell *matCellDef="let item; let i = index">
-                <!-- 1) Ejercicio individual -->
-                <ng-container *ngIf="!item.isGroup">
-                  <input matInput class="sets-input"
-                        type="text"
-                        [(ngModel)]="item.weight"
-                        (blur)="persist()" />
-                </ng-container>
-
-                <!-- 2) Superserie -->
-                <ng-container *ngIf="item.isGroup && item.children as children">
-                  <div class="superserie-container">
-                    <ng-container *ngFor="let child of children; let c = index; trackBy: trackByChild">
-                      <div class="divider" *ngIf="c > 0"></div>
-                      <div class="superserie-child-row">
+                    <tr cdkDrag
+                        [cdkDragData]="item"
+                        (cdkDragMoved)="onDragMoved($event)">
+                      <td class="mat-cell select-cell">
+                        <mat-checkbox
+                          [(ngModel)]="item.selected"
+                          (change)="updateSelection(s)"
+                        ></mat-checkbox>
+                      </td>
+                      <td class="mat-cell name-cell">
+                        <span class="exercise-name-text" [matTooltip]="item.name_es || item.name">{{ item.name_es || item.name }}</span>
+                      </td>
+                      <td class="mat-cell">
+                        {{ item.equipment }}
+                      </td>
+                      <td class="mat-cell">
+                        <input class="sets-input"
+                          matInput
+                          type="number"
+                          [(ngModel)]="item.sets"
+                          (blur)="persist()"
+                        />
+                      </td>
+                      <td class="mat-cell">
+                        <input class="sets-input"
+                          matInput
+                          type="text"
+                          [(ngModel)]="item.reps"
+                          (blur)="persist()"
+                        />
+                      </td>
+                      <td class="mat-cell">
+                        <input class="sets-input"
+                          matInput
+                          type="text"
+                          [(ngModel)]="item.rest"
+                          (blur)="persist()"
+                        />
+                      </td>
+                      <td class="mat-cell">
                         <input matInput class="sets-input"
                               type="text"
-                              [(ngModel)]="child.weight"
+                              [(ngModel)]="item.weight"
                               (blur)="persist()" />
-                      </div>
-                    </ng-container>
-                  </div>
-                </ng-container>
-              </td>
-            </ng-container>
-              <!-- Acciones -->
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Acciones</th>
-                <td mat-cell *matCellDef="let item; let i = index">
-                  <ng-container *ngIf="!item.isGroup">
-                    <button mat-icon-button (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
-                      <mat-icon>play_circle</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" (click)="removeItem(s, i)">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+                      </td>
+                      <td class="mat-cell">
+                        <button mat-icon-button (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
+                          <mat-icon>play_circle</mat-icon>
+                        </button>
+                        <button mat-icon-button color="warn" (click)="removeItem(s, i)">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                      <td class="mat-cell"></td>
+                    </tr>
                   </ng-container>
-                  <ng-container *ngIf="item.isGroup && item.children as children">
-                    <div class="superserie-container">
-                      <ng-container *ngFor="let child of children; let childIdx = index; trackBy: trackByChild">
-                        <div class="divider" *ngIf="childIdx > 0"></div>
-                        <div class="superserie-child-row">
-                          <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
-                            <mat-icon>play_circle</mat-icon>
-                          </button>
-                        </div>
-                      </ng-container>
-                    </div>
-                  </ng-container>
-                </td>
-              </ng-container>
 
-              <!-- Eliminar Superserie -->
-              <ng-container matColumnDef="superserieDelete">
-                <th mat-header-cell *matHeaderCellDef></th>
-                <td mat-cell *matCellDef="let item; let i = index">
                   <ng-container *ngIf="item.isGroup">
-                    <button mat-icon-button color="warn" (click)="removeItem(s, i)" matTooltip="Eliminar superserie">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+                    <!-- Superserie block rendered inline -->
+                    <tr class="superserie-block-row">
+                      <td colspan="9" class="superserie-block-cell">
+                        <div class="superserie-block" cdkDrag [cdkDragData]="item" (cdkDragMoved)="onDragMoved($event)">
+                          <div class="superserie-header">
+                            <span class="superserie-label">🔗 Superserie</span>
+                            <div class="superserie-actions">
+                              <button mat-icon-button color="warn" (click)="ungroupGroup(s, i)" matTooltip="Desagrupar superserie">
+                                <mat-icon>link_off</mat-icon>
+                              </button>
+                              <button mat-icon-button color="warn" (click)="removeItem(s, i)" matTooltip="Eliminar superserie">
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </div>
+                          </div>
+                          <div class="superserie-body">
+                            <table class="superserie-table">
+                              <tbody>
+                                <ng-container *ngFor="let child of item.children; let childIndex = index; trackBy: trackByChild">
+                                <tr class="superserie-child-row">
+                                    <td class="mat-cell select-cell">
+                                      <!-- No checkbox for child rows -->
+                                    </td>
+                                    <td class="mat-cell name-cell">
+                                      <span class="exercise-name-text" [matTooltip]="child.name_es || child.name">{{ child.name_es || child.name }}</span>
+                                    </td>
+                                    <td class="mat-cell">
+                                      {{ child.equipment }}
+                                    </td>
+                                    <td class="mat-cell">
+                                      <input class="sets-input"
+                                        matInput
+                                        type="number"
+                                        [(ngModel)]="child.sets"
+                                        (blur)="persist()"
+                                      />
+                                    </td>
+                                    <td class="mat-cell">
+                                      <input class="sets-input"
+                                        matInput
+                                        type="text"
+                                        [(ngModel)]="child.reps"
+                                        (blur)="persist()"
+                                      />
+                                    </td>
+                                    <td class="mat-cell">
+                                      <input class="sets-input"
+                                        matInput
+                                        type="text"
+                                        [(ngModel)]="child.rest"
+                                        (blur)="persist()"
+                                      />
+                                    </td>
+                                    <td class="mat-cell">
+                                      <input matInput class="sets-input"
+                                            type="text"
+                                            [(ngModel)]="child.weight"
+                                            (blur)="persist()" />
+                                    </td>
+                                    <td class="mat-cell">
+                                      <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
+                                        <mat-icon>play_circle</mat-icon>
+                                      </button>
+                                    </td>
+                                    <td class="mat-cell">
+                                      <!-- No delete action for child rows -->
+                                    </td>
+                                  </tr>
+                                </ng-container>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   </ng-container>
-                </td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions', 'superserieDelete']"></tr>
-              <tr
-                mat-row
-                *matRowDef="let row; columns: ['select', 'name', 'equipment', 'sets', 'reps', 'rest', 'weight', 'actions', 'superserieDelete']"
-                cdkDrag
-                [cdkDragData]="row"
-                [cdkDragDisabled]="row.isGroup && !canDragGroup(row)"
-                (cdkDragMoved)="onDragMoved($event)"
-                [ngClass]="{ 'superserie-group': row.isGroup }"
-              ></tr>
+                </ng-container>
+              </tbody>
             </table>
           </mat-card-content>
         </div>

@@ -11,9 +11,14 @@ export interface AppUser {
   givenName?: string;
   familyName?: string;
   telephone?: string;
+  gender?: string;      // Gender: 'Masculino', 'Femenino', 'Otro', 'Prefiero no decirlo'
   role: 'client' | 'trainer' | 'admin';
   companyId?: string;
   trainerId?: string; // owner trainer for independent trainers
+  dateOfBirth?: string; // ISO format: YYYY-MM-DD
+  noInjuries?: boolean;  // true if user explicitly has NO injuries
+  injuries?: string;    // Free text, optional (null when noInjuries=true)
+  notes?: string;       // Trainer internal notes, optional
   createdAt?: string;
 }
 
@@ -87,12 +92,38 @@ export class UserApiService {
     );
   }
 
-  getUserById(userId: string): Observable<AppUser | null> {
-    if (!userId) return of(null);
-    return this.http.get<AppUser>(`${this.base}/${encodeURIComponent(userId)}`).pipe(
-      catchError(err => { console.error('getUserById error', err); return of(null); })
-    );
-  }
+getUserById(userId: string): Observable<AppUser | null> {
+  if (!userId) return of(null);
+
+  const url = `${this.base}/${encodeURIComponent(userId)}`;
+  console.log('getUserById URL:', url);
+
+  return this.http.get<any>(url).pipe(
+    map(res => {
+      // Caso 1: backend ya devuelve el usuario directo
+      if (res && !res.body && res.id) {
+        return res as AppUser;
+      }
+
+      // Caso 2: API Gateway proxy { statusCode, body }
+      if (res && typeof res.body === 'string') {
+        try {
+          return JSON.parse(res.body) as AppUser;
+        } catch {
+          return null;
+        }
+      }
+
+      return null;
+    }),
+    catchError(err => {
+      console.error('getUserById error', err);
+      return of(null);
+    })
+  );
+}
+
+
 
   getWorkoutPlansByUserId(userId: string): Observable<any[]> {
     if (!userId) return of([]);

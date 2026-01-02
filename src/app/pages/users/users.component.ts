@@ -4,9 +4,12 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, Validators, FormGroup } 
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -32,7 +35,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     MatSelectModule,
+    MatCheckboxModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
@@ -52,6 +58,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   editingId: string | null = null;
   editForm!: FormGroup;
   isLoading = false;
+  showCreateForm = false;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -68,14 +75,23 @@ export class UsersComponent implements OnInit, OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       givenName: [''],
       familyName: [''],
-      telephone: [''],
-      role: ['client']
+      telephone: ['', Validators.required],
+      gender: ['', Validators.required],
+      role: ['client'],
+      dateOfBirth: [''],
+      noInjuries: [true],
+      injuries: [''],
+      notes: ['']
     });
   }
 
   ngOnInit() {
     this.form = this.formFactory();
     this.editForm = this.formFactory();
+
+    // Set up injuries field control based on noInjuries checkbox
+    this.setupInjuriesControl(this.form);
+    this.setupInjuriesControl(this.editForm);
 
     this.auth.currentUser$
       .pipe(takeUntil(this.destroy$))
@@ -112,6 +128,26 @@ export class UsersComponent implements OnInit, OnDestroy {
       });
   }
 
+  private setupInjuriesControl(form: FormGroup) {
+    const noInjuriesControl = form.get('noInjuries');
+    const injuriesControl = form.get('injuries');
+
+    if (noInjuriesControl && injuriesControl) {
+      noInjuriesControl.valueChanges.subscribe(noInjuries => {
+        if (noInjuries) {
+          injuriesControl.disable({ emitEvent: false });
+        } else {
+          injuriesControl.enable({ emitEvent: false });
+        }
+      });
+
+      // Set initial state
+      if (noInjuriesControl.value) {
+        injuriesControl.disable({ emitEvent: false });
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -119,17 +155,24 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   submit() {
     if (this.form.invalid) return;
+    const formValue = this.form.value;
     const payload: AppUser = {
-      email: this.form.value.email!,
-      givenName: this.form.value.givenName || '',
-      familyName: this.form.value.familyName || '',
-      telephone: this.form.value.telephone || '',
-      role: (this.isAdmin ? this.form.value.role : 'client') as any
+      email: formValue.email!,
+      givenName: formValue.givenName || '',
+      familyName: formValue.familyName || '',
+      telephone: formValue.telephone || '',
+      gender: formValue.gender || undefined,
+      role: (this.isAdmin ? formValue.role : 'client') as any,
+      dateOfBirth: formValue.dateOfBirth || undefined,
+      noInjuries: formValue.noInjuries,
+      injuries: formValue.noInjuries ? null : (formValue.injuries?.trim() || null),
+      notes: formValue.notes || undefined
     };
     this.api.createUser(payload).subscribe(res => {
       if (res) {
         this.snack.open('Usuario creado', 'Cerrar', { duration: 2000 });
-        this.form.reset({ email: '', givenName: '', familyName: '', telephone: '', role: 'client' });
+        this.form.reset({ email: '', givenName: '', familyName: '', telephone: '', gender: '', role: 'client', dateOfBirth: '', noInjuries: true, injuries: '', notes: '' });
+        this.showCreateForm = false;
         this.ngOnInit();
       } else {
         this.snack.open('No se pudo crear', 'Cerrar', { duration: 2500 });
@@ -168,7 +211,12 @@ export class UsersComponent implements OnInit, OnDestroy {
       givenName: u.givenName || '',
       familyName: u.familyName || '',
       telephone: u.telephone || '',
-      role: (u.role || 'client') as any
+      gender: u.gender || '',
+      role: (u.role || 'client') as any,
+      dateOfBirth: u.dateOfBirth || '',
+      noInjuries: u.noInjuries ?? false, // Default to false if not set
+      injuries: u.injuries || '',
+      notes: u.notes || ''
     });
     if (!this.isAdmin) { this.editForm.get('role')?.disable({ emitEvent: false }); }
     this.cdr.markForCheck();
@@ -181,13 +229,19 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   saveEdit(u: AppUser) {
     if (!this.editingId || !u?.id || this.editForm.invalid) return;
+    const editFormValue = this.editForm.value;
     const payload: AppUser = {
       id: u.id,
-      email: this.editForm.get('email')?.value || u.email,
-      givenName: this.editForm.get('givenName')?.value || '',
-      familyName: this.editForm.get('familyName')?.value || '',
-      telephone: this.editForm.get('telephone')?.value || '',
-      role: (this.isAdmin ? (this.editForm.get('role')?.value || u.role) : u.role) as any
+      email: editFormValue.email || u.email,
+      givenName: editFormValue.givenName || '',
+      familyName: editFormValue.familyName || '',
+      telephone: editFormValue.telephone || '',
+      gender: editFormValue.gender || u.gender,
+      role: (this.isAdmin ? editFormValue.role || u.role : u.role) as any,
+      dateOfBirth: editFormValue.dateOfBirth || u.dateOfBirth,
+      noInjuries: editFormValue.noInjuries,
+      injuries: editFormValue.noInjuries ? null : (editFormValue.injuries?.trim() || null),
+      notes: editFormValue.notes || u.notes
     };
     this.api.updateUser(payload).subscribe(res => {
       if (res !== null) {

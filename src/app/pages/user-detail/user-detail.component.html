@@ -23,8 +23,8 @@
 
     <div class="filters">
       <mat-form-field appearance="outline" class="q">
-        <mat-label>Buscar</mat-label>
-        <input matInput [(ngModel)]="q" (ngModelChange)="applyFilters()" placeholder="Título o notas" />
+        <mat-label>Objetivo</mat-label>
+        <input matInput [(ngModel)]="q" (ngModelChange)="applyFilters()" placeholder="Buscar objetivo" />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -57,16 +57,17 @@
     </div>
 
     <mat-accordion class="plans-accordion" multi>
-      <mat-expansion-panel *ngFor="let plan of viewPlans; let i = index; trackBy: getPlanId">
+      <mat-expansion-panel *ngFor="let plan of viewPlans; trackBy: getPlanId">
         <mat-expansion-panel-header>
           <div class="plan-header">
             <div class="left">
-              <div class="title">{{ i + 1 }}. {{ plan.date | date: 'dd/MM/yyyy' }} - {{ getSessionCount(plan) }} sesiones</div>
+              <div class="title">Plan {{ getPlanOrdinal(plan) }} - {{ plan.date | date: 'dd/MM/yyyy' }} - {{ getSessionCount(plan) }} sesiones</div>
+              <div class="objective" *ngIf="plan.objective">
+                <mat-icon>flag</mat-icon>
+                <span>{{ plan.objective }}</span>
+              </div>
             </div>
             <div class="right">
-              <button mat-icon-button (click)="$event.stopPropagation(); preview(plan)" matTooltip="Ver plan">
-                <mat-icon>visibility</mat-icon>
-              </button>
               <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
                 <mat-icon>edit</mat-icon>
               </button>
@@ -82,3 +83,7 @@
     </mat-accordion>
   </mat-card>
 </div>
+
+
+
+

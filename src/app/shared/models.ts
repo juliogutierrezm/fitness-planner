@@ -36,8 +36,9 @@ export interface PlanItem {
   id: string;
   name: string;
   name_es?: string;
-  equipment: string;
+  equipment?: string;
   equipment_type?: string;
+  notes?: string;
   sets: number;
   reps: number | string;
   rest: number;

@@ -245,7 +245,9 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Confirmación de acciones**: Diálogos modales para confirmar operaciones críticas
 - **Notificaciones de no autorizado**: Manejo de accesos no permitidos
 - **Sistema de feedback centralizado**: Manejo consistente de mensajes de éxito, error e información
-- **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres y procesamiento de datos
+- **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
+- **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
+- **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
 
 ## Ejemplos de uso
 ### Iniciar sesión y acceder a rutas protegidas
@@ -415,6 +417,25 @@ catch (error) {
 import { sanitizeName } from '../shared/shared-utils';
 
 const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "press_banca_inclinado"
+
+### Timeline de generación IA
+```typescript
+// Uso del AiGenerationTimelineComponent para mostrar progreso visual
+// En el template HTML del diálogo de generación IA:
+<app-ai-generation-timeline [currentAiStep]="currentStep"></app-ai-generation-timeline>
+
+// En el componente TypeScript:
+import { AiStep } from '../../shared/models';
+
+export class AiGenerationDialogComponent {
+  currentAiStep: AiStep | undefined;
+
+  // Actualizar el paso actual durante el proceso de generación
+  updateProgress(step: AiStep) {
+    this.currentAiStep = step;
+    this.cdr.markForCheck(); // Forzar detección de cambios
+  }
+}
 ```
 
 ## Flujo de trabajo de desarrollo
@@ -447,13 +468,13 @@ const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "p
 - **FeedbackUtils**: Sistema centralizado de manejo de feedback con temas semánticos (éxito, error, información)
 - **ErrorMapper**: Mapeo de códigos de error HTTP a mensajes amigables para el usuario
 - **DevLogger**: Utilidades de logging para desarrollo con contexto estructurado
-- **SharedUtils**: Funciones auxiliares como sanitización de nombres de ejercicios para IDs consistentes
+- **SharedUtils**: Funciones auxiliares como sanitización de nombres de ejercicios para IDs consistentes y cálculo de edad basado en fecha de nacimiento
 
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
 - **Dashboard principal**: Completo - Navegación básica implementada
 - **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
-- **Generación de planes con IA**: Incompleto - Diálogo parametric implementado, pero la recuperación de planes generados desde S3 no funciona correctamente. El polling no trae los planes de entrenamiento creados por IA.
+- **Generación de planes con IA**: Completo - Diálogo parametric avanzado con timeline visual, perfiles de usuario detallados y polling en tiempo real para generación de planes con Claude 3
 - **Previsualización de planes**: Completo - Vista previa inline y diálogos para planes de entrenamiento
 - **Vista de planes anteriores**: Completo - Diálogo para reutilizar planes existentes
 - **Previsualización de ejercicios**: Completo - Diálogos para ver detalles y videos de ejercicios

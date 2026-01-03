@@ -4,55 +4,66 @@
     <mat-card-subtitle>
       Fecha: {{ plan.date | date:'mediumDate' }}<br />
       Entrenador: {{ plan.trainerId || 'N/A' }}<br />
-      Compañía: {{ plan.companyId || 'INDEPENDIENTE' }}<br />
+      Compania: {{ plan.companyId || 'INDEPENDIENTE' }}<br />
       Notas generales: {{ plan.generalNotes || 'Ninguna' }}
     </mat-card-subtitle>
 
-    <div *ngFor="let session of getSessions()" class="session-block">
-      <h3>{{ session.name }}</h3>
+    <ng-container *ngIf="hasRenderableSessions; else noSessions">
+      <div *ngFor="let session of sessions" class="session-block">
+        <h3>{{ session.name }}</h3>
 
-      <div class="table-header">
-        <div>Ejercicio</div>
-        <div>Series</div>
-        <div>Reps</div>
-        <div>Descanso</div>
-        <div>Peso</div>
-        <div>Equipo</div>
+        <table class="session-table">
+          <thead>
+            <tr>
+              <th>Ejercicio</th>
+              <th>Equipo</th>
+              <th>Sets</th>
+              <th>Reps</th>
+              <th>Rest</th>
+              <th>Peso</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let item of session.items">
+              <ng-container *ngIf="!item.isGroup; else supersetBlock">
+                <tr class="session-row">
+                  <td class="name-cell">
+                    <span class="exercise-name" [matTooltip]="getDisplayName(item)">{{ getDisplayName(item) }}</span>
+                    <div *ngIf="item.notes" class="notes">Notas: {{ item.notes }}</div>
+                  </td>
+                  <td>{{ getEquipmentLabel(item) }}</td>
+                  <td>{{ item.sets }}</td>
+                  <td>{{ item.reps }}</td>
+                  <td>{{ item.rest }}</td>
+                  <td>{{ item.weight || '-' }}</td>
+                </tr>
+              </ng-container>
+
+              <ng-template #supersetBlock>
+                <tr class="superset-header-row">
+                  <td colspan="6">
+                    <div class="superset-header">Superserie</div>
+                  </td>
+                </tr>
+                <tr *ngFor="let child of item.children" class="session-row superset-row">
+                  <td class="name-cell">
+                    <span class="exercise-name" [matTooltip]="getDisplayName(child)">{{ getDisplayName(child) }}</span>
+                    <div *ngIf="child.notes" class="notes">Notas: {{ child.notes }}</div>
+                  </td>
+                  <td>{{ getEquipmentLabel(child) }}</td>
+                  <td>{{ child.sets }}</td>
+                  <td>{{ child.reps }}</td>
+                  <td>{{ child.rest }}</td>
+                  <td>{{ child.weight || '-' }}</td>
+                </tr>
+              </ng-template>
+            </ng-container>
+          </tbody>
+        </table>
       </div>
-
-      <div *ngFor="let item of session.items">
-        <ng-container *ngIf="!item.isGroup; else supersetBlock">
-          <div class="table-row">
-            <div>
-              <strong [matTooltip]="item.name">{{ item.name }}</strong>
-              <div *ngIf="item.notes" class="notes">💬 {{ item.notes }}</div>
-            </div>
-
-            <div>{{ item.sets }}</div>
-            <div>{{ item.reps }}</div>
-            <div>{{ item.rest }}s</div>
-            <div>{{ item.weight || '-' }}</div>
-            <div>{{ item.equipment }}</div>
-          </div>
-        </ng-container>
-
-        <ng-template #supersetBlock>
-          <div class="superset-wrapper">
-            <div class="superset-label">Superserie</div>
-            <div *ngFor="let child of item.children" class="table-row">
-              <div>
-                <strong [matTooltip]="child.name">{{ child.name }}</strong>
-                <div *ngIf="child.notes" class="notes">💬 {{ child.notes }}</div>
-              </div>
-              <div>{{ child.sets }}</div>
-              <div>{{ child.reps }}</div>
-              <div>{{ child.rest }}s</div>
-              <div>{{ child.weight || '-' }}</div>
-              <div>{{ child.equipment }}</div>
-            </div>
-          </div>
-        </ng-template>
-      </div>
-    </div>
+    </ng-container>
+    <ng-template #noSessions>
+      <div class="empty-plan">Plan sin sesiones renderizables.</div>
+    </ng-template>
   </mat-card>
 </div>

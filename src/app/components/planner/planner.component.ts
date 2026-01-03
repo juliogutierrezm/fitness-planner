@@ -22,7 +22,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { interval, Subscription, of } from 'rxjs';
-import { switchMap, catchError, tap } from 'rxjs/operators';
+import { switchMap, catchError, tap, finalize } from 'rxjs/operators';
 
 
 import { ExerciseApiService } from '../../exercise-api.service';
@@ -36,7 +36,17 @@ import { ExercisePreviewDialogComponent } from './exercise-preview-dialog.compon
 import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
-import { calculateAge } from '../../shared/shared-utils';
+import {
+  calculateAge,
+  buildPlanOrdinalMap,
+  getPlanKey,
+  getPlanItemDisplayName,
+  getPlanItemEquipmentLabel,
+  hasRenderablePlanContent,
+  normalizePlanSessionsForRender,
+  parsePlanSessions,
+  sortPlansByCreatedAt
+} from '../../shared/shared-utils';
 
 
 
@@ -113,6 +123,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
   isClientNameReadonly = false;
   userProfile: AppUser | null = null;
   userAge: number | null = null;
+  originalPlanUserId: string | null = null;
+  activeUserId: string | null = null;
+  private activeUserIdLocked = false;
+  isUserLoading = false;
+  isSavingPlan = false;
+  isInitialLoading = true;
+  private exercisesLoaded = false;
+  private userLoaded = true;
+  private planLoaded = true;
+  private initialLoadComplete = false;
 
   // AI generation state
   isGenerating: boolean = false;
@@ -154,31 +174,52 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   // Load user profile and calculate age
   loadUser(userId: string): void {
-    this.userApi.getUserById(userId).subscribe(user => {
-      // Validate response - check if it's a valid user object with id
-      if (!user || !user.id) {
-        console.error('Invalid user response:', user);
-        // If response contains error message, log it specifically
-        if (user && (user as any).message === 'userId requerido') {
-          console.error('API returned error: userId requerido for userId:', userId);
+    this.isUserLoading = true;
+    this.userLoaded = false;
+    this.updateInitialLoading();
+    console.log('Loading user profile for userId:', userId);
+    this.userApi.getUserById(userId).pipe(
+      finalize(() => {
+        this.isUserLoading = false;
+        this.userLoaded = true;
+        this.updateInitialLoading();
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (user) => {
+        // Validate response - check if it's a valid user object with id
+        if (!user || !user.id) {
+          console.error('Invalid user response:', user);
+          // If response contains error message, log it specifically
+          if (user && (user as any).message === 'userId requerido') {
+            console.error('API returned error: userId requerido for userId:', userId);
+          }
+          // Don't assign userProfile if invalid
+          this.userProfile = null;
+          this.userAge = null;
+          this.form.patchValue({ userName: '' });
+          return;
         }
-        // Don't assign userProfile if invalid
+
+        this.userProfile = user;
+        this.userAge = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
+        console.log('Loaded user profile:', userId, user);
+
+        // Update userName in form
+        const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
+        this.form.patchValue({ userName: displayName });
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Failed to load user profile:', {
+          userId,
+          error
+        });
         this.userProfile = null;
         this.userAge = null;
         this.form.patchValue({ userName: '' });
-        this.cdr.markForCheck();
-        return;
+        this.snackBar.open('No se pudo cargar el usuario.', 'Cerrar', { duration: 3000 });
       }
-
-      this.userProfile = user;
-      this.userAge = user.dateOfBirth ? calculateAge(user.dateOfBirth) : null;
-      console.log('Loaded user profile:', userId, user);
-
-      // Update userName in form
-      const displayName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email?.split('@')[0] || 'Usuario';
-      this.form.patchValue({ userName: displayName });
-
-      this.cdr.markForCheck();
     });
   }
 
@@ -253,14 +294,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     // Update form with plan data
     this.form.patchValue(patch);
 
-    // Normalize equipment_type to equipment in all sessions and items
-    const normalizedSessions = sessions.map((session: Session) => ({
-      ...session,
-      items: session.items.map((item: PlanItem) => ({
-        ...item,
-        equipment: item.equipment ?? item.equipment_type ?? ''
-      }))
-    }));
+    // Normalize sessions for consistent render structure
+    const normalizedSessions = normalizePlanSessionsForRender(sessions);
 
     // Load sessions
     this.sessions = normalizedSessions;
@@ -384,46 +419,83 @@ export class PlannerComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.planId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.planId;
-this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
+    this.isInitialLoading = true;
+    this.exercisesLoaded = false;
+    this.planLoaded = !this.isEditMode;
+    this.userLoaded = true;
+    this.initialLoadComplete = false;
     this.form = this.fb.group({
       userName: [''],
-      date: [null],
       sessionCount: [3],
       notes: [''],
       targetUserId: [''],
-      objective: ['']
+      objective: [''],
+      date: [new Date()]
     });
 
     // Read userId from queryParams and load user immediately if valid
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
     this.isSpecificUser = !!qpUserId;
     if (qpUserId && qpUserId.trim()) {
-      this.form.patchValue({ targetUserId: qpUserId });
-      this.loadUser(qpUserId);
+      this.resolveActiveUserId(qpUserId, {
+        source: 'query-param',
+        lock: !this.isEditMode,
+        loadUser: true,
+        loadPlans: true
+      });
     }
 
     // Subscribe to targetUserId changes to populate userName and set readonly
     this.form.get('targetUserId')!.valueChanges.subscribe(userId => {
       this.isClientNameReadonly = !!userId;
-      if (userId && userId.trim()) {
-        this.loadUser(userId);
+      const trimmedUserId = userId?.trim();
+      if (this.activeUserIdLocked && this.activeUserId && trimmedUserId && trimmedUserId !== this.activeUserId) {
+        this.form.patchValue({ targetUserId: this.activeUserId }, { emitEvent: false });
+        this.cdr.markForCheck();
+        return;
+      }
+
+      if (trimmedUserId && !this.activeUserIdLocked) {
+        this.resolveActiveUserId(userId, {
+          source: 'selector',
+          loadUser: true,
+          loadPlans: true
+        });
       } else {
-        this.userProfile = null;
-        this.userAge = null;
-        this.form.patchValue({ userName: '' });
+        if (!this.activeUserIdLocked) {
+          this.activeUserId = null;
+          this.previousPlans = [];
+          this.userProfile = null;
+          this.userAge = null;
+          this.form.patchValue({ userName: '' });
+        }
         this.cdr.markForCheck();
       }
     });
 
-    this.api.getExerciseLibrary().subscribe(libraryResponse => {
-      // Handle DynamoDB format if needed and flatten data
-      const rawItems = libraryResponse.items;
-      this.exercises = this.transformExercises(rawItems);
-      // Build filter options and apply initial filtering
-      this.populateFilterOptions();
-      this.loadFiltersFromStorage();
-      this.applyCombinedFilter();
-      this.cdr.markForCheck();
+    this.api.getExerciseLibrary().pipe(
+      finalize(() => {
+        this.exercisesLoaded = true;
+        this.updateInitialLoading();
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (libraryResponse) => {
+        // Handle DynamoDB format if needed and flatten data
+        const rawItems = libraryResponse.items;
+        this.exercises = this.transformExercises(rawItems);
+        // Build filter options and apply initial filtering
+        this.populateFilterOptions();
+        this.loadFiltersFromStorage();
+        this.applyCombinedFilter();
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Failed to load exercise library:', error);
+        this.exercises = [];
+        this.applyCombinedFilter();
+        this.snackBar.open('No se pudieron cargar los ejercicios.', 'Cerrar', { duration: 3000 });
+      }
     });
 
     // Load favorites/recents
@@ -443,31 +515,60 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     } else if (current?.role === 'trainer' && !current.companyId) {
       this.canAssignUser = true;
       this.userApi.getUsersByTrainer().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
+    } else if (!this.isEditMode && !this.activeUserId && current?.id) {
+      this.resolveActiveUserId(current.id, {
+        source: 'current-user',
+        lock: true,
+        loadUser: true,
+        loadPlans: true
+      });
     }
 
     if (this.isEditMode && this.planId) {
-      this.api.getWorkoutPlanById(this.planId).subscribe(plan => {
-        if (plan) {
-          const parsedSessions = (() => {
-            try {
-              return typeof plan.sessions === 'string' ? JSON.parse(plan.sessions || '[]') : (plan.sessions || []);
-            } catch {
-              return [];
-            }
-          })();
-          this.form.patchValue({
-            userName: plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
-            date: new Date(plan.date),
-            sessionCount: parsedSessions.length,
-            notes: plan.generalNotes,
-            objective: plan.objective || ''
+      this.planLoaded = false;
+      this.updateInitialLoading();
+      this.api.getWorkoutPlanById(this.planId).pipe(
+        finalize(() => {
+          this.planLoaded = true;
+          this.updateInitialLoading();
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (plan) => {
+          if (plan) {
+            const parsedSessions = parsePlanSessions(plan.sessions);
+            this.originalPlanUserId = this.extractPlanUserId(plan);
+            this.resolveActiveUserId(this.originalPlanUserId, {
+              source: 'plan-owner',
+              lock: true,
+              loadUser: true,
+              loadPlans: true
+            });
+            this.form.patchValue({
+              userName: plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
+              sessionCount: parsedSessions.length,
+              notes: plan.generalNotes,
+              objective: plan.objective || '',
+              date: plan.date ? new Date(plan.date) : new Date()
+            });
+            this.sessions = parsedSessions;
+            this.rebuildDropLists();
+            this.applyUiState();
+            this.cdr.markForCheck();
+            return;
+          }
+
+          console.warn('[Planner] Plan not found for edit', { planId: this.planId });
+          this.snackBar.open('No se encontró el plan para editar.', 'Cerrar', { duration: 3000 });
+        },
+        error: (error) => {
+          console.error('Failed to load plan for edit:', {
+            planId: this.planId,
+            error
           });
-          this.sessions = parsedSessions;
-          this.rebuildDropLists();
-          this.applyUiState();
-      this.cdr.markForCheck();
-    }
-  });
+          this.snackBar.open('No se pudo cargar el plan.', 'Cerrar', { duration: 3000 });
+        }
+      });
   } else {
       // Clear any previous sessions from localStorage for clean start
       this.api.clearUserSessions();
@@ -483,23 +584,6 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
       this.updateSessions(count);
       this.persist();
       this.persistUiState();
-      this.cdr.markForCheck();
-    });
-
-    // Load previous plans (latest N) for quick preview in AI overlay
-    this.api.getWorkoutPlansByUser().subscribe(list => {
-      const sorted = (list || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      // Parse sessions to ensure they're arrays, not JSON strings
-      this.previousPlans = sorted.slice(0, this.prevLimit).map(plan => ({
-        ...plan,
-        sessions: (() => {
-          try {
-            return typeof plan.sessions === 'string' ? JSON.parse(plan.sessions || '[]') : (plan.sessions || []);
-          } catch {
-            return [];
-          }
-        })()
-      }));
       this.cdr.markForCheck();
     });
   }
@@ -577,9 +661,9 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     // Handle field fallbacks for legacy data
     switch (field) {
       case 'name_es':
-        return exercise.name_es || exercise.name;
+        return exercise.name_es || '';
       case 'equipment_type':
-        return exercise.equipment_type || exercise.equipment;
+        return exercise.equipment_type || '';
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle;
       case 'exercise_type':
@@ -686,6 +770,51 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
 
   // REMOVED: generateWithAI method that used forbidden generateWorkoutPlanAI
 
+  /**
+   * Load previous plans for the specified user or current user
+   * Filters out invalid plans that don't meet the required structure
+   */
+  private loadPreviousPlans(userId: string): void {
+    const targetUserId = userId?.trim();
+    if (!targetUserId) {
+      console.error('No userId available for loading plans');
+      this.previousPlans = [];
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.userApi.getWorkoutPlansByUserId(targetUserId).subscribe(list => {
+      const sorted = sortPlansByCreatedAt(list || []);
+      // Parse sessions and filter out invalid plans
+      const validPlans = sorted
+        .map(plan => ({
+          ...plan,
+          sessions: parsePlanSessions(plan.sessions)
+        }))
+        .filter(plan => this.isValidPlan(plan));
+
+      const planOrdinals = buildPlanOrdinalMap(validPlans);
+      const decoratedPlans = validPlans.map(plan => ({
+        ...plan,
+        planOrdinal: planOrdinals.get(getPlanKey(plan)) || 0
+      }));
+
+      this.previousPlans = decoratedPlans.slice(0, this.prevLimit);
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Validates if a plan has the required structure to be renderizable
+   * - Must have sessions array
+   * - Each session must have items
+   * - Items must be valid (individual exercises or superseries)
+   */
+  private isValidPlan(plan: any): boolean {
+    if (!plan) return false;
+    return hasRenderablePlanContent(plan.sessions);
+  }
+
   openPreviewInline(plan: any) { this.selectedPreviewPlan = plan; this.cdr.markForCheck(); }
   closePreviewInline() { this.selectedPreviewPlan = null; this.cdr.markForCheck(); }
 
@@ -714,7 +843,13 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     });
   }
 
-  openExercisePreview(exercise: Exercise) {
+  /**
+   * Purpose: open the exercise preview dialog for either library exercises or plan items.
+   * Input: Exercise or PlanItem. Output: opens dialog with preview data.
+   * Error handling: relies on dialog component to handle missing preview media.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openExercisePreview(exercise: Exercise | PlanItem) {
     this.dialog.open(ExercisePreviewDialogComponent, {
       width: '600px',
       maxWidth: '90vw',
@@ -782,11 +917,13 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
 
     if (prevId === 'exerciseList' && session) {
       const ex = event.item.data as Exercise;
-      const newItem: PlanItem = {
-        ...ex,
-        id: Date.now().toString(),
-        equipment: ex.equipment_type || ex.equipment || 'Sin equipo',
-        sets: 3,
+        const newItem: PlanItem = {
+          ...ex,
+          id: Date.now().toString(),
+          name: ex.name_es || ex.name || 'Ejercicio sin nombre',
+          name_es: ex.name_es,
+          equipment_type: ex.equipment_type || '',
+          sets: 3,
         reps: 10,
         rest: 60,
         selected: false,
@@ -901,7 +1038,6 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     const group: PlanItem = {
       id: newId.toString(),
       name: 'Superserie',
-      equipment: '',
       sets: 0,
       reps: 0,
       rest: 0,
@@ -983,7 +1119,8 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     const item: PlanItem = {
       id: Date.now().toString(),
       name: ex.name_es || ex.name || 'Ejercicio sin nombre',
-      equipment: ex.equipment_type || ex.equipment || 'Sin equipo',
+      name_es: ex.name_es,
+      equipment_type: ex.equipment_type || '',
       sets: 3,
       reps: 10,
       rest: 60,
@@ -1048,12 +1185,32 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     }, 1200);
   }
 
+  /**
+   * Purpose: provide the Spanish display name for a plan item in the planner view.
+   * Input: PlanItem. Output: display name string.
+   * Error handling: returns a placeholder when name_es is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getDisplayName(item: PlanItem): string {
+    return getPlanItemDisplayName(item);
+  }
+
+  /**
+   * Purpose: provide the equipment label for a plan item in the planner view.
+   * Input: PlanItem. Output: equipment label string.
+   * Error handling: returns a placeholder when equipment_type is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getEquipmentLabel(item: PlanItem): string {
+    return getPlanItemEquipmentLabel(item);
+  }
+
   // TrackBy helpers
   trackByExercise = (_: number, e: Exercise) => e.id;
   trackBySession = (_: number, s: Session) => s.id;
   trackByItem = (_: number, i: PlanItem) => i.id;
   trackByChild = (_: number, i: PlanItem) => i.id;
-  trackByPlan = (_: number, p: any) => p.id || p.name;
+  trackByPlan = (_: number, p: any) => getPlanKey(p) || p.name;
 
   getUserDisplayName(): string {
     const formValue = this.form.value;
@@ -1068,7 +1225,7 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
   }
 
   goBack(): void {
-    const userId = this.route.snapshot.queryParamMap.get('userId');
+    const userId = this.route.snapshot.queryParamMap.get('userId') || this.activeUserId || this.originalPlanUserId;
     if (userId) {
       this.router.navigate(['/users', userId]);
     } else {
@@ -1084,58 +1241,161 @@ this.loadUser(this.route.snapshot.queryParamMap.get('userId') || '');
     }
   }
 
-  private async getNextPlanNumber(userId: string): Promise<number> {
-    try {
-      const existingPlans = await this.api.getWorkoutPlansByUser(userId).toPromise();
-      return (existingPlans?.length || 0) + 1;
-    } catch (error) {
-      console.error('Error fetching existing plans:', error);
-      return 1; // Default to 1 if there's an error
+  /**
+   * Purpose: extract a userId from plan fields for update integrity checks.
+   * Input: plan object. Output: userId string or null.
+   * Error handling: returns null when userId cannot be determined.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private extractPlanUserId(plan: any): string | null {
+    if (!plan) return null;
+    if (plan.userId) return plan.userId;
+    if (plan.user_id) return plan.user_id;
+    if (plan.PK && typeof plan.PK === 'string' && plan.PK.startsWith('USER#')) {
+      return plan.PK.substring(5);
     }
+    return null;
   }
 
-  async submitPlan() {
-    if (this.isEditMode && !this.planId) {
-      console.error('Cannot update plan without a planId');
-      alert('❌ Error: No se encontró el ID del plan para actualizar.');
+  private resolveActiveUserId(
+    userId: string | null | undefined,
+    options: { source: string; lock?: boolean; loadUser?: boolean; loadPlans?: boolean }
+  ): void {
+    const trimmed = userId?.trim();
+    if (!trimmed) return;
+
+    if (this.activeUserIdLocked && this.activeUserId && this.activeUserId !== trimmed) {
+      console.warn('[Planner] activeUserId change blocked', {
+        from: this.activeUserId,
+        to: trimmed,
+        source: options.source
+      });
+      this.form.patchValue({ targetUserId: this.activeUserId }, { emitEvent: false });
       return;
     }
 
-    const formValue = this.form.value;
-    const userId = formValue.targetUserId || this.authService.getCurrentUserId();
+    this.activeUserId = trimmed;
+    if (options.lock) this.activeUserIdLocked = true;
+    console.log('[Planner] activeUserId resolved:', trimmed, 'source:', options.source);
+    this.form.patchValue({ targetUserId: trimmed }, { emitEvent: false });
 
-    // Generate plan name with number for new plans
-    let planName: string;
-    if (this.isEditMode) {
-      // Keep existing name for edit mode
-      planName = `Plan de ${formValue.userName || 'Usuario'}`;
-    } else {
-      // Generate numbered name for new plans
-      const planNumber = await this.getNextPlanNumber(userId);
-      planName = `${formValue.userName || 'Usuario'} Plan ${planNumber}`;
-    }
+    if (options.loadUser) this.loadUser(trimmed);
+    if (options.loadPlans) this.loadPreviousPlans(trimmed);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: save or update the workout plan with async UI feedback.
+   * Input: none (uses reactive form + planner state). Output: void.
+   * Error handling: shows snackBar message and logs structured error context.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  async submitPlan() {
+    const formValue = this.form.value;
+    const requestedUserId = this.originalPlanUserId || this.activeUserId;
+    const startedAtMs = Date.now();
+
+    const displayName = formValue.userName || this.getUserDisplayName() || 'Usuario';
+    const planName = `Plan de ${displayName}`;
+    const planStartDate = formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString();
+    const planUserId = requestedUserId;
 
     const planData = {
       planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
       name: planName,
-      date: formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString(),
+      date: planStartDate,
       sessions: this.sessions,
       generalNotes: formValue.notes,
       objective: formValue.objective,
-      userId: userId
+      userId: planUserId
     };
 
     const action = this.isEditMode
       ? this.api.updateWorkoutPlan(planData)
       : this.api.saveWorkoutPlan(planData as any);
 
-    action.subscribe(res => {
-      if (res) {
-        this.snackBar.open(`Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`, 'Cerrar', { duration: 2500 });
-        this.router.navigate(['/workout-plans']);
-      } else {
-        this.snackBar.open(`Hubo un error al ${this.isEditMode ? 'actualizar' : 'guardar'} el plan`, 'Cerrar', { duration: 3500 });
+    this.isSavingPlan = true;
+    this.cdr.markForCheck();
+
+    action.pipe(
+      finalize(() => {
+        this.isSavingPlan = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        if (res) {
+          console.info('[Planner] plan saved', {
+            isEditMode: this.isEditMode,
+            planId: this.planId,
+            elapsedMs: Date.now() - startedAtMs
+          });
+          this.snackBar.open(`Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`, 'Cerrar', { duration: 2500 });
+          if (!this.isEditMode) {
+            if (planUserId) {
+              this.router.navigate(['/users', planUserId]);
+            } else {
+              console.warn('[Planner] missing plan userId for redirect', {
+                planId: this.planId,
+                elapsedMs: Date.now() - startedAtMs
+              });
+              this.router.navigate(['/workout-plans']);
+            }
+          }
+          return;
+        }
+
+        console.error('[Planner] plan save returned empty response', {
+          isEditMode: this.isEditMode,
+          planId: this.planId,
+          elapsedMs: Date.now() - startedAtMs
+        });
+        this.snackBar.open(this.getPlanSaveErrorMessage(null), 'Cerrar', { duration: 3500 });
+      },
+      error: (error) => {
+        console.error('[Planner] plan save failed', {
+          isEditMode: this.isEditMode,
+          planId: this.planId,
+          elapsedMs: Date.now() - startedAtMs,
+          error
+        });
+        this.snackBar.open(this.getPlanSaveErrorMessage(error), 'Cerrar', { duration: 3500 });
       }
     });
   }
+
+  /**
+   * Purpose: map API save/update errors to friendly Spanish messages.
+   * Input: error object or null. Output: user-facing string.
+   * Error handling: falls back to a generic message when details are unavailable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private getPlanSaveErrorMessage(error: any): string {
+    const status = error?.status;
+    if (status === 400) return 'Datos del plan incompletos o inválidos.';
+    if (status === 403) return 'No tienes permisos para guardar este plan.';
+    if (status === 404) return 'No se encontró el plan para actualizar.';
+    if (status === 413) return 'El plan es demasiado grande para guardarse.';
+    if (status >= 500) return 'El servidor no respondió. Intenta nuevamente.';
+    return 'Hubo un error al guardar el plan.';
+  }
+
+  /**
+   * Purpose: keep the planner loading overlay in sync with data readiness.
+   * Input: none. Output: sets isInitialLoading based on load flags.
+   * Error handling: none; uses boolean flags to guard UI state only.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private updateInitialLoading(): void {
+    if (this.initialLoadComplete) {
+      return;
+    }
+
+    const isReady = this.exercisesLoaded && this.userLoaded && this.planLoaded;
+    this.isInitialLoading = !isReady;
+    if (isReady) {
+      this.initialLoadComplete = true;
+    }
+  }
 }
+

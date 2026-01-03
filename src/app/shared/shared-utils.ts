@@ -1,5 +1,13 @@
+import { PlanItem, Session } from './models';
+
+const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
+const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
+
 /**
- * Sanitize exercise name for ID generation by replacing spaces and special characters with underscores
+ * Purpose: sanitize exercise name for ID generation by replacing spaces and special characters with underscores.
+ * Input: name string. Output: normalized string.
+ * Error handling: none; pure string transform with safe defaults.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
 export function sanitizeName(name: string): string {
   return name
@@ -11,7 +19,10 @@ export function sanitizeName(name: string): string {
 }
 
 /**
- * Calculate age from date of birth string (ISO format: YYYY-MM-DD or full ISO)
+ * Purpose: calculate age from date of birth string (ISO format: YYYY-MM-DD or full ISO).
+ * Input: dateOfBirth string. Output: number or null.
+ * Error handling: returns null for invalid or missing dates.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
 export function calculateAge(dateOfBirth: string): number | null {
   if (!dateOfBirth) return null;
@@ -28,4 +39,179 @@ export function calculateAge(dateOfBirth: string): number | null {
   }
 
   return age >= 0 ? age : null;
+}
+
+/**
+ * Purpose: derive a displayable equipment label for a plan item using equipment_type only.
+ * Input: PlanItem with optional children. Output: equipment label string.
+ * Error handling: returns a missing-equipment label when equipment_type data is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function getPlanItemEquipmentLabel(item: PlanItem): string {
+  if (!item?.isGroup) {
+    return item?.equipment_type?.trim() || EQUIPMENT_UNDEFINED_LABEL;
+  }
+
+  const children = item.children || [];
+  const seen = new Set<string>();
+  const labels: string[] = [];
+
+  for (const child of children) {
+    const equipmentType = child.equipment_type?.trim();
+    if (!equipmentType || seen.has(equipmentType)) continue;
+    seen.add(equipmentType);
+    labels.push(equipmentType);
+  }
+
+  if (labels.length === 0) return EQUIPMENT_UNDEFINED_LABEL;
+  return labels.length === 1 ? labels[0] : labels.join(' / ');
+}
+
+/**
+ * Purpose: derive a displayable name for a plan item using name_es only.
+ * Input: PlanItem. Output: name label string.
+ * Error handling: returns a missing-name label when name_es is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function getPlanItemDisplayName(item: PlanItem): string {
+  return item?.name_es?.trim() || NAME_UNDEFINED_LABEL;
+}
+
+/**
+ * Purpose: normalize plan items for rendering by ensuring groups contain normalized children arrays.
+ * Input: PlanItem array. Output: normalized PlanItem array.
+ * Error handling: treats missing arrays as empty lists.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function normalizePlanItemsForRender(items: PlanItem[]): PlanItem[] {
+  const safeItems = Array.isArray(items) ? items : [];
+  return safeItems.map(item => ({
+    ...item,
+    children: item?.isGroup ? normalizePlanItemsForRender(item.children || []) : item.children
+  }));
+}
+
+/**
+ * Purpose: normalize plan sessions for rendering by ensuring consistent item structures.
+ * Input: Session array. Output: normalized Session array.
+ * Error handling: treats missing arrays as empty lists.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function normalizePlanSessionsForRender(sessions: Session[]): Session[] {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  return safeSessions.map(session => ({
+    ...session,
+    items: normalizePlanItemsForRender(session.items || [])
+  }));
+}
+
+/**
+ * Purpose: parse and normalize raw plan sessions input from API or storage.
+ * Input: unknown session payload (string or array). Output: Session array.
+ * Error handling: catches JSON parse errors and returns an empty array.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function parsePlanSessions(rawSessions: unknown): Session[] {
+  if (!rawSessions) return [];
+  if (typeof rawSessions === 'string') {
+    try {
+      return normalizePlanSessionsForRender(JSON.parse(rawSessions));
+    } catch (error) {
+      console.error('Error parsing sessions JSON:', error);
+      return [];
+    }
+  }
+  if (Array.isArray(rawSessions)) {
+    return normalizePlanSessionsForRender(rawSessions as Session[]);
+  }
+  return [];
+}
+
+/**
+ * Purpose: validate that plan sessions contain renderable items or groups.
+ * Input: Session array. Output: boolean indicating renderable content.
+ * Error handling: treats invalid structures as non-renderable.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function hasRenderablePlanContent(sessions: Session[]): boolean {
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return false;
+  }
+
+  for (const session of sessions) {
+    if (!session || !Array.isArray(session.items) || session.items.length === 0) {
+      return false;
+    }
+
+    for (const item of session.items) {
+      if (!item) return false;
+      if (item.isGroup) {
+        if (!Array.isArray(item.children) || item.children.length === 0) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Purpose: derive a stable key for plan identification in UI ordering.
+ * Input: plan object with planId/id/SK. Output: string key or empty string.
+ * Error handling: returns empty string when no identifier is available.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function getPlanKey(plan: { planId?: string; id?: string; SK?: string } | null | undefined): string {
+  if (!plan) return '';
+  if (plan.planId) return plan.planId;
+  if (plan.id) return plan.id;
+  if (plan.SK && typeof plan.SK === 'string' && plan.SK.startsWith('PLAN#')) {
+    return plan.SK.substring(5);
+  }
+  return '';
+}
+
+/**
+ * Purpose: derive a numeric timestamp from a plan createdAt value.
+ * Input: plan object with createdAt/created_at. Output: timestamp (ms).
+ * Error handling: returns 0 for missing or invalid dates.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function getPlanCreatedAtTime(plan: { createdAt?: string; created_at?: string } | null | undefined): number {
+  const raw = plan?.createdAt || plan?.created_at;
+  const ts = raw ? new Date(raw).getTime() : 0;
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+/**
+ * Purpose: return a new plan array sorted by createdAt ascending.
+ * Input: plans array. Output: new sorted array.
+ * Error handling: treats non-array input as empty array.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function sortPlansByCreatedAt<T extends { createdAt?: string; created_at?: string }>(plans: T[]): T[] {
+  const list = Array.isArray(plans) ? plans.slice() : [];
+  return list.sort((a, b) => getPlanCreatedAtTime(a) - getPlanCreatedAtTime(b));
+}
+
+/**
+ * Purpose: build a plan ordinal map from createdAt order for visual numbering.
+ * Input: plans array. Output: Map of planKey -> ordinal (1-based).
+ * Error handling: skips plans without a stable key.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function buildPlanOrdinalMap<T extends { planId?: string; id?: string; SK?: string; createdAt?: string; created_at?: string }>(
+  plans: T[]
+): Map<string, number> {
+  const map = new Map<string, number>();
+  const ordered = sortPlansByCreatedAt(plans);
+
+  ordered.forEach((plan, index) => {
+    const key = getPlanKey(plan);
+    if (!key) return;
+    map.set(key, index + 1);
+  });
+
+  return map;
 }

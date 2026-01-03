@@ -193,16 +193,6 @@ export class UsersComponent implements OnInit, OnDestroy {
     });
   }
 
-  openPlans(u: AppUser) {
-    if (!u.id) return;
-    this.api.getWorkoutPlansByUserId(u.id).subscribe(list => {
-      this.dialog.open(UserPlansDialogComponent, {
-        width: '640px',
-        data: { user: u, plans: list }
-      });
-    });
-  }
-
   startEdit(u: AppUser) {
     if (!u) return;
     this.editingId = u.id || null;

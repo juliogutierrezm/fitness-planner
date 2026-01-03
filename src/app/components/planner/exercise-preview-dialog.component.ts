@@ -4,7 +4,7 @@ import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Exercise } from '../../shared/models';
+import { Exercise, PlanItem } from '../../shared/models';
 
 @Component({
   selector: 'app-exercise-preview-dialog',
@@ -150,7 +150,7 @@ import { Exercise } from '../../shared/models';
 export class ExercisePreviewDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ExercisePreviewDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { exercise: Exercise },
+    @Inject(MAT_DIALOG_DATA) public data: { exercise: Exercise | PlanItem },
     private snackBar: MatSnackBar
   ) {}
 

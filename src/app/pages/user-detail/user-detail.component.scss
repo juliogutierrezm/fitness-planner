@@ -82,6 +82,17 @@
   justify-content: space-between;
   gap: 1rem;
 }
+.plan-header .left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-header .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+}
 .plan-header .title {
   font-weight: 600;
 }
@@ -96,6 +107,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.plan-header .objective {
+  margin-top: 4px;
+  max-width: 520px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ink-600);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.plan-header .objective mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--primary-600);
+}
+.plan-header .objective span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .empty {

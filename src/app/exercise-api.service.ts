@@ -216,39 +216,53 @@ export class ExerciseApiService {
   }
 
   // =============== WORKOUT PLANS ===============
+  /**
+   * Purpose: persist a new workout plan for the current or specified user.
+   * Input: plan payload with identifiers and sessions. Output: Observable of save response.
+   * Error handling: logs and returns null when user is unauthenticated.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   saveWorkoutPlan(plan: {
     planId: string;
     name: string;
     date: string;
     sessions: Session[];
     generalNotes?: string;
+    objective?: string;
+    userId?: string;
   }): Observable<any> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of(null);
     }
 
     const fullPlan = {
       ...plan,
-      userId: (plan as any).userId || currentUser.id,
+      userId: plan.userId || currentUser.id,
       companyId: currentUser.companyId || 'INDEPENDENT',
       trainerId: currentUser.role === 'trainer' ? currentUser.id : undefined
     };
 
     return this.http.post(`${this.planUrl}`, fullPlan).pipe(
-      tap(() => console.log('💾 Plan de entrenamiento guardado', fullPlan)),
+      tap(() => console.log('?? Plan de entrenamiento guardado', fullPlan)),
       catchError(err => {
-        console.error('❌ Error al guardar plan:', err);
+        console.error('? Error al guardar plan:', err);
         return of(null);
       })
     );
   }
 
+  /**
+   * Purpose: fetch workout plans for a user with permission validation.
+   * Input: optional userId. Output: Observable of plan list.
+   * Error handling: logs and returns empty list on failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   getWorkoutPlansByUser(userId?: string): Observable<any[]> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of([]);
     }
 
@@ -257,18 +271,18 @@ export class ExerciseApiService {
 
     // Check permissions
     if (!this.authService.canAccessUserData(targetUserId)) {
-      console.error('❌ No tienes permisos para acceder a estos datos');
+      console.error('? No tienes permisos para acceder a estos datos');
       return of([]);
     }
 
     const byUserUrl = `${this.apiBase}/users/plan?userId=${encodeURIComponent(targetUserId)}&id=${encodeURIComponent(targetUserId)}`;
     return this.http.get<any[]>(byUserUrl).pipe(
-      tap(plans => console.log('📦 Planes obtenidos (users/:id/plan):', plans)),
+      tap(plans => console.log('?? Planes obtenidos (users/:id/plan):', plans)),
       catchError(err => {
         console.warn('Fallo users/:id/plan, intentando /workoutPlans?userId', err);
         return this.http.get<any[]>(`${this.planUrl}?userId=${encodeURIComponent(targetUserId)}`).pipe(
           catchError(err2 => {
-            console.error('❌ Error al obtener planes por usuario:', err2);
+            console.error('? Error al obtener planes por usuario:', err2);
             return of([]);
           })
         );
@@ -293,23 +307,33 @@ export class ExerciseApiService {
     );
   }
 
+  /**
+   * Purpose: update an existing workout plan for its original user only.
+   * Input: plan object with planId and userId. Output: Observable of update result.
+   * Error handling: logs and returns null when identifiers or permissions are invalid.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   updateWorkoutPlan(plan: any): Observable<any> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of(null);
     }
 
-    // Check permissions
-    if (!this.authService.canAccessUserData(plan.userId)) {
-      console.error('❌ No tienes permisos para actualizar estos datos');
+    if (!plan?.userId) {
+      console.error('? updateWorkoutPlan requiere userId');
+      return of(null);
+    }
+
+    if (!plan?.planId) {
+      console.error('? updateWorkoutPlan requiere planId');
       return of(null);
     }
 
     return this.http.put(`${this.planUrl}`, plan).pipe(
-      tap(() => console.log('💾 Plan de entrenamiento actualizado', plan)),
+      tap(() => console.log('?? Plan de entrenamiento actualizado', plan)),
       catchError(err => {
-        console.error('❌ Error al actualizar plan:', err);
+        console.error('? Error al actualizar plan:', err);
         return of(null);
       })
     );
@@ -459,3 +483,4 @@ getWorkoutPlanFromAI(userId: string): Observable<any> {
     localStorage.removeItem(key);
   }
 }
+

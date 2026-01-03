@@ -1,4 +1,15 @@
-<div class="main-container">
+<div class="main-container" [attr.aria-busy]="isSavingPlan || isInitialLoading">
+  <div
+    class="planner-save-overlay"
+    *ngIf="isSavingPlan || isInitialLoading"
+    role="status"
+    aria-live="polite"
+  >
+    <div class="planner-save-content">
+      <mat-progress-spinner mode="indeterminate" diameter="64"></mat-progress-spinner>
+      <p class="planner-save-message">{{ isSavingPlan ? 'Guardando plan...' : 'Cargando planificador...' }}</p>
+    </div>
+  </div>
   <div class="planner-actions">
     <div class="actions-left">
       <button mat-icon-button (click)="goBack()" matTooltip="Volver a la lista de planes">
@@ -10,36 +21,39 @@
     </div>
     <div class="spacer"></div>
     <div class="actions-right">
+      <ng-container *ngIf="!isEditMode">
+        <mat-progress-spinner
+          *ngIf="isUserLoading"
+          mode="indeterminate"
+          diameter="24"
+        ></mat-progress-spinner>
+        <button
+          *ngIf="!isUserLoading"
+          mat-stroked-button
+          color="accent"
+          (click)="openAIDialog()"
+          [disabled]="!userProfile?.id"
+          [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+        >
+          <mat-icon>psychology</mat-icon>
+          Generar plan
+        </button>
+      </ng-container>
       <button
-        mat-stroked-button
-        color="accent"
-        (click)="openAIDialog()"
-        [disabled]="!userProfile?.id"
-        [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+        mat-raised-button
+        color="primary"
+        (click)="submitPlan()"
+        matTooltip="Guardar el plan actual"
+        [disabled]="isSavingPlan || isInitialLoading"
       >
-        <mat-icon>psychology</mat-icon>
-        Generar plan
-      </button>
-      <span *ngIf="!userProfile?.id" class="ai-user-warning">Debe cargar un usuario antes de generar un plan con IA.</span>
-      <button mat-raised-button color="primary" (click)="submitPlan()" matTooltip="Guardar el plan actual">
         <mat-icon>save</mat-icon>
-        Guardar plan
+        {{ isEditMode ? 'Actualizar plan' : 'Crear plan' }}
       </button>
     </div>
   </div>
 
   <form [formGroup]="form" class="planner-header">
-    <ng-container *ngIf="canAssignUser && !isSpecificUser">
-      <mat-form-field appearance="outline">
-        <mat-label>Cliente</mat-label>
-        <mat-select formControlName="targetUserId">
-          <mat-option [value]="">Sin asignar</mat-option>
-          <mat-option *ngFor="let u of clients" [value]="u.id">
-            {{ u.givenName || '' }} {{ u.familyName || '' }} ({{ u.email }})
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </ng-container>
+
     <mat-form-field appearance="outline" class="field-objective">
       <mat-label>Objetivo</mat-label>
       <textarea
@@ -63,11 +77,12 @@
 
     <div class="narrow-fields">
       <mat-form-field appearance="outline" class="field-date">
-        <mat-label>Fecha</mat-label>
-        <input matInput [matDatepicker]="picker" formControlName="date"/>
-        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
-        <mat-datepicker #picker></mat-datepicker>
+        <mat-label>Inicio del plan</mat-label>
+        <input matInput [matDatepicker]="planDatePicker" formControlName="date" />
+        <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
+        <mat-datepicker #planDatePicker></mat-datepicker>
       </mat-form-field>
+
       <mat-form-field appearance="outline" class="field-sessions">
         <mat-label>Sesiones</mat-label>
         <input matInput type="number" formControlName="sessionCount" min="1"/>
@@ -148,11 +163,11 @@
           <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
-                {{ ex.name_es || ex.name }}
+                {{ ex.name_es || 'Nombre no disponible' }}
               </div>
               <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
               <div class="row">
-                <small>({{ ex.equipment_type || ex.equipment || 'Sin equipo' }})</small>
+                <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
                 <div class="actions">
                   <button mat-icon-button (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
@@ -168,7 +183,7 @@
               <ng-container *cdkDragPreview>
                 <div class="drag-preview">
                   <mat-icon>fitness_center</mat-icon>
-                  {{ ex.name }}
+                  {{ ex.name_es || 'Nombre no disponible' }}
                 </div>
               </ng-container>
             </div>
@@ -185,9 +200,8 @@
           <cdk-virtual-scroll-viewport itemSize="60" class="vs-plans">
             <div *cdkVirtualFor="let plan of previousPlans; let i = index; trackBy: trackByPlan"
                  class="plan-item" (click)="openPlanPreview(plan)">
-              <div class="plan-number">{{ i + 1 }}</div>
               <div class="plan-content">
-                <div class="plan-date">{{ plan.date | date:'dd/MM/yyyy' }}</div>
+                <div class="plan-date">Plan {{ plan.planOrdinal }} - {{ plan.date | date:'dd/MM/yyyy' }}</div>
                 <div class="plan-sessions">{{ plan.sessions?.length || 0 }} sesiones</div>
               </div>
               <div class="plan-arrow">
@@ -267,10 +281,10 @@
                         ></mat-checkbox>
                       </td>
                       <td class="mat-cell name-cell">
-                        <span class="exercise-name-text" [matTooltip]="item.name_es || item.name">{{ item.name_es || item.name }}</span>
+                        <span class="exercise-name-text" [matTooltip]="getDisplayName(item)">{{ getDisplayName(item) }}</span>
                       </td>
                       <td class="mat-cell">
-                        {{ item.equipment }}
+                        {{ getEquipmentLabel(item) }}
                       </td>
                       <td class="mat-cell">
                         <input class="sets-input"
@@ -339,10 +353,10 @@
                                       <!-- No checkbox for child rows -->
                                     </td>
                                     <td class="mat-cell name-cell">
-                                      <span class="exercise-name-text" [matTooltip]="child.name_es || child.name">{{ child.name_es || child.name }}</span>
+                                      <span class="exercise-name-text" [matTooltip]="getDisplayName(child)">{{ getDisplayName(child) }}</span>
                                     </td>
                                     <td class="mat-cell">
-                                      {{ child.equipment }}
+                                      {{ getEquipmentLabel(child) }}
                                     </td>
                                     <td class="mat-cell">
                                       <input class="sets-input"

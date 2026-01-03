@@ -24,6 +24,7 @@ import { ExerciseApiService } from '../../exercise-api.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
+import { buildPlanOrdinalMap, getPlanKey, sortPlansByCreatedAt } from '../../shared/shared-utils';
 
 @Component({
   selector: 'app-user-detail',
@@ -60,6 +61,7 @@ export class UserDetailComponent implements OnInit {
   plans: any[] = [];
   viewPlans: any[] = [];
   loadingPlans = false;
+  planOrdinalMap = new Map<string, number>();
 
   // filtros
   q = '';
@@ -84,7 +86,8 @@ export class UserDetailComponent implements OnInit {
     this.loadingPlans = true;
     this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
       list => {
-        this.plans = (list || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        this.plans = sortPlansByCreatedAt(list || []);
+        this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
         this.applyFilters();
         this.loadingPlans = false;
         this.cdr.markForCheck();
@@ -97,12 +100,7 @@ export class UserDetailComponent implements OnInit {
   }
 
   getPlanId(p: any): string {
-    if (p?.planId) return p.planId;
-    if (p?.id) return p.id;
-    if (p?.SK && typeof p.SK === 'string' && p.SK.startsWith('PLAN#')) {
-      return p.SK.substring(5);
-    }
-    return '';
+    return getPlanKey(p);
   }
 
   applyFilters() {
@@ -111,16 +109,15 @@ export class UserDetailComponent implements OnInit {
     const to = this.dateTo ? new Date(this.dateTo).getTime() : null;
 
     let arr = this.plans.filter(p => {
-      const name = (p.name || '').toLowerCase();
-      const notes = (p.generalNotes || '').toLowerCase();
+      const objective = (p.objective || '').toLowerCase();
       const t = p.date ? new Date(p.date).getTime() : 0;
-      const matchQ = !qn || name.includes(qn) || notes.includes(qn);
+      const matchQ = !qn || objective.includes(qn);
       const matchFrom = from === null || t >= from!;
       const matchTo = to === null || t <= to!;
       return matchQ && matchFrom && matchTo;
     });
 
-    this.viewPlans = arr.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    this.viewPlans = sortPlansByCreatedAt(arr);
   }
 
   clearFilters() {
@@ -130,8 +127,6 @@ export class UserDetailComponent implements OnInit {
     this.applyFilters();
     this.cdr.markForCheck();
   }
-
-  preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
 
   getSessionCount(plan: any): number {
     if (!plan) return 0;
@@ -165,6 +160,24 @@ export class UserDetailComponent implements OnInit {
     return names.join(', ');
   }
 
+  /**
+   * Purpose: resolve the visual plan ordinal based on createdAt ordering.
+   * Input: plan object. Output: ordinal number or 0.
+   * Error handling: returns 0 when map or key is unavailable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPlanOrdinal(plan: any): number {
+    const key = getPlanKey(plan);
+    if (!key) return 0;
+    return this.planOrdinalMap.get(key) || 0;
+  }
+
+  private getPlanCreatedAtTime(plan: any): number {
+    const raw = plan?.createdAt || plan?.created_at;
+    const ts = raw ? new Date(raw).getTime() : 0;
+    return Number.isNaN(ts) ? 0 : ts;
+  }
+
   deletePlan(planId: string) {
     if (!planId) { return; }
     const ref = this.dialog.open(ConfirmDialogComponent, {
@@ -187,7 +200,8 @@ export class UserDetailComponent implements OnInit {
           if (this.userId) {
             this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
               updatedPlans => {
-                this.plans = (updatedPlans || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                this.plans = sortPlansByCreatedAt(updatedPlans || []);
+                this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
                 this.applyFilters();
                 this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
                 this.cdr.markForCheck();

@@ -173,6 +173,21 @@ export function getPlanKey(plan: { planId?: string; id?: string; SK?: string } |
 }
 
 /**
+ * Purpose: resolve a display name preferring templateName over plan name.
+ * Input: plan with optional templateName/name. Output: displayable name string.
+ * Error handling: returns empty string when no names are available.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function getTemplateDisplayName(
+  plan: { templateName?: string; name?: string } | null | undefined
+): string {
+  if (!plan) return '';
+  const templateName = plan.templateName?.trim();
+  if (templateName) return templateName;
+  return plan.name?.trim() || '';
+}
+
+/**
  * Purpose: derive a numeric timestamp from a plan createdAt value.
  * Input: plan object with createdAt/created_at. Output: timestamp (ms).
  * Error handling: returns 0 for missing or invalid dates.

@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
@@ -42,6 +42,7 @@ import {
   getPlanKey,
   getPlanItemDisplayName,
   getPlanItemEquipmentLabel,
+  getTemplateDisplayName,
   hasRenderablePlanContent,
   normalizePlanSessionsForRender,
   parsePlanSessions,
@@ -110,9 +111,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
   exerciseListConnectedTo: string[] = [];
   sessionsConnectedTo: Record<string, string[]> = {};
 
+  @ViewChild('saveTemplateDialog') saveTemplateDialog?: TemplateRef<any>;
 
   planId: string | null = null;
   isEditMode = false;
+  isTemplateMode = false;
+  templatePlanName: string | null = null;
+  templateNameOriginal: string | null = null;
+  isSavingTemplate = false;
+  templateNameInput = '';
+  private saveTemplateDialogRef: any = null;
   liveMessage = '';
   previousPlans: any[] = [];
   selectedPreviewPlan: any | null = null;
@@ -307,6 +315,236 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  /**
+   * Purpose: reset template-specific state for non-template planner flows.
+   * Input: none. Output: clears template flags and form fields.
+   * Error handling: guards when the form is not yet initialized.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private resetTemplateState(): void {
+    this.isTemplateMode = false;
+    this.templatePlanName = null;
+    this.templateNameOriginal = null;
+    this.templateNameInput = '';
+    if (this.form) {
+      this.form.patchValue({ templateName: '' }, { emitEvent: false });
+    }
+  }
+
+  /**
+   * Purpose: sync template state from a loaded plan record.
+   * Input: plan object. Output: updates template flags and form fields.
+   * Error handling: falls back to defaults when plan is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private syncTemplateState(plan: any): void {
+    if (!plan) {
+      this.resetTemplateState();
+      return;
+    }
+
+    this.isTemplateMode = plan.isTemplate === true;
+    this.templatePlanName = plan.name || null;
+    this.templateNameOriginal = this.isTemplateMode ? plan.templateName || null : null;
+    const templateName = this.isTemplateMode ? plan.templateName || '' : '';
+    if (this.form) {
+      this.form.patchValue({ templateName }, { emitEvent: false });
+    }
+  }
+
+  /**
+   * Purpose: open the dialog to capture a template name for saving.
+   * Input: none. Output: opens the dialog and resets input state.
+   * Error handling: shows snackbar when dialog template is unavailable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openSaveTemplateDialog(): void {
+    if (!this.saveTemplateDialog) {
+      this.snackBar.open('No se pudo abrir el dialogo de plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.templateNameInput = '';
+    this.saveTemplateDialogRef = this.dialog.open(this.saveTemplateDialog, {
+      width: '420px',
+      maxWidth: '92vw',
+      disableClose: true
+    });
+
+    this.saveTemplateDialogRef.afterClosed().subscribe(() => {
+      this.templateNameInput = '';
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Purpose: validate and trigger template save from the dialog.
+   * Input: none (uses templateNameInput). Output: starts save flow.
+   * Error handling: shows snackbar when name is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  confirmSaveTemplate(): void {
+    const templateName = this.templateNameInput.trim();
+    if (!templateName) {
+      this.snackBar.open('Ingresa un nombre de plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    this.saveCurrentPlanAsTemplate(templateName);
+  }
+
+  /**
+   * Purpose: persist a copy of the current plan as a trainer template.
+   * Input: templateName string. Output: void.
+   * Error handling: logs and surfaces snackbar feedback on failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private saveCurrentPlanAsTemplate(templateName: string): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      this.snackBar.open('No se pudo determinar el entrenador.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    const formValue = this.form.value;
+    const startedAtMs = Date.now();
+    const displayName = formValue.userName || this.getUserDisplayName() || 'Usuario';
+    const planName = `Plan de ${displayName}`;
+    const planStartDate = formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString();
+
+    const templatePayload: any = {
+      planId: `plan-${Date.now()}`,
+      name: planName,
+      date: planStartDate,
+      sessions: normalizePlanSessionsForRender(this.sessions),
+      generalNotes: formValue.notes,
+      objective: formValue.objective,
+      userId: currentUser.id,
+      isTemplate: true,
+      templateName
+    };
+
+    this.isSavingTemplate = true;
+    this.cdr.markForCheck();
+
+    this.api.saveWorkoutPlan(templatePayload).pipe(
+      finalize(() => {
+        this.isSavingTemplate = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (res) => {
+        if (res) {
+          console.info('[Planner] template saved', {
+            planId: templatePayload.planId,
+            trainerId: currentUser.id,
+            elapsedMs: Date.now() - startedAtMs
+          });
+          this.saveTemplateDialogRef?.close();
+          this.snackBar.open('Plantilla guardada correctamente', 'Cerrar', { duration: 2500 });
+          return;
+        }
+
+        console.error('[Planner] template save returned empty response', {
+          trainerId: currentUser.id,
+          elapsedMs: Date.now() - startedAtMs
+        });
+        this.snackBar.open(this.getPlanSaveErrorMessage(null), 'Cerrar', { duration: 3500 });
+      },
+      error: (error) => {
+        console.error('[Planner] template save failed', {
+          trainerId: currentUser.id,
+          elapsedMs: Date.now() - startedAtMs,
+          error
+        });
+        this.snackBar.open(this.getPlanSaveErrorMessage(error), 'Cerrar', { duration: 3500 });
+      }
+    });
+  }
+
+  /**
+   * Purpose: load a template by id and apply it to a new plan flow.
+   * Input: templateId string. Output: updates planner state.
+   * Error handling: shows snackbar and logs when template is missing or invalid.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadTemplateForPlanner(templateId: string): void {
+    const trimmedId = templateId?.trim();
+    if (!trimmedId) {
+      console.error('[Planner] missing templateId for load');
+      this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
+      this.initializeNewPlanSessions();
+      this.planLoaded = true;
+      this.updateInitialLoading();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.api.getWorkoutPlanById(trimmedId).pipe(
+      finalize(() => {
+        this.planLoaded = true;
+        this.updateInitialLoading();
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (templatePlan) => {
+        if (!templatePlan) {
+          console.warn('[Planner] template not found', { templateId: trimmedId });
+          this.snackBar.open('No se encontro la plantilla.', 'Cerrar', { duration: 3000 });
+          this.initializeNewPlanSessions();
+          return;
+        }
+
+        if (templatePlan.isTemplate !== true) {
+          console.warn('[Planner] plan is not a template', { templateId: trimmedId });
+          this.snackBar.open('El plan seleccionado no es una plantilla.', 'Cerrar', { duration: 3000 });
+          this.initializeNewPlanSessions();
+          return;
+        }
+
+        this.applyTemplateToPlanner(templatePlan);
+      },
+      error: (error) => {
+        console.error('[Planner] failed to load template', {
+          templateId: trimmedId,
+          error
+        });
+        this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
+        this.initializeNewPlanSessions();
+      }
+    });
+  }
+
+  /**
+   * Purpose: apply template sessions and notes into planner state for new plans.
+   * Input: template plan object. Output: updates sessions and form values.
+   * Error handling: shows snackbar when template has no sessions.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private applyTemplateToPlanner(templatePlan: any): void {
+    this.resetTemplateState();
+    const parsedSessions = parsePlanSessions(templatePlan?.sessions);
+    if (!Array.isArray(parsedSessions) || parsedSessions.length === 0) {
+      this.snackBar.open('La plantilla no tiene sesiones validas.', 'Cerrar', { duration: 3000 });
+      this.initializeNewPlanSessions();
+      return;
+    }
+
+    this.sessions = parsedSessions;
+    this.rebuildDropLists();
+    this.form.patchValue(
+      {
+        sessionCount: parsedSessions.length,
+        notes: templatePlan?.generalNotes || '',
+        objective: templatePlan?.objective || ''
+      },
+      { emitEvent: false }
+    );
+    this.persist();
+    this.applyUiState();
+    this.snackBar.open('Plantilla cargada en el planificador', 'Cerrar', { duration: 2500 });
+    this.cdr.markForCheck();
+  }
+
   private resetAiGenerationState(): void {
     this.stopPolling();
     this.isGenerating = false;
@@ -419,19 +657,23 @@ export class PlannerComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.planId = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.planId;
+    const qpTemplateId = this.route.snapshot.queryParamMap.get('templateId');
+    const hasTemplateParam = !!qpTemplateId;
     this.isInitialLoading = true;
     this.exercisesLoaded = false;
-    this.planLoaded = !this.isEditMode;
+    this.planLoaded = !this.isEditMode && !hasTemplateParam;
     this.userLoaded = true;
     this.initialLoadComplete = false;
     this.form = this.fb.group({
       userName: [''],
+      templateName: [''],
       sessionCount: [3],
       notes: [''],
       targetUserId: [''],
       objective: [''],
       date: [new Date()]
     });
+    this.resetTemplateState();
 
     // Read userId from queryParams and load user immediately if valid
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
@@ -537,6 +779,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
         next: (plan) => {
           if (plan) {
             const parsedSessions = parsePlanSessions(plan.sessions);
+            this.syncTemplateState(plan);
             this.originalPlanUserId = this.extractPlanUserId(plan);
             this.resolveActiveUserId(this.originalPlanUserId, {
               source: 'plan-owner',
@@ -544,13 +787,17 @@ export class PlannerComponent implements OnInit, OnDestroy {
               loadUser: true,
               loadPlans: true
             });
-            this.form.patchValue({
-              userName: plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
-              sessionCount: parsedSessions.length,
-              notes: plan.generalNotes,
-              objective: plan.objective || '',
-              date: plan.date ? new Date(plan.date) : new Date()
-            });
+            this.form.patchValue(
+              {
+                userName: this.isTemplateMode ? '' : plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
+                templateName: this.isTemplateMode ? plan.templateName || '' : '',
+                sessionCount: parsedSessions.length,
+                notes: plan.generalNotes,
+                objective: plan.objective || '',
+                date: plan.date ? new Date(plan.date) : new Date()
+              },
+              { emitEvent: false }
+            );
             this.sessions = parsedSessions;
             this.rebuildDropLists();
             this.applyUiState();
@@ -569,14 +816,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
           this.snackBar.open('No se pudo cargar el plan.', 'Cerrar', { duration: 3000 });
         }
       });
-  } else {
+    } else if (hasTemplateParam && qpTemplateId) {
+      this.resetTemplateState();
+      this.api.clearUserSessions();
+      this.planLoaded = false;
+      this.updateInitialLoading();
+      this.loadTemplateForPlanner(qpTemplateId);
+    } else {
       // Clear any previous sessions from localStorage for clean start
       this.api.clearUserSessions();
 
       // Always start with empty sessions for new plans
-      this.updateSessions(this.form.value.sessionCount);
-      this.rebuildDropLists();
-      this.applyUiState();
+      this.initializeNewPlanSessions();
     }
 
     // Subscribe to sessionCount changes in both create and edit modes
@@ -856,6 +1107,19 @@ export class PlannerComponent implements OnInit, OnDestroy {
       maxHeight: '80vh',
       data: { exercise }
     });
+  }
+
+  /**
+   * Purpose: initialize empty sessions for a new plan flow.
+   * Input: none (uses form sessionCount). Output: updates sessions and UI state.
+   * Error handling: defaults to 1 session when count is invalid.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private initializeNewPlanSessions(): void {
+    const rawCount = Number(this.form?.value?.sessionCount);
+    const count = Number.isFinite(rawCount) && rawCount > 0 ? rawCount : 1;
+    this.updateSessions(count);
+    this.applyUiState();
   }
 
 
@@ -1224,6 +1488,23 @@ export class PlannerComponent implements OnInit, OnDestroy {
     return formValue.userName || 'Usuario sin asignar';
   }
 
+  /**
+   * Purpose: derive the planner header label for template or user contexts.
+   * Input: none. Output: display label string.
+   * Error handling: falls back to generic labels when data is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPlannerHeaderLabel(): string {
+    if (this.isTemplateMode) {
+      const templateLabel = getTemplateDisplayName({
+        templateName: this.form?.value?.templateName,
+        name: this.templatePlanName || ''
+      });
+      return templateLabel || 'Plantilla';
+    }
+    return this.getUserDisplayName();
+  }
+
   goBack(): void {
     const userId = this.route.snapshot.queryParamMap.get('userId') || this.activeUserId || this.originalPlanUserId;
     if (userId) {
@@ -1297,18 +1578,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     const displayName = formValue.userName || this.getUserDisplayName() || 'Usuario';
     const planName = `Plan de ${displayName}`;
+    const templateName = (formValue.templateName || '').trim();
+    const resolvedTemplateName = this.isTemplateMode
+      ? (templateName || this.templateNameOriginal || '')
+      : templateName;
+    const resolvedPlanName = this.isTemplateMode
+      ? (this.templatePlanName || resolvedTemplateName || planName)
+      : planName;
     const planStartDate = formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString();
     const planUserId = requestedUserId;
 
-    const planData = {
+    const planData: any = {
       planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
-      name: planName,
+      name: resolvedPlanName,
       date: planStartDate,
       sessions: this.sessions,
       generalNotes: formValue.notes,
       objective: formValue.objective,
       userId: planUserId
     };
+    if (this.isTemplateMode) {
+      planData.isTemplate = true;
+      if (resolvedTemplateName) {
+        planData.templateName = resolvedTemplateName;
+      }
+    }
 
     const action = this.isEditMode
       ? this.api.updateWorkoutPlan(planData)

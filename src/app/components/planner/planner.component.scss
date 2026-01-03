@@ -95,6 +95,10 @@
     flex: 2 1 300px;
   }
 
+  .field-template-name {
+    flex: 1 1 260px;
+  }
+
   .narrow-fields {
     display: flex;
     gap: 1rem;
@@ -811,6 +815,10 @@ $exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100
   .plan-item:hover & {
     color: var(--primary-600);
   }
+}
+
+.dialog-field {
+  width: 100%;
 }
 
 /* Header Icon for Superserie Creation */

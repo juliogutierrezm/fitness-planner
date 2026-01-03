@@ -1,13 +1,15 @@
-<div class="main-container" [attr.aria-busy]="isSavingPlan || isInitialLoading">
+<div class="main-container" [attr.aria-busy]="isSavingPlan || isSavingTemplate || isInitialLoading">
   <div
     class="planner-save-overlay"
-    *ngIf="isSavingPlan || isInitialLoading"
+    *ngIf="isSavingPlan || isSavingTemplate || isInitialLoading"
     role="status"
     aria-live="polite"
   >
     <div class="planner-save-content">
       <mat-progress-spinner mode="indeterminate" diameter="64"></mat-progress-spinner>
-      <p class="planner-save-message">{{ isSavingPlan ? 'Guardando plan...' : 'Cargando planificador...' }}</p>
+      <p class="planner-save-message">
+        {{ isSavingPlan ? 'Guardando plan...' : isSavingTemplate ? 'Guardando plantilla...' : 'Cargando planificador...' }}
+      </p>
     </div>
   </div>
   <div class="planner-actions">
@@ -17,7 +19,7 @@
       </button>
     </div>
     <div class="user-label">
-      <span class="user-name">{{ getUserDisplayName() }}</span>
+      <span class="user-name">{{ getPlannerHeaderLabel() }}</span>
     </div>
     <div class="spacer"></div>
     <div class="actions-right">
@@ -40,19 +42,38 @@
         </button>
       </ng-container>
       <button
+        *ngIf="!isTemplateMode"
+        mat-stroked-button
+        color="primary"
+        (click)="openSaveTemplateDialog()"
+        matTooltip="Guardar el plan actual como plantilla"
+        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
+      >
+        <mat-icon>bookmark_add</mat-icon>
+        Guardar como plantilla
+      </button>
+      <button
         mat-raised-button
         color="primary"
         (click)="submitPlan()"
-        matTooltip="Guardar el plan actual"
-        [disabled]="isSavingPlan || isInitialLoading"
+        [matTooltip]="isTemplateMode ? 'Guardar cambios de plantilla' : 'Guardar el plan actual'"
+        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
       >
         <mat-icon>save</mat-icon>
-        {{ isEditMode ? 'Actualizar plan' : 'Crear plan' }}
+        {{ isTemplateMode ? 'Actualizar plantilla' : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
       </button>
     </div>
   </div>
 
   <form [formGroup]="form" class="planner-header">
+    <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name">
+      <mat-label>Nombre de plantilla</mat-label>
+      <input
+        matInput
+        formControlName="templateName"
+        placeholder="Ej: Fuerza base"
+      />
+    </mat-form-field>
 
     <mat-form-field appearance="outline" class="field-objective">
       <mat-label>Objetivo</mat-label>
@@ -417,3 +438,25 @@
 
   </div>
 </div>
+
+<ng-template #saveTemplateDialog>
+  <h2 mat-dialog-title>Guardar como plantilla</h2>
+  <mat-dialog-content>
+    <p>Asigna un nombre para identificar esta plantilla.</p>
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Nombre de la plantilla</mat-label>
+      <input matInput [(ngModel)]="templateNameInput" />
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close [disabled]="isSavingTemplate">Cancelar</button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="confirmSaveTemplate()"
+      [disabled]="!templateNameInput.trim() || isSavingTemplate"
+    >
+      Guardar
+    </button>
+  </mat-dialog-actions>
+</ng-template>

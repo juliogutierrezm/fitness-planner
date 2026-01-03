@@ -76,6 +76,8 @@ export interface WorkoutPlan {
   objective?: string;
   companyId?: string;
   trainerId?: string;
+  isTemplate?: boolean;
+  templateName?: string;
 }
 
 /* ---------- AI Plan Generation ---------- */

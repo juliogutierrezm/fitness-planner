@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -21,10 +21,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { UserApiService, AppUser } from '../../user-api.service';
 import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
-import { buildPlanOrdinalMap, getPlanKey, sortPlansByCreatedAt } from '../../shared/shared-utils';
+import { finalize } from 'rxjs/operators';
+import { buildPlanOrdinalMap, getPlanKey, getTemplateDisplayName, sortPlansByCreatedAt } from '../../shared/shared-utils';
 
 @Component({
   selector: 'app-user-detail',
@@ -61,6 +63,10 @@ export class UserDetailComponent implements OnInit {
   plans: any[] = [];
   viewPlans: any[] = [];
   loadingPlans = false;
+  templates: any[] = [];
+  templateDialogLoading = false;
+  @ViewChild('templateSelectDialog') templateSelectDialog?: TemplateRef<any>;
+  private templateDialogRef: any = null;
   planOrdinalMap = new Map<string, number>();
 
   // filtros
@@ -72,6 +78,7 @@ export class UserDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private userApi: UserApiService,
     private planApi: ExerciseApiService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
@@ -126,6 +133,100 @@ export class UserDetailComponent implements OnInit {
     this.dateTo = null;
     this.applyFilters();
     this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: open the template picker dialog for this user.
+   * Input: none. Output: opens dialog and loads templates.
+   * Error handling: shows snackbar when prerequisites are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openTemplateDialog(): void {
+    if (!this.userId) {
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    if (!this.templateSelectDialog) {
+      this.snackBar.open('No se pudo abrir el selector de plantillas.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.templateDialogRef = this.dialog.open(this.templateSelectDialog, {
+      width: '600px',
+      maxWidth: '92vw'
+    });
+    this.loadTemplatesForDialog();
+  }
+
+  /**
+   * Purpose: load trainer templates for selection in the dialog.
+   * Input: none. Output: updates templates list state.
+   * Error handling: logs and shows snackbar on API failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadTemplatesForDialog(): void {
+    const trainerId = this.authService.getCurrentUser()?.id;
+    if (!trainerId) {
+      this.templateDialogLoading = false;
+      this.templates = [];
+      this.snackBar.open('No se pudo identificar el entrenador.', 'Cerrar', { duration: 3000 });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.templateDialogLoading = true;
+    this.cdr.markForCheck();
+
+    this.userApi.getWorkoutPlansByUserId(trainerId).pipe(
+      finalize(() => {
+        this.templateDialogLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (list) => {
+        const templatesOnly = (list || []).filter((plan: any) => plan?.isTemplate === true);
+        this.templates = templatesOnly.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      },
+      error: (error) => {
+        console.error('Error al cargar plantillas:', error);
+        this.templates = [];
+        this.snackBar.open('No se pudieron cargar las plantillas.', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
+
+  /**
+   * Purpose: navigate to planner with the selected template preloaded.
+   * Input: template plan object. Output: navigation side effect.
+   * Error handling: shows snackbar when ids are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  selectTemplate(template: any): void {
+    if (!this.userId) {
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    const templateId = this.getPlanId(template);
+    if (!templateId) {
+      this.snackBar.open('No se pudo identificar la plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.templateDialogRef?.close();
+    this.router.navigate(['/planner'], {
+      queryParams: { userId: this.userId, templateId }
+    });
+  }
+
+  /**
+   * Purpose: resolve a template display name with templateName priority.
+   * Input: template plan object. Output: display name string.
+   * Error handling: falls back to a generic label when names are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getTemplateName(template: any): string {
+    const name = getTemplateDisplayName(template);
+    return name || 'Plantilla sin nombre';
   }
 
   getSessionCount(plan: any): number {

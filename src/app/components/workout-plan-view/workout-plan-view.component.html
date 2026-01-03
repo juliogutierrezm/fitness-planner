@@ -1,6 +1,6 @@
 <div *ngIf="plan" class="plan-container">
   <mat-card class="plan-card">
-    <mat-card-title>{{ plan.name }}</mat-card-title>
+    <mat-card-title>{{ plan.templateName || plan.name }}</mat-card-title>
     <mat-card-subtitle>
       Fecha: {{ plan.date | date:'mediumDate' }}<br />
       Entrenador: {{ plan.trainerId || 'N/A' }}<br />

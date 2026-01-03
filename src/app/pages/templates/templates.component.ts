@@ -4,6 +4,8 @@ import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
+import { UserApiService } from '../../user-api.service';
+import { finalize } from 'rxjs/operators';
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +21,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
+import { getTemplateDisplayName } from '../../shared/shared-utils';
 // Removed dialog-based preview; use dedicated route instead.
 
 @Component({
@@ -61,6 +64,7 @@ export class TemplatesComponent implements OnInit {
   constructor(
     private api: ExerciseApiService,
     private authService: AuthService,
+    private userApi: UserApiService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
@@ -71,15 +75,54 @@ export class TemplatesComponent implements OnInit {
     // Get current user info
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      if (user?.id) {
+        this.loadTemplates(user.id);
+      } else {
+        this.loading = false;
+        this.templates = [];
+        this.applyFilters();
+      }
       this.cdr.markForCheck();
     });
 
-    // Load templates created by the current trainer
-    this.api.getPlansByTrainer().subscribe((data) => {
-      this.templates = (data || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      this.applyFilters();
+    if (!this.authService.getCurrentUser()?.id) {
       this.loading = false;
-      this.cdr.markForCheck();
+    }
+  }
+
+  /**
+   * Purpose: load template plans for the trainer using the user plans endpoint.
+   * Input: trainerId string. Output: updates templates list state.
+   * Error handling: logs and shows snackbar on API failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadTemplates(trainerId: string): void {
+    const trimmedId = trainerId?.trim();
+    if (!trimmedId) {
+      this.loading = false;
+      this.templates = [];
+      this.applyFilters();
+      return;
+    }
+
+    this.loading = true;
+    this.userApi.getWorkoutPlansByUserId(trimmedId).pipe(
+      finalize(() => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (data) => {
+        const templatesOnly = (data || []).filter((plan: any) => plan?.isTemplate === true);
+        this.templates = templatesOnly.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        this.applyFilters();
+      },
+      error: (error) => {
+        console.error('Error al cargar plantillas:', error);
+        this.templates = [];
+        this.applyFilters();
+        this.snackBar.open('No se pudieron cargar las plantillas.', 'Cerrar', { duration: 3000 });
+      }
     });
   }
 
@@ -100,7 +143,7 @@ export class TemplatesComponent implements OnInit {
     const to = this.dateTo ? new Date(this.dateTo).getTime() : null;
 
     let arr = this.templates.filter((p: any) => {
-      const name = (p.name || '').toLowerCase();
+      const name = (getTemplateDisplayName(p) || '').toLowerCase();
       const notes = (p.generalNotes || '').toLowerCase();
       const t = p.date ? new Date(p.date).getTime() : 0;
       const matchQ = !qn || name.includes(qn) || notes.includes(qn);
@@ -121,6 +164,17 @@ export class TemplatesComponent implements OnInit {
   }
 
   preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
+
+  /**
+   * Purpose: resolve a template label with templateName priority.
+   * Input: template plan object. Output: display name string.
+   * Error handling: falls back to a generic label when names are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getTemplateName(plan: any): string {
+    const name = getTemplateDisplayName(plan);
+    return name || 'Plantilla sin nombre';
+  }
 
   getSessionCount(plan: any): number {
     if (!plan) return 0;

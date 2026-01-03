@@ -100,8 +100,6 @@ export class ExerciseApiService {
     );
   }
 
-
-
   getExercises(): Observable<Exercise[]> {
     return this.http.get<Exercise[]>(this.exerciseUrl).pipe(
       tap(exs => console.log('📋 Ejercicios obtenidos:', exs)),

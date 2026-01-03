@@ -9,16 +9,21 @@
   <mat-card class="plans-card">
     <div class="plans-header">
       <h3>Planes de entrenamiento de {{ user | userDisplayName }}</h3>
-      <a
-        *ngIf="userId as uid"
-        mat-raised-button
-        color="primary"
-        [routerLink]="['/planner']"
-        [queryParams]="{ userId: uid }"
-      >
-        <mat-icon>add</mat-icon>
-        Crear plan
-      </a>
+      <div class="plans-actions" *ngIf="userId as uid">
+        <a
+          mat-raised-button
+          color="primary"
+          [routerLink]="['/planner']"
+          [queryParams]="{ userId: uid }"
+        >
+          <mat-icon>add</mat-icon>
+          Crear plan
+        </a>
+        <button mat-stroked-button color="primary" (click)="openTemplateDialog()">
+          <mat-icon>bookmark_add</mat-icon>
+          Usar plantilla
+        </button>
+      </div>
     </div>
 
     <div class="filters">
@@ -60,11 +65,16 @@
       <mat-expansion-panel *ngFor="let plan of viewPlans; trackBy: getPlanId">
         <mat-expansion-panel-header>
           <div class="plan-header">
-            <div class="left">
-              <div class="title">Plan {{ getPlanOrdinal(plan) }} - {{ plan.date | date: 'dd/MM/yyyy' }} - {{ getSessionCount(plan) }} sesiones</div>
-              <div class="objective" *ngIf="plan.objective">
-                <mat-icon>flag</mat-icon>
-                <span>{{ plan.objective }}</span>
+            <div class="plan-main">
+              <div class="plan-title">Plan {{ getPlanOrdinal(plan) }}</div>
+              <div class="plan-meta">
+                <span class="meta-item">{{ plan.date | date: 'dd/MM/yyyy' }}</span>
+                <span class="meta-sep" aria-hidden="true">&middot;</span>
+                <span class="meta-item">{{ getSessionCount(plan) }} sesiones</span>
+                <span class="objective-badge" *ngIf="plan.objective">
+                  <mat-icon>flag</mat-icon>
+                  <span>{{ plan.objective }}</span>
+                </span>
               </div>
             </div>
             <div class="right">
@@ -83,6 +93,36 @@
     </mat-accordion>
   </mat-card>
 </div>
+
+<ng-template #templateSelectDialog>
+  <h2 mat-dialog-title>Usar plantilla</h2>
+  <mat-dialog-content>
+    <div *ngIf="templateDialogLoading" class="dialog-loading">
+      <mat-spinner diameter="32"></mat-spinner>
+      <p>Cargando plantillas...</p>
+    </div>
+    <div *ngIf="!templateDialogLoading && templates.length === 0" class="no-templates">
+      No hay plantillas disponibles.
+    </div>
+    <mat-list *ngIf="!templateDialogLoading && templates.length > 0">
+      <div
+        mat-list-item
+        class="template-row"
+        tabindex="0"
+        *ngFor="let template of templates; trackBy: getPlanId"
+        (click)="selectTemplate(template)"
+        (keydown.enter)="selectTemplate(template)"
+        (keydown.space)="selectTemplate(template)"
+      >
+        <div matLine>{{ getTemplateName(template) }}</div>
+        <div matLine class="secondary">{{ getSessionCount(template) }} sesiones</div>
+      </div>
+    </mat-list>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>
 
 
 

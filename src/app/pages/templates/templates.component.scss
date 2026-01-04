@@ -17,6 +17,7 @@
   margin-bottom: 0.75rem;
 }
 .filters .q { min-width: 260px; flex: 1; }
+.filters .user-select { min-width: 220px; }
 
 .no-plans { padding: 1rem; color: var(--ink-500); }
 
@@ -41,3 +42,8 @@
 .s-summary { color: var(--ink-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .panel-actions { display: flex; justify-content: flex-end; padding: .5rem 1rem 1rem; }
+
+.no-users { padding: 12px 0; color: var(--ink-500); }
+.user-row { cursor: pointer; }
+.user-row:hover { background: rgba(0, 0, 0, 0.04); }
+.user-row:focus-visible { outline: 2px solid var(--ink-400); outline-offset: 2px; }

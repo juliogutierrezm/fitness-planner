@@ -34,6 +34,16 @@
       <mat-datepicker #toPicker></mat-datepicker>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" class="user-select" *ngIf="assignableUsers.length > 0">
+      <mat-label>Usuario destino</mat-label>
+      <mat-select [(ngModel)]="selectedUserId">
+        <mat-option value="">Selecciona un usuario</mat-option>
+        <mat-option *ngFor="let user of assignableUsers; trackBy: trackByUserId" [value]="user.id">
+          {{ user | userDisplayName }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
     <button mat-button color="primary" (click)="clearFilters()">
       <mat-icon>filter_alt_off</mat-icon>
       Limpiar filtros
@@ -83,3 +93,28 @@
     </mat-expansion-panel>
   </mat-accordion>
 </div>
+
+<ng-template #userSelectDialog>
+  <h2 mat-dialog-title>Asignar plantilla</h2>
+  <mat-dialog-content>
+    <div *ngIf="assignableUsers.length === 0" class="no-users">
+      No hay usuarios disponibles.
+    </div>
+    <mat-list *ngIf="assignableUsers.length > 0">
+      <div
+        mat-list-item
+        class="user-row"
+        tabindex="0"
+        *ngFor="let user of assignableUsers; trackBy: trackByUserId"
+        (click)="selectUserForAssignment(user)"
+        (keydown.enter)="selectUserForAssignment(user)"
+        (keydown.space)="selectUserForAssignment(user)"
+      >
+        <div matLine>{{ user | userDisplayName }}</div>
+      </div>
+    </mat-list>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>

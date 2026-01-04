@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +22,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
+import { TemplateAssignmentService } from '../../services/template-assignment.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
@@ -82,7 +83,7 @@ export class UserDetailComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private templateAssignment: TemplateAssignmentService
   ) {}
 
   ngOnInit() {
@@ -202,19 +203,12 @@ export class UserDetailComponent implements OnInit {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   selectTemplate(template: any): void {
-    if (!this.userId) {
-      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
-      return;
-    }
     const templateId = this.getPlanId(template);
-    if (!templateId) {
-      this.snackBar.open('No se pudo identificar la plantilla.', 'Cerrar', { duration: 3000 });
-      return;
-    }
-
-    this.templateDialogRef?.close();
-    this.router.navigate(['/planner'], {
-      queryParams: { userId: this.userId, templateId }
+    this.templateAssignment.assignTemplateToUser({
+      userId: this.userId,
+      snackBar: this.snackBar,
+      templateId,
+      onBeforeNavigate: () => this.templateDialogRef?.close()
     });
   }
 

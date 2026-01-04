@@ -1,10 +1,11 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
-import { UserApiService } from '../../user-api.service';
+import { UserApiService, AppUser } from '../../user-api.service';
+import { TemplateAssignmentService } from '../../services/template-assignment.service';
 import { finalize } from 'rxjs/operators';
 import { MatCardModule } from "@angular/material/card";
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +14,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -21,6 +23,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
+import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
 import { getTemplateDisplayName } from '../../shared/shared-utils';
 // Removed dialog-based preview; use dedicated route instead.
 
@@ -37,6 +40,7 @@ import { getTemplateDisplayName } from '../../shared/shared-utils';
     MatDialogModule,
     MatSnackBarModule,
     MatExpansionModule,
+    MatListModule,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
@@ -44,7 +48,8 @@ import { getTemplateDisplayName } from '../../shared/shared-utils';
     MatSelectModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
-    WorkoutPlanViewComponent
+    WorkoutPlanViewComponent,
+    UserDisplayNamePipe
   ],
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
@@ -55,6 +60,11 @@ export class TemplatesComponent implements OnInit {
   viewTemplates: any[] = [];
   loading = true;
   currentUser: any = null;
+  assignableUsers: AppUser[] = [];
+  selectedUserId: string | null = null;
+  @ViewChild('userSelectDialog') userSelectDialog?: TemplateRef<any>;
+  private userSelectDialogRef: any = null;
+  private pendingTemplateId: string | null = null;
 
   // filtros
   q = '';
@@ -68,13 +78,19 @@ export class TemplatesComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
+    private templateAssignment: TemplateAssignmentService
   ) {}
 
   ngOnInit() {
+    const qpUserId = this.route.snapshot.queryParamMap.get('userId');
+    this.selectedUserId = qpUserId?.trim() || null;
+
     // Get current user info
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      this.loadAssignableUsers(user);
       if (user?.id) {
         this.loadTemplates(user.id);
       } else {
@@ -88,6 +104,91 @@ export class TemplatesComponent implements OnInit {
     if (!this.authService.getCurrentUser()?.id) {
       this.loading = false;
     }
+  }
+
+  private loadAssignableUsers(user: any): void {
+    if (!user) {
+      this.assignableUsers = [];
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (user.role === 'admin') {
+      this.userApi.getUsersByCompany(user.companyId).subscribe(list => {
+        this.assignableUsers = list || [];
+        this.syncSelectedUserId();
+        this.cdr.markForCheck();
+      });
+      return;
+    }
+
+    if (user.role === 'trainer') {
+      this.userApi.getUsersByTrainer(user.id).subscribe(list => {
+        this.assignableUsers = list || [];
+        this.syncSelectedUserId();
+        this.cdr.markForCheck();
+      });
+      return;
+    }
+
+    this.assignableUsers = [];
+    this.cdr.markForCheck();
+  }
+
+  private syncSelectedUserId(): void {
+    if (!this.selectedUserId || this.assignableUsers.length === 0) return;
+    const exists = this.assignableUsers.some(user => user.id === this.selectedUserId);
+    if (!exists) {
+      this.selectedUserId = null;
+    }
+  }
+
+  private openUserSelectDialog(templateId: string): void {
+    const trimmedId = templateId?.trim();
+    if (!trimmedId) {
+      this.snackBar.open('No se pudo identificar la plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    if (!this.userSelectDialog) {
+      this.snackBar.open('No se pudo abrir el selector de usuarios.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    if (this.assignableUsers.length === 0) {
+      this.snackBar.open('No hay usuarios disponibles para asignar.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.pendingTemplateId = trimmedId;
+    this.userSelectDialogRef = this.dialog.open(this.userSelectDialog, {
+      width: '520px',
+      maxWidth: '92vw'
+    });
+
+    this.userSelectDialogRef.afterClosed().subscribe(() => {
+      this.pendingTemplateId = null;
+      this.userSelectDialogRef = null;
+    });
+  }
+
+  selectUserForAssignment(user: AppUser): void {
+    const userId = user?.id?.trim();
+    if (!userId) {
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.selectedUserId = userId;
+    const templateId = this.pendingTemplateId;
+    this.userSelectDialogRef?.close();
+    if (!templateId) {
+      return;
+    }
+
+    this.templateAssignment.assignTemplateToUser({
+      userId,
+      snackBar: this.snackBar,
+      templateId
+    });
   }
 
   /**
@@ -165,6 +266,8 @@ export class TemplatesComponent implements OnInit {
 
   preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
 
+  trackByUserId = (_: number, user: AppUser) => user.id || user.email;
+
   /**
    * Purpose: resolve a template label with templateName priority.
    * Input: template plan object. Output: display name string.
@@ -241,7 +344,16 @@ export class TemplatesComponent implements OnInit {
   }
 
   assignTemplate(template: any) {
-    // TODO: Implement template assignment to users
-    this.snackBar.open('Funcionalidad de asignación próximamente', 'Cerrar', { duration: 2000 });
+    const templateId = this.getPlanId(template);
+    if (!this.selectedUserId) {
+      this.openUserSelectDialog(templateId);
+      return;
+    }
+    this.templateAssignment.assignTemplateToUser({
+      userId: this.selectedUserId,
+      snackBar: this.snackBar,
+      templateId
+    });
   }
 }
+

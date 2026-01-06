@@ -17,7 +17,7 @@ import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { UserApiService, AppUser } from '../../user-api.service';
+import { UserApiService, AppUser, CreateUserWithRoleRequest } from '../../user-api.service';
 import { AuthService, UserRole } from '../../services/auth.service';
 
 import { UserPlansDialogComponent } from '../user-plans-dialog/user-plans-dialog.component';
@@ -73,12 +73,12 @@ export class UsersComponent implements OnInit, OnDestroy {
   private formFactory() {
     return this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      givenName: [''],
-      familyName: [''],
-      telephone: ['', Validators.required],
-      gender: ['', Validators.required],
+      givenName: ['', Validators.required],
+      familyName: ['', Validators.required],
+      telephone: [''],
+      gender: [''],
       role: ['client'],
-      dateOfBirth: [''],
+      dateOfBirth: ['', Validators.required],
       noInjuries: [true],
       injuries: [''],
       notes: ['']
@@ -108,14 +108,9 @@ export class UsersComponent implements OnInit, OnDestroy {
         this.isLoading = true;
         this.cdr.markForCheck();
 
-        if (this.isAdmin) {
-          this.api.getUsersByCompany().subscribe(list => {
-            this.users = list;
-            this.isLoading = false;
-            this.cdr.markForCheck();
-          });
-        } else if (user?.role === UserRole.TRAINER) {
-          this.api.getUsersByTrainer().subscribe(list => {
+        const canManageUsers = user?.role === UserRole.ADMIN || user?.role === UserRole.TRAINER;
+        if (canManageUsers) {
+          this.api.getUsersForCurrentTenant().subscribe(list => {
             this.users = list;
             this.isLoading = false;
             this.cdr.markForCheck();
@@ -156,17 +151,18 @@ export class UsersComponent implements OnInit, OnDestroy {
   submit() {
     if (this.form.invalid) return;
     const formValue = this.form.value;
+    const role = (this.isAdmin ? formValue.role : 'client') as 'client' | 'trainer';
     const payload: AppUser = {
       email: formValue.email!,
       givenName: formValue.givenName || '',
       familyName: formValue.familyName || '',
-      telephone: formValue.telephone || '',
-      gender: formValue.gender || undefined,
-      role: (this.isAdmin ? formValue.role : 'client') as any,
-      dateOfBirth: formValue.dateOfBirth || undefined,
+      telephone: formValue.telephone || null,
+      gender: formValue.gender || null,
+      role: role,
+      dateOfBirth: formValue.dateOfBirth || '',
       noInjuries: formValue.noInjuries,
       injuries: formValue.noInjuries ? null : (formValue.injuries?.trim() || null),
-      notes: formValue.notes || undefined
+      notes: formValue.notes || null
     };
     this.api.createUser(payload).subscribe(res => {
       if (res) {
@@ -208,6 +204,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       injuries: u.injuries || '',
       notes: u.notes || ''
     });
+    // Disable email field to prevent editing
+    this.editForm.get('email')?.disable({ emitEvent: false });
     if (!this.isAdmin) { this.editForm.get('role')?.disable({ emitEvent: false }); }
     this.cdr.markForCheck();
   }
@@ -222,7 +220,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     const editFormValue = this.editForm.value;
     const payload: AppUser = {
       id: u.id,
-      email: editFormValue.email || u.email,
+      email: u.email!, // Keep original email, don't allow changes
       givenName: editFormValue.givenName || '',
       familyName: editFormValue.familyName || '',
       telephone: editFormValue.telephone || '',

@@ -4,6 +4,17 @@ const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
 const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
 
 /**
+ * Purpose: determine gym mode based on the tenant companyId claim.
+ * Input: companyId string | null | undefined. Output: boolean.
+ * Error handling: treats missing companyId as INDEPENDENT fallback.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function isGymMode(companyId?: string | null): boolean {
+  const normalized = companyId || 'INDEPENDENT';
+  return normalized !== 'INDEPENDENT';
+}
+
+/**
  * Purpose: sanitize exercise name for ID generation by replacing spaces and special characters with underscores.
  * Input: name string. Output: normalized string.
  * Error handling: none; pure string transform with safe defaults.

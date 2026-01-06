@@ -4,6 +4,7 @@ import { Observable, of } from 'rxjs';
 import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 import { AuthService, UserRole } from './services/auth.service';
+import { isGymMode } from './shared/shared-utils';
 
 export interface AppUser {
   id?: string;
@@ -20,6 +21,21 @@ export interface AppUser {
   injuries?: string;    // Free text, optional (null when noInjuries=true)
   notes?: string;       // Trainer internal notes, optional
   createdAt?: string;
+}
+
+export interface CreateUserWithRoleRequest {
+  email: string;
+  role: 'client' | 'trainer';
+  companyId: string;
+  givenName?: string;
+  familyName?: string;
+}
+
+export interface CreateUserWithRoleResponse {
+  id: string;
+  role: 'client' | 'trainer';
+  companyId: string;
+  email: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -41,12 +57,16 @@ export class UserApiService {
     if (!u) return of(null);
     // Enforce server-side relevant ownership fields
     const body: any = { ...payload };
+    const normalizedCompanyId = u.companyId || 'INDEPENDENT';
     if (u.role === UserRole.TRAINER) {
       // Entrenador crea clientes. Asignar siempre trainerId, y companyId si el entrenador pertenece a una compañía
       body.role = 'client';
       body.trainerId = u.id;
       // companyId requerido por GSI2 del backend: usar el del entrenador o 'INDEPENDENT'
-      body.companyId = u.companyId || 'INDEPENDENT';
+      body.companyId = normalizedCompanyId;
+    }
+    if (u.role === UserRole.ADMIN && !body.companyId) {
+      body.companyId = normalizedCompanyId;
     }
     // Sanitizar otros posibles nulos (companyId ya está normalizado)
     if (!body.trainerId) delete body.trainerId;
@@ -56,6 +76,27 @@ export class UserApiService {
     return this.http.post(this.base, body).pipe(
       tap(res => console.log('User created', res)),
       catchError(err => { console.error('Create user error', err); return of(null); })
+    );
+  }
+
+  createUserWithRole(payload: CreateUserWithRoleRequest): Observable<CreateUserWithRoleResponse | null> {
+    const u = this.auth.getCurrentUser();
+    if (!u) return of(null);
+    // Determine companyId
+    const normalizedCompanyId = u.companyId || 'INDEPENDENT';
+    // Enforce role based on actor permissions
+    const body: CreateUserWithRoleRequest = {
+      ...payload,
+      companyId: normalizedCompanyId
+    };
+    if (u.role === UserRole.TRAINER) {
+      // Trainer can only create clients
+      body.role = 'client';
+    }
+    // Admin can create trainer or client as specified
+    return this.http.post<CreateUserWithRoleResponse>(this.base, body).pipe(
+      tap(res => console.log('User created with role', res)),
+      catchError(err => { console.error('Create user with role error', err); return of(null); })
     );
   }
 
@@ -70,12 +111,31 @@ export class UserApiService {
 
   getUsersByCompany(companyId?: string): Observable<AppUser[]> {
     const u = this.auth.getCurrentUser();
-    if (!u || u.role !== UserRole.ADMIN) return of([]);
+    if (!u) return of([]);
+    if (u.role !== UserRole.ADMIN && u.role !== UserRole.TRAINER) return of([]);
     const id = companyId || (u.companyId || '');
-    if (!id) return of([]);
+    if (!id || id === 'INDEPENDENT') return of([]);
     return this.http.get<AppUser[]>(`${this.base}?companyId=${encodeURIComponent(id)}`).pipe(
       catchError(err => { console.error('getUsersByCompany error', err); return of([]); })
     );
+  }
+
+  /**
+   * Purpose: fetch users for the current tenant using gym vs independent mode.
+   * Input: none. Output: Observable<AppUser[]>.
+   * Error handling: returns empty list when user or identifiers are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getUsersForCurrentTenant(): Observable<AppUser[]> {
+    const u = this.auth.getCurrentUser();
+    if (!u) return of([]);
+    if (u.role !== UserRole.ADMIN && u.role !== UserRole.TRAINER) return of([]);
+    const companyId = u.companyId || 'INDEPENDENT';
+    if (isGymMode(companyId)) {
+      return this.getUsersByCompany(companyId);
+    }
+    if (!u.id) return of([]);
+    return this.getUsersByTrainer(u.id);
   }
 
   updateUser(user: AppUser): Observable<any> {

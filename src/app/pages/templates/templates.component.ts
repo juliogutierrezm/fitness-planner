@@ -92,7 +92,7 @@ export class TemplatesComponent implements OnInit {
       this.currentUser = user;
       this.loadAssignableUsers(user);
       if (user?.id) {
-        this.loadTemplates(user.id);
+        this.loadTemplates();
       } else {
         this.loading = false;
         this.templates = [];
@@ -113,26 +113,18 @@ export class TemplatesComponent implements OnInit {
       return;
     }
 
-    if (user.role === 'admin') {
-      this.userApi.getUsersByCompany(user.companyId).subscribe(list => {
-        this.assignableUsers = list || [];
-        this.syncSelectedUserId();
-        this.cdr.markForCheck();
-      });
+    const canAssign = user.role === 'admin' || user.role === 'trainer';
+    if (!canAssign) {
+      this.assignableUsers = [];
+      this.cdr.markForCheck();
       return;
     }
 
-    if (user.role === 'trainer') {
-      this.userApi.getUsersByTrainer(user.id).subscribe(list => {
-        this.assignableUsers = list || [];
-        this.syncSelectedUserId();
-        this.cdr.markForCheck();
-      });
-      return;
-    }
-
-    this.assignableUsers = [];
-    this.cdr.markForCheck();
+    this.userApi.getUsersForCurrentTenant().subscribe(list => {
+      this.assignableUsers = list || [];
+      this.syncSelectedUserId();
+      this.cdr.markForCheck();
+    });
   }
 
   private syncSelectedUserId(): void {
@@ -192,14 +184,14 @@ export class TemplatesComponent implements OnInit {
   }
 
   /**
-   * Purpose: load template plans for the trainer using the user plans endpoint.
-   * Input: trainerId string. Output: updates templates list state.
+   * Purpose: load template plans for the current tenant.
+   * Input: none. Output: updates templates list state.
    * Error handling: logs and shows snackbar on API failures.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  private loadTemplates(trainerId: string): void {
-    const trimmedId = trainerId?.trim();
-    if (!trimmedId) {
+  private loadTemplates(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
       this.loading = false;
       this.templates = [];
       this.applyFilters();
@@ -207,7 +199,7 @@ export class TemplatesComponent implements OnInit {
     }
 
     this.loading = true;
-    this.userApi.getWorkoutPlansByUserId(trimmedId).pipe(
+    this.api.getPlansForCurrentTenant().pipe(
       finalize(() => {
         this.loading = false;
         this.cdr.markForCheck();
@@ -340,7 +332,7 @@ export class TemplatesComponent implements OnInit {
   }
 
   createTemplate() {
-    this.router.navigate(['/planner']);
+    this.router.navigate(['/planner'], { queryParams: { templateMode: 'true' } });
   }
 
   assignTemplate(template: any) {

@@ -160,17 +160,17 @@ export class UserDetailComponent implements OnInit {
   }
 
   /**
-   * Purpose: load trainer templates for selection in the dialog.
+   * Purpose: load tenant templates for selection in the dialog.
    * Input: none. Output: updates templates list state.
    * Error handling: logs and shows snackbar on API failures.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private loadTemplatesForDialog(): void {
-    const trainerId = this.authService.getCurrentUser()?.id;
-    if (!trainerId) {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
       this.templateDialogLoading = false;
       this.templates = [];
-      this.snackBar.open('No se pudo identificar el entrenador.', 'Cerrar', { duration: 3000 });
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
       this.cdr.markForCheck();
       return;
     }
@@ -178,7 +178,7 @@ export class UserDetailComponent implements OnInit {
     this.templateDialogLoading = true;
     this.cdr.markForCheck();
 
-    this.userApi.getWorkoutPlansByUserId(trainerId).pipe(
+    this.planApi.getPlansForCurrentTenant().pipe(
       finalize(() => {
         this.templateDialogLoading = false;
         this.cdr.markForCheck();
@@ -291,6 +291,13 @@ export class UserDetailComponent implements OnInit {
       this.planApi.deleteWorkoutPlan(planId).subscribe(res => {
         this.loadingPlans = false;
         if (res !== null) {
+          // Actualización inmediata para reflejar la eliminación en la vista
+          this.plans = [...this.plans.filter(p => (p.planId || p.id) !== planId)];
+          this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
+          this.applyFilters();
+          this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
+          this.cdr.markForCheck();
+
           // Recargar la lista completa desde el servidor para asegurar sincronización
           if (this.userId) {
             this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
@@ -298,14 +305,10 @@ export class UserDetailComponent implements OnInit {
                 this.plans = sortPlansByCreatedAt(updatedPlans || []);
                 this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
                 this.applyFilters();
-                this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
                 this.cdr.markForCheck();
               },
               error => {
                 console.error('Error al recargar planes después de eliminación:', error);
-                // Eliminación optimista si falla la recarga
-                this.plans = [...this.plans.filter(p => (p.planId || p.id) !== planId)];
-                this.applyFilters();
                 this.snackBar.open('Plan eliminado (con error de sincronización)', 'Cerrar', { duration: 3000 });
                 this.cdr.markForCheck();
               }

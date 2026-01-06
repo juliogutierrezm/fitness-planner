@@ -1,7 +1,108 @@
 # Fitness Planner
 
 ## Descripción general
-Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra autenticación con AWS Cognito Hosted UI y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR) y rutas protegidas para funcionalidades administrativas.
+Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra un sistema de autenticación híbrido con AWS Cognito (OAuth 2.0 + PKCE + Amplify) y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR), rutas protegidas con control de acceso basado en roles (Admin, Trainer, Client), y funcionalidades administrativas avanzadas.
+
+## Arquitectura de Autenticación y AWS Cognito
+
+### Sistema Híbrido de Autenticación
+La aplicación implementa un sistema de autenticación híbrido que combina las mejores características de OAuth 2.0 directo con AWS Amplify para proporcionar una experiencia segura y rica en funcionalidades:
+
+#### 1. **Servicio de OAuth 2.0 Personalizado** (`src/app/auth/auth.service.ts`)
+- **PKCE (Proof Key for Code Exchange)**: Implementación completa para mayor seguridad en aplicaciones públicas
+- **Intercambio directo de tokens**: Comunicación directa con los endpoints OAuth 2.0 de Cognito
+- **Gestión de tokens personalizada**: Almacenamiento seguro en localStorage/sessionStorage con validación de expiración
+- **Manejo de callbacks**: Procesamiento robusto de respuestas de autenticación con manejo de errores
+
+#### 2. **Servicio AWS Amplify** (`src/app/services/auth.service.ts`)
+- **Control de acceso basado en roles**: Sistema jerárquico con tres roles (Admin, Trainer, Client)
+- **Gestión de perfiles de usuario**: Atributos personalizados y metadatos de usuario
+- **Sesiones avanzadas**: Manejo automático de refresh tokens y estados de autenticación
+- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos y atributos personalizados
+
+### Configuración de AWS Cognito
+
+#### User Pool Configuration (CloudFormation)
+```yaml
+# cognito-setup.yaml - Configuración completa del User Pool
+Resources:
+  FitnessUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      # Atributos personalizados para roles y relaciones
+      Schema:
+        - Name: role
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: companyId
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+        - Name: trainerIds
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+```
+
+#### Grupos de Usuarios
+- **Admin**: Acceso completo a todas las funcionalidades
+- **Trainer**: Gestión de clientes y planes de entrenamiento
+- **Client**: Acceso básico a planes asignados
+
+#### Flujo de OAuth 2.0 con PKCE
+1. **Inicio de autenticación**: Generación de code_verifier y code_challenge
+2. **Redirección a Hosted UI**: Usuario autenticado en Cognito
+3. **Callback processing**: Intercambio de código por tokens usando PKCE
+4. **Token storage**: Almacenamiento seguro de ID Token y Access Token
+5. **Role extraction**: Determinación de roles desde tokens y grupos
+
+### Seguridad Implementada
+
+#### PKCE Implementation
+```typescript
+// Generación segura de code verifier (RFC 7636)
+private generateCodeVerifier(length: number = 64): string {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  // Implementación crypto-safe con fallback
+}
+```
+
+#### Token Management
+- **Validación de expiración**: Verificación automática de tokens expirados
+- **Refresh automático**: Manejo transparente de refresh tokens
+- **Storage seguro**: Uso de localStorage con validaciones de integridad
+
+#### Guards y Autorización
+- **AuthGuard**: Protección básica de rutas autenticadas
+- **RoleGuard**: Control de acceso basado en roles específicos
+- **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
+
+### Roles y Permisos
+
+| Rol | Permisos |
+|-----|----------|
+| **Admin** | Acceso completo a usuarios, planes, ejercicios y configuraciones del sistema |
+| **Trainer** | Gestión de sus clientes asignados, creación de planes, acceso al catálogo de ejercicios |
+| **Client** | Acceso a sus propios planes asignados y perfil personal |
+
+### Integración con API Backend
+```typescript
+// Interceptor automático de autenticación
+export class AuthInterceptor implements HttpInterceptor {
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    const isApiRequest = req.url.startsWith(environment.apiBase);
+    const idToken = this.authService.getIdToken();
+
+    if (isApiRequest && idToken && this.authService.isLoggedIn()) {
+      return next.handle(req.clone({
+        setHeaders: { Authorization: `Bearer ${idToken}` }
+      }));
+    }
+    return next.handle(req);
+  }
+}
+```
 
 ## Estructura de carpetas y archivos
 ```
@@ -224,8 +325,15 @@ ng serve
 La aplicación estará disponible en `http://localhost:4200`.
 
 ## Funcionalidades
-- **Autenticación con AWS Cognito**: Sistema de login/logout con flujo OAuth 2.0 vía Hosted UI
-- **Rutas protegidas**: Acceso condicional a páginas basado en estado de autenticación
+- **Sistema de Autenticación Híbrido**: OAuth 2.0 con PKCE + AWS Amplify para máxima seguridad y funcionalidades
+- **Control de Acceso Basado en Roles**: Tres niveles jerárquicos (Admin, Trainer, Client) con permisos granulares
+- **Autenticación con AWS Cognito**: Login/logout seguro vía Hosted UI con validación automática de tokens
+- **PKCE (Proof Key for Code Exchange)**: Protección avanzada contra ataques de interceptación en aplicaciones públicas
+- **Gestión de Sesiones**: Refresh automático de tokens y manejo de expiración transparente
+- **Grupos de Cognito**: Integración con User Groups para asignación automática de roles
+- **Atributos Personalizados**: Soporte para companyId, trainerIds y otros metadatos de usuario
+- **Rutas protegidas**: Guards avanzados con verificación de autenticación y roles específicos
+- **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
 - **Dashboard principal**: Panel de control para navegación y resúmenes
 - **Planificador de entrenamientos**: Creación y edición de planes de ejercicios personalizados con generación IA
 - **Generación de planes con IA**: Creación automática de planes usando prompts personalizados y Claude 3
@@ -250,13 +358,25 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
 
 ## Ejemplos de uso
-### Iniciar sesión y acceder a rutas protegidas
+### Iniciar sesión con OAuth 2.0 + PKCE
 ```typescript
-// Ejemplo de flujo de autenticación en AuthService
-login(): Observable<any> {
-  return from(Auth.federatedSignIn({
-    customProvider: this.cognitoDomain
-  }));
+// Ejemplo del AuthService personalizado (src/app/auth/auth.service.ts)
+async login(): Promise<void> {
+  const codeVerifier = this.generateCodeVerifier();
+  const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+
+  // Store verifier for token exchange
+  sessionStorage.setItem('pkce_verifier', codeVerifier);
+
+  const authUrl = `https://${domain}/oauth2/authorize` +
+    `?client_id=${clientId}` +
+    `&response_type=code` +
+    `&scope=email+openid+profile` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&code_challenge_method=S256` +
+    `&code_challenge=${encodeURIComponent(codeChallenge)}`;
+
+  window.location.href = authUrl;
 }
 ```
 
@@ -278,15 +398,33 @@ loadExercises() {
 this.router.navigate(['/plan', planId]);
 ```
 
-### Verificar estado de autenticación
+### Verificar estado de autenticación y roles
 ```typescript
-// Uso del AuthGuard
-canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
-  return this.authService.isLoggedIn$.pipe(
-    tap(isLoggedIn => {
-      if (!isLoggedIn) {
-        this.authService.login();
+// Uso del AuthGuard (src/app/auth/auth.guard.ts)
+canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+  if (this.authService.isLoggedIn()) {
+    return true;
+  }
+  // Redirect to Cognito Hosted UI for login
+  this.authService.login();
+  return false;
+}
+
+// Uso del RoleGuard para control de acceso basado en roles
+canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
+  const requiredRoles = route.data?.['roles'] as UserRole[];
+  return this.authService.currentUser$.pipe(
+    take(1),
+    map(user => {
+      if (!user) {
+        this.router.navigate(['/login']);
+        return false;
       }
+      if (!requiredRoles.includes(user.role)) {
+        this.router.navigate(['/unauthorized']);
+        return false;
+      }
+      return true;
     })
   );
 }
@@ -485,16 +623,30 @@ export class AiGenerationDialogComponent {
 - **Vista de detalle de ejercicios**: Completo - Páginas dedicadas para ver información completa de ejercicios
 - **Videos de ejercicios**: Completo - Diálogos integrados para reproducción de videos demostrativos
 - **Gestión de usuarios**: Completo - Funciones administrativas para usuarios
-- **Plantillas**: Completo - Creación y gestión de plantillas
+- **Plantillas**: Completo - Creación y gestión de plantillas con funcionalidad de guardado y asignación de usuarios
 - **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
 - **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
 - **Utilidades compartidas**: Completo - Funciones auxiliares para sanitización y procesamiento de datos
 - **SSR y optimizaciones**: Completo - Compatible con server-side rendering
 - **Documentación**: Completa - Información detallada sobre arquitectura, funcionalidades y estructura del código
-- **Gestión de superseries**: Implementado - Creación y gestión visual de superseries con mejoras pendientes de visualización
-- **Gestión de asignación de usuarios**: Completo - Sistema para que entrenadores asignen planes a clientes específicos
+- **Gestión de superseries**: Completo - Creación y gestión visual de superseries con mejoras de layout y flags de agrupamiento
+- **Gestión de asignación de usuarios**: Completo - Sistema para que entrenadores asignen planes y plantillas a clientes específicos con soporte de diálogos
+- **Funcionalidad de guardado de plantillas**: Completo - UI y funcionalidad para guardar plantillas reutilizables
+- **Mejoras en visualización de planes**: Completo - Renderizado mejorado y gestión de sesiones de entrenamiento
 - **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
 - **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas
+
+## Cambios recientes (Últimos commits)
+
+### Últimas actualizaciones implementadas:
+- **Asignación de usuarios a plantillas**: Implementación completa de funcionalidad para asignar usuarios a plantillas con soporte de diálogos
+- **Funcionalidad de guardado de plantillas**: Adición de capacidad para guardar plantillas con actualizaciones de UI
+- **Mejoras en visualización de planes**: Renderizado mejorado y mejor gestión de sesiones de entrenamiento
+- **Mejoras en generación de planes con IA**: Optimizaciones en formularios IA y gestión de usuarios
+- **Diálogo parametric de IA**: Implementación completa para planes de entrenamiento personalizados
+- **Layout de superseries**: Mejoras en el layout visual y adición de flags de agrupamiento en modelos
+- **Sidebar de ejercicios**: Mejoras en la sidebar y vista de planes con detalles adicionales
+- **Filtros y UI de gestión de ejercicios**: Mejoras en filtros y interfaz de usuario para gestión de ejercicios
 
 ## Mejoras Pendientes
 

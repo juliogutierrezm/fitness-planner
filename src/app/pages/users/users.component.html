@@ -20,38 +20,41 @@
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Nombre</mat-label>
-          <input matInput formControlName="givenName" />
+          <input matInput formControlName="givenName" required />
+          <mat-error *ngIf="form.get('givenName')?.hasError('required')">
+            El nombre es obligatorio
+          </mat-error>
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Apellidos</mat-label>
-          <input matInput formControlName="familyName" />
+          <input matInput formControlName="familyName" required />
+          <mat-error *ngIf="form.get('familyName')?.hasError('required')">
+            Los apellidos son obligatorios
+          </mat-error>
         </mat-form-field>
         <!-- Campo Teléfono -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Teléfono</mat-label>
-          <input matInput formControlName="telephone" placeholder="+56912345678" type="tel" required>
-          <mat-error *ngIf="form.get('telephone')?.hasError('required')">
-            El teléfono es obligatorio
-          </mat-error>
+          <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
         </mat-form-field>
         <!-- Campo Género -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Género</mat-label>
-          <mat-select formControlName="gender" required>
+          <mat-select formControlName="gender">
             <mat-option value="Masculino">Masculino</mat-option>
             <mat-option value="Femenino">Femenino</mat-option>
             <mat-option value="Otro">Otro</mat-option>
             <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
           </mat-select>
-          <mat-error *ngIf="form.get('gender')?.hasError('required')">
-            El género es obligatorio
-          </mat-error>
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Fecha de nacimiento</mat-label>
-          <input matInput [matDatepicker]="picker" formControlName="dateOfBirth">
+          <input matInput [matDatepicker]="picker" formControlName="dateOfBirth" required>
           <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
           <mat-datepicker #picker></mat-datepicker>
+          <mat-error *ngIf="form.get('dateOfBirth')?.hasError('required')">
+            La fecha de nacimiento es obligatoria
+          </mat-error>
         </mat-form-field>
         <mat-form-field appearance="outline" *ngIf="isAdmin">
           <mat-label>Rol</mat-label>
@@ -112,42 +115,45 @@
         <form [formGroup]="editForm" class="edit-grid" (ngSubmit)="saveEdit(u)">
           <mat-form-field appearance="outline">
             <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" />
+            <input matInput type="email" formControlName="email" readonly />
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Nombre</mat-label>
-            <input matInput formControlName="givenName" />
+            <input matInput formControlName="givenName" required />
+            <mat-error *ngIf="editForm.get('givenName')?.hasError('required')">
+              El nombre es obligatorio
+            </mat-error>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Apellidos</mat-label>
-            <input matInput formControlName="familyName" />
+            <input matInput formControlName="familyName" required />
+            <mat-error *ngIf="editForm.get('familyName')?.hasError('required')">
+              Los apellidos son obligatorios
+            </mat-error>
           </mat-form-field>
           <!-- Campo Teléfono -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Teléfono</mat-label>
-            <input matInput formControlName="telephone" placeholder="+56912345678" type="tel" required>
-            <mat-error *ngIf="editForm.get('telephone')?.hasError('required')">
-              El teléfono es obligatorio
-            </mat-error>
+            <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
           </mat-form-field>
           <!-- Campo Género -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Género</mat-label>
-            <mat-select formControlName="gender" required>
+            <mat-select formControlName="gender">
               <mat-option value="Masculino">Masculino</mat-option>
               <mat-option value="Femenino">Femenino</mat-option>
               <mat-option value="Otro">Otro</mat-option>
               <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
             </mat-select>
-            <mat-error *ngIf="editForm.get('gender')?.hasError('required')">
-              El género es obligatorio
-            </mat-error>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Fecha de nacimiento</mat-label>
-            <input matInput [matDatepicker]="editPicker" formControlName="dateOfBirth">
+            <input matInput [matDatepicker]="editPicker" formControlName="dateOfBirth" required>
             <mat-datepicker-toggle matSuffix [for]="editPicker"></mat-datepicker-toggle>
             <mat-datepicker #editPicker></mat-datepicker>
+            <mat-error *ngIf="editForm.get('dateOfBirth')?.hasError('required')">
+              La fecha de nacimiento es obligatoria
+            </mat-error>
           </mat-form-field>
           <mat-form-field appearance="outline" *ngIf="isAdmin">
             <mat-label>Rol</mat-label>

@@ -1,6 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -120,6 +120,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   templateNameOriginal: string | null = null;
   isSavingTemplate = false;
   templateNameInput = '';
+  isCreateTemplateMode = false;
   private saveTemplateDialogRef: any = null;
   liveMessage = '';
   previousPlans: any[] = [];
@@ -329,6 +330,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     if (this.form) {
       this.form.patchValue({ templateName: '' }, { emitEvent: false });
     }
+    this.applyTemplateNameValidators();
   }
 
   /**
@@ -350,6 +352,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
     if (this.form) {
       this.form.patchValue({ templateName }, { emitEvent: false });
     }
+    this.applyTemplateNameValidators();
+  }
+
+  private applyTemplateNameValidators(): void {
+    const control = this.form?.get('templateName');
+    if (!control) return;
+    if (this.isTemplateMode) {
+      control.setValidators([Validators.required]);
+    } else {
+      control.clearValidators();
+    }
+    control.updateValueAndValidity({ emitEvent: false });
   }
 
   /**
@@ -659,6 +673,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.isEditMode = !!this.planId;
     const qpTemplateId = this.route.snapshot.queryParamMap.get('templateId');
     const hasTemplateParam = !!qpTemplateId;
+    const qpTemplateMode = this.route.snapshot.queryParamMap.get('templateMode');
+    this.isCreateTemplateMode = !this.isEditMode && (qpTemplateMode === 'true' || qpTemplateMode === '1');
     this.isInitialLoading = true;
     this.exercisesLoaded = false;
     this.planLoaded = !this.isEditMode && !hasTemplateParam;
@@ -674,6 +690,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       date: [new Date()]
     });
     this.resetTemplateState();
+    if (this.isCreateTemplateMode) {
+      this.isTemplateMode = true;
+    }
+    this.applyTemplateNameValidators();
 
     // Read userId from queryParams and load user immediately if valid
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
@@ -749,14 +769,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.recents = [];
     }
 
-    // Load assignable users if trainer independent or admin
+    // Load assignable users for admin/trainer; gym mode uses company, independent uses trainer.
     const current = this.authService.getCurrentUser();
-    if (current?.role === 'admin') {
+    const canAssignUser = current?.role === 'admin' || current?.role === 'trainer';
+    if (canAssignUser) {
       this.canAssignUser = true;
-      this.userApi.getUsersByCompany().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
-    } else if (current?.role === 'trainer' && !current.companyId) {
-      this.canAssignUser = true;
-      this.userApi.getUsersByTrainer().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
+      this.userApi.getUsersForCurrentTenant().subscribe(list => { this.clients = list; this.cdr.markForCheck(); });
     } else if (!this.isEditMode && !this.activeUserId && current?.id) {
       this.resolveActiveUserId(current.id, {
         source: 'current-user',
@@ -1506,6 +1524,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    if (this.isTemplateMode) {
+      this.router.navigate(['/templates']);
+      return;
+    }
     const userId = this.route.snapshot.queryParamMap.get('userId') || this.activeUserId || this.originalPlanUserId;
     if (userId) {
       this.router.navigate(['/users', userId]);
@@ -1579,6 +1601,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
     const displayName = formValue.userName || this.getUserDisplayName() || 'Usuario';
     const planName = `Plan de ${displayName}`;
     const templateName = (formValue.templateName || '').trim();
+    if (this.isTemplateMode && !templateName) {
+      this.form.get('templateName')?.markAsTouched();
+      this.snackBar.open('El nombre de la plantilla es obligatorio.', 'Cerrar', { duration: 3000 });
+      return;
+    }
     const resolvedTemplateName = this.isTemplateMode
       ? (templateName || this.templateNameOriginal || '')
       : templateName;
@@ -1626,7 +1653,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
           });
           this.snackBar.open(`Plan ${this.isEditMode ? 'actualizado' : 'guardado'} correctamente`, 'Cerrar', { duration: 2500 });
           if (!this.isEditMode) {
-            if (planUserId) {
+            if (this.isTemplateMode) {
+              this.router.navigate(['/templates']);
+            } else if (planUserId) {
               this.router.navigate(['/users', planUserId]);
             } else {
               console.warn('[Planner] missing plan userId for redirect', {

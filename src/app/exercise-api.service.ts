@@ -6,7 +6,8 @@ import { catchError, tap, switchMap } from 'rxjs/operators';
 import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
-import { sanitizeName } from './shared/shared-utils';
+import { UserApiService } from './user-api.service';
+import { sanitizeName, isGymMode } from './shared/shared-utils';
 
 // Allowed fields for exercise updates
 const ALLOWED_FIELDS = [
@@ -52,7 +53,8 @@ export class ExerciseApiService {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private userApi: UserApiService
   ) {}
 
   private getSessionsKey(): string {
@@ -459,6 +461,23 @@ getWorkoutPlanFromAI(userId: string): Observable<any> {
         return of([]);
       })
     );
+  }
+
+  /**
+   * Purpose: fetch workout plans for the current tenant using gym vs independent mode.
+   * Input: none. Output: Observable<any[]>.
+   * Error handling: returns empty list when user or identifiers are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPlansForCurrentTenant(): Observable<any[]> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return of([]);
+    const companyId = currentUser.companyId || 'INDEPENDENT';
+    if (isGymMode(companyId)) {
+      return this.getPlansByCompany(companyId);
+    }
+    if (!currentUser.id) return of([]);
+    return this.userApi.getWorkoutPlansByUserId(currentUser.id);
   }
 
 

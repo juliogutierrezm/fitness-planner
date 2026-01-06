@@ -346,8 +346,9 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Edición de ejercicios**: Diálogos para crear y editar ejercicios del catálogo
 - **Vista de detalle de ejercicios**: Páginas dedicadas para ver información completa de ejercicios
 - **Videos de ejercicios**: Diálogos integrados para reproducción de videos demostrativos
-- **Plantillas de entrenamientos**: Creación y gestión de plantillas reutilizables
-- **Gestión de usuarios**: Funciones administrativas para ver y gestionar usuarios
+- **Plantillas de entrenamientos**: Creacion y gestion de plantillas reutilizables
+- **Gestion de clientes y entrenadores**: Vistas separadas por rol con flujos claros (crear, editar, eliminar)
+- **Metricas por entrenador**: Conteo de clientes asignados y planes creados en la vista de entrenadores
 - **Diagnósticos**: Herramientas de depuración para verificar autenticación y conexiones API
 - **Vista de detalle de usuario**: Información detallada de usuarios individuales
 - **Confirmación de acciones**: Diálogos modales para confirmar operaciones críticas
@@ -356,6 +357,12 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
 - **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
+
+## Modulos de usuarios por rol
+- **Clientes**: Vista dedicada para usuarios con role = client, con asignacion/cambio de entrenador (solo admin).
+- **Entrenadores**: Vista dedicada para usuarios con role = trainer, con conteo de clientes asignados y planes creados.
+- **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
+- **Plantillas**: La asignacion de plantillas filtra solo clientes.
 
 ## Ejemplos de uso
 ### Iniciar sesión con OAuth 2.0 + PKCE
@@ -622,7 +629,7 @@ export class AiGenerationDialogComponent {
 - **Edición de ejercicios**: Completo - Diálogos para crear y editar ejercicios del catálogo
 - **Vista de detalle de ejercicios**: Completo - Páginas dedicadas para ver información completa de ejercicios
 - **Videos de ejercicios**: Completo - Diálogos integrados para reproducción de videos demostrativos
-- **Gestión de usuarios**: Completo - Funciones administrativas para usuarios
+- **Gestion de clientes y entrenadores**: Completo - Vistas separadas por rol con flujos claros y control de asignaciones
 - **Plantillas**: Completo - Creación y gestión de plantillas con funcionalidad de guardado y asignación de usuarios
 - **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
 - **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
@@ -636,9 +643,12 @@ export class AiGenerationDialogComponent {
 - **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
 - **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas
 
-## Cambios recientes (Últimos commits)
+## Cambios recientes (ultimos commits)
 
-### Últimas actualizaciones implementadas:
+### Ultimas actualizaciones implementadas:
+- **Separacion de clientes y entrenadores**: Nuevas vistas dedicadas con logica por rol y sin selector de rol en formularios
+- **Metricas de entrenadores**: Conteo de clientes asignados y planes creados por entrenador en la vista
+- **Plantillas para clientes**: Asignacion de plantillas filtrada solo a clientes con busqueda en dialogo
 - **Asignación de usuarios a plantillas**: Implementación completa de funcionalidad para asignar usuarios a plantillas con soporte de diálogos
 - **Funcionalidad de guardado de plantillas**: Adición de capacidad para guardar plantillas con actualizaciones de UI
 - **Mejoras en visualización de planes**: Renderizado mejorado y mejor gestión de sesiones de entrenamiento

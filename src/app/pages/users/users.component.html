@@ -1,17 +1,17 @@
 <div class="users-page">
   <div class="header">
-    <h2>Usuarios</h2>
+    <h2>{{ pageTitle }}</h2>
   </div>
 
   <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
     <button mat-raised-button color="primary" (click)="showCreateForm = true">
       <mat-icon>add</mat-icon>
-      Crear nuevo usuario
+      Crear nuevo {{ isTrainerView ? 'entrenador' : 'cliente' }}
     </button>
   </div>
 
   <mat-card class="form-card" *ngIf="canCreate && showCreateForm">
-    <h3>Crear usuario</h3>
+    <h3>Crear {{ isTrainerView ? 'entrenador' : 'cliente' }}</h3>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-grid">
         <mat-form-field appearance="outline">
@@ -32,14 +32,14 @@
             Los apellidos son obligatorios
           </mat-error>
         </mat-form-field>
-        <!-- Campo Teléfono -->
+        <!-- Campo Tel‚fono -->
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Teléfono</mat-label>
+          <mat-label>Tel‚fono</mat-label>
           <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
         </mat-form-field>
-        <!-- Campo Género -->
+        <!-- Campo G‚nero -->
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Género</mat-label>
+          <mat-label>G‚nero</mat-label>
           <mat-select formControlName="gender">
             <mat-option value="Masculino">Masculino</mat-option>
             <mat-option value="Femenino">Femenino</mat-option>
@@ -56,20 +56,13 @@
             La fecha de nacimiento es obligatoria
           </mat-error>
         </mat-form-field>
-        <mat-form-field appearance="outline" *ngIf="isAdmin">
-          <mat-label>Rol</mat-label>
-          <mat-select formControlName="role">
-            <mat-option value="client">Cliente</mat-option>
-            <mat-option value="trainer">Entrenador</mat-option>
-          </mat-select>
-        </mat-form-field>
       </div>
       <div class="form-grid">
         <div class="injury-section">
           <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Lesiones o limitaciones</mat-label>
-            <textarea matInput formControlName="injuries" rows="3" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
+            <textarea matInput formControlName="injuries" rows="3" placeholder="Describe cualquier lesi¢n, limitaci¢n f¡sica o condici¢n m‚dica relevante"></textarea>
           </mat-form-field>
         </div>
         <mat-form-field appearance="outline" class="full-width">
@@ -79,14 +72,16 @@
       </div>
       <div class="actions">
         <button mat-stroked-button type="button" (click)="showCreateForm = false">Cancelar</button>
-        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Guardar</button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || isSaving">Guardar</button>
       </div>
     </form>
   </mat-card>
 
   <mat-card class="list-card">
-    <h3>Listado</h3>
-    <div *ngIf="isLoading" class="loading-container">
+    <div class="list-header">
+      <h3>Listado</h3>
+    </div>
+    <div *ngIf="isLoading" class="loading-container" role="status" aria-live="polite" aria-busy="true">
       <mat-spinner diameter="40"></mat-spinner>
     </div>
     <div *ngIf="!isLoading && users.length === 0" class="empty">No hay usuarios</div>
@@ -95,18 +90,43 @@
       <ng-container *ngIf="editingId !== u.id; else editTpl">
         <div class="info">
           <div class="name">{{ u.givenName || '' }} {{ u.familyName || '' }}</div>
-          <div class="meta">{{ u.email }} <span *ngIf="u.telephone">· {{ u.telephone }}</span> · {{ u.role }} <span *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">· {{ u.companyId }}</span></div>
+          <div class="meta">
+            <span class="meta-item">{{ u.email }}</span>
+            <span class="meta-sep" *ngIf="u.telephone">&middot;</span>
+            <span class="meta-item" *ngIf="u.telephone">{{ u.telephone }}</span>
+            <span class="meta-sep">&middot;</span>
+            <span class="meta-item">{{ u.role }}</span>
+            <span class="meta-sep" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">&middot;</span>
+            <span class="meta-item" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">{{ u.companyId }}</span>
+            <ng-container *ngIf="isTrainerView">
+              <span class="meta-sep">&middot;</span>
+              <span class="meta-item">Clientes: {{ getTrainerClientCount(u) }}</span>
+              <span class="meta-sep">&middot;</span>
+              <span class="meta-item">Planes: {{ getTrainerPlanCount(u) }}</span>
+            </ng-container>
+          </div>
+          <div class="trainer-info" *ngIf="isClientView && isAdmin">
+            <span class="trainer-label">Entrenador:</span>
+            <span class="trainer-value">{{ getTrainerName(u) }}</span>
+          </div>
+          <div class="trainer-info" *ngIf="isTrainerView">
+            <span class="trainer-label">Clientes:</span>
+            <span class="trainer-value">{{ getTrainerClientSummary(u) }}</span>
+          </div>
         </div>
         <div class="row-actions">
-          <a matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
+          <a *ngIf="isClientView" matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
             <mat-icon>open_in_new</mat-icon>
           </a>
+          <button *ngIf="isClientView && isAdmin" mat-icon-button (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
+            <mat-icon>person_add</mat-icon>
+          </button>
           <button mat-icon-button (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
             <mat-icon>edit</mat-icon>
           </button>
           <button matTooltip="Eliminar usuario" mat-icon-button color="warn" (click)="remove(u)" aria-label="Eliminar">
             <mat-icon>delete</mat-icon>
-            
+
           </button>
         </div>
       </ng-container>
@@ -131,14 +151,14 @@
               Los apellidos son obligatorios
             </mat-error>
           </mat-form-field>
-          <!-- Campo Teléfono -->
+          <!-- Campo Tel‚fono -->
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Teléfono</mat-label>
+            <mat-label>Tel‚fono</mat-label>
             <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
           </mat-form-field>
-          <!-- Campo Género -->
+          <!-- Campo G‚nero -->
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Género</mat-label>
+            <mat-label>G‚nero</mat-label>
             <mat-select formControlName="gender">
               <mat-option value="Masculino">Masculino</mat-option>
               <mat-option value="Femenino">Femenino</mat-option>
@@ -155,19 +175,11 @@
               La fecha de nacimiento es obligatoria
             </mat-error>
           </mat-form-field>
-          <mat-form-field appearance="outline" *ngIf="isAdmin">
-            <mat-label>Rol</mat-label>
-            <mat-select formControlName="role">
-              <mat-option value="client">Cliente</mat-option>
-              <mat-option value="trainer">Entrenador</mat-option>
-              <mat-option value="admin">Admin</mat-option>
-            </mat-select>
-          </mat-form-field>
           <div class="injury-section">
             <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Lesiones o limitaciones</mat-label>
-              <textarea matInput formControlName="injuries" rows="2" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
+              <textarea matInput formControlName="injuries" rows="2" placeholder="Describe cualquier lesi¢n, limitaci¢n f¡sica o condici¢n m‚dica relevante"></textarea>
             </mat-form-field>
           </div>
           <mat-form-field appearance="outline" class="full-width">
@@ -176,11 +188,31 @@
           </mat-form-field>
           <div class="edit-actions">
             <button mat-stroked-button type="button" (click)="cancelEdit()">Cancelar</button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="editForm.invalid">Guardar</button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="editForm.invalid || isSaving">Guardar</button>
           </div>
         </form>
       </ng-template>
       </div>
     </ng-container>
   </mat-card>
+
+  <!-- Trainer Assignment Dialog -->
+  <ng-template #trainerSelectDialog>
+    <h2 mat-dialog-title>Asignar Entrenador</h2>
+    <mat-dialog-content>
+      <p>Selecciona un entrenador para <strong>{{ selectedClientForAssignment?.givenName }} {{ selectedClientForAssignment?.familyName }}</strong>:</p>
+      <mat-selection-list>
+        <mat-list-option *ngFor="let trainer of getAvailableTrainers()" [value]="trainer" (click)="confirmAssignTrainer(trainer)">
+          {{ trainer.givenName || '' }} {{ trainer.familyName || '' }} ({{ trainer.email }})
+        </mat-list-option>
+      </mat-selection-list>
+      <div *ngIf="isAssigningTrainer" class="loading-container" role="status" aria-live="polite" aria-busy="true">
+        <mat-spinner diameter="30"></mat-spinner>
+        <span>Asignando...</span>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions>
+      <button mat-button mat-dialog-close>Cancelar</button>
+    </mat-dialog-actions>
+  </ng-template>
 </div>

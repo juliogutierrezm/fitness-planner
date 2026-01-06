@@ -185,29 +185,38 @@ getUserById(userId: string): Observable<AppUser | null> {
 
 
 
-  getWorkoutPlansByUserId(userId: string): Observable<any[]> {
-    if (!userId) return of([]);
-    const url = `${this.base}/plan?userId=${encodeURIComponent(userId)}`;
-    return this.http.get<any>(url).pipe(
-      // Normaliza respuesta de API Gateway proxy ({ statusCode, body }) o lista directa
-      // y hace fallback a /workoutPlans?userId cuando no hay arreglo.
-      // Evita romper la UI con (list || []).slice cuando no es array.
-      // 1) Si es array, úsalo.
-      // 2) Si trae body, intenta parsear JSON y extraer arreglo.
-      // 3) Si mensaje indica parámetro faltante, retorna [] y que el caller decida.
-      // 4) Último recurso: fallback al endpoint alterno.
-      switchMap((res: any) => {
-        const arr = normalizePlans(res);
-        if (arr) return of(arr);
-        // Fallback al otro endpoint publicado
-        const fallback = `${environment.apiBase}/workoutPlans?userId=${encodeURIComponent(userId)}`;
-        return this.http.get<any>(fallback).pipe(
-          map((r: any) => normalizePlans(r) || [])
-        );
-      }),
-      catchError(err => { console.error('getWorkoutPlansByUserId error', err); return of([]); })
+  assignTrainer(clientId: string, trainerId: string): Observable<any> {
+    if (!clientId || !trainerId) return of(null);
+    const payload = { clientId, trainerId };
+    return this.http.put(`${this.base}/trainers`, payload).pipe(
+      tap(res => console.log('Trainer assigned', res)),
+      catchError(err => { console.error('assignTrainer error', err); return of(null); })
     );
   }
+
+getWorkoutPlansByUserId(userId: string): Observable<any[]> {
+  if (!userId) return of([]);
+  const url = `${this.base}/plan?userId=${encodeURIComponent(userId)}`;
+  return this.http.get<any>(url).pipe(
+    // Normaliza respuesta de API Gateway proxy ({ statusCode, body }) o lista directa
+    // y hace fallback a /workoutPlans?userId cuando no hay arreglo.
+    // Evita romper la UI con (list || []).slice cuando no es array.
+    // 1) Si es array, úsalo.
+    // 2) Si trae body, intenta parsear JSON y extraer arreglo.
+    // 3) Si mensaje indica parámetro faltante, retorna [] y que el caller decida.
+    // 4) Último recurso: fallback al endpoint alterno.
+    switchMap((res: any) => {
+      const arr = normalizePlans(res);
+      if (arr) return of(arr);
+      // Fallback al otro endpoint publicado
+      const fallback = `${environment.apiBase}/workoutPlans?userId=${encodeURIComponent(userId)}`;
+      return this.http.get<any>(fallback).pipe(
+        map((r: any) => normalizePlans(r) || [])
+      );
+    }),
+    catchError(err => { console.error('getWorkoutPlansByUserId error', err); return of([]); })
+  );
+}
 }
 
 // Helpers (local scope)

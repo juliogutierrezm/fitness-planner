@@ -67,8 +67,20 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
+        path: 'trainers',
+        loadComponent: () => import('./pages/trainers/trainers.component').then(m => m.TrainersComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN] }
+      },
+      {
+        path: 'clients',
+        loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
         path: 'users',
-        loadComponent: () => import('./pages/users/users.component').then(m => m.UsersComponent),
+        loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent),
         canActivate: [AuthGuard],
         data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },

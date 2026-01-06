@@ -25,7 +25,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
 import { getTemplateDisplayName } from '../../shared/shared-utils';
-// Removed dialog-based preview; use dedicated route instead.
 
 @Component({
   selector: 'app-templates',
@@ -61,6 +60,8 @@ export class TemplatesComponent implements OnInit {
   loading = true;
   currentUser: any = null;
   assignableUsers: AppUser[] = [];
+  filteredAssignableUsers: AppUser[] = [];
+  userSearch = '';
   selectedUserId: string | null = null;
   @ViewChild('userSelectDialog') userSelectDialog?: TemplateRef<any>;
   private userSelectDialogRef: any = null;
@@ -109,6 +110,7 @@ export class TemplatesComponent implements OnInit {
   private loadAssignableUsers(user: any): void {
     if (!user) {
       this.assignableUsers = [];
+      this.filteredAssignableUsers = [];
       this.cdr.markForCheck();
       return;
     }
@@ -116,14 +118,16 @@ export class TemplatesComponent implements OnInit {
     const canAssign = user.role === 'admin' || user.role === 'trainer';
     if (!canAssign) {
       this.assignableUsers = [];
+      this.filteredAssignableUsers = [];
       this.cdr.markForCheck();
       return;
     }
 
     this.userApi.getUsersForCurrentTenant().subscribe(list => {
-      this.assignableUsers = list || [];
+      const clientsOnly = (list || []).filter(user => user.role === 'client');
+      this.assignableUsers = clientsOnly;
       this.syncSelectedUserId();
-      this.cdr.markForCheck();
+      this.applyUserFilter();
     });
   }
 
@@ -151,15 +155,48 @@ export class TemplatesComponent implements OnInit {
     }
 
     this.pendingTemplateId = trimmedId;
+    this.applyUserFilter();
     this.userSelectDialogRef = this.dialog.open(this.userSelectDialog, {
-      width: '520px',
-      maxWidth: '92vw'
+      width: '640px',
+      maxWidth: '94vw'
     });
 
     this.userSelectDialogRef.afterClosed().subscribe(() => {
       this.pendingTemplateId = null;
       this.userSelectDialogRef = null;
     });
+  }
+
+  /**
+   * Purpose: filter assignable users by the dialog search query.
+   * Input: none (uses userSearch and assignableUsers). Output: updates filteredAssignableUsers.
+   * Error handling: falls back to full list when query is empty or users list missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  applyUserFilter(): void {
+    const q = (this.userSearch || '').trim().toLowerCase();
+    if (!q) {
+      this.filteredAssignableUsers = this.assignableUsers.slice();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.filteredAssignableUsers = this.assignableUsers.filter(user => this.getUserSearchText(user).includes(q));
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: build a normalized search string for a user entry.
+   * Input: user entity. Output: lowercase string for matching.
+   * Error handling: returns empty string when user is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private getUserSearchText(user: AppUser | null | undefined): string {
+    if (!user) return '';
+    const given = user.givenName || '';
+    const family = user.familyName || '';
+    const email = user.email || '';
+    return `${given} ${family} ${email}`.trim().toLowerCase();
   }
 
   selectUserForAssignment(user: AppUser): void {
@@ -238,8 +275,9 @@ export class TemplatesComponent implements OnInit {
     let arr = this.templates.filter((p: any) => {
       const name = (getTemplateDisplayName(p) || '').toLowerCase();
       const notes = (p.generalNotes || '').toLowerCase();
+      const objective = (p.objective || '').toLowerCase();
       const t = p.date ? new Date(p.date).getTime() : 0;
-      const matchQ = !qn || name.includes(qn) || notes.includes(qn);
+      const matchQ = !qn || name.includes(qn) || notes.includes(qn) || objective.includes(qn);
       const matchFrom = from === null || t >= from!;
       const matchTo = to === null || t <= to!;
       return matchQ && matchFrom && matchTo;
@@ -255,8 +293,6 @@ export class TemplatesComponent implements OnInit {
     this.applyFilters();
     this.cdr.markForCheck();
   }
-
-  preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
 
   trackByUserId = (_: number, user: AppUser) => user.id || user.email;
 

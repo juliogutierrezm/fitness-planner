@@ -13,9 +13,13 @@
         <mat-icon>library_books</mat-icon>
         <span>Plantillas</span>
       </a>
-      <a class="nav-link" routerLink="/users" routerLinkActive="active">
+      <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin'">
         <mat-icon>group</mat-icon>
-        <span>Usuarios</span>
+        <span>Entrenadores</span>
+      </a>
+      <a class="nav-link" routerLink="/clients" routerLinkActive="active">
+        <mat-icon>group</mat-icon>
+        <span>Clientes</span>
       </a>
       <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
         <mat-icon>bug_report</mat-icon>

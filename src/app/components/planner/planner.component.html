@@ -57,7 +57,7 @@
         color="primary"
         (click)="submitPlan()"
         [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
-        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading || (isTemplateMode && form?.get('templateName')!.invalid)"
+        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading || (isTemplateMode && form.get('templateName')!.invalid)"
       >
         <mat-icon>save</mat-icon>
         {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}

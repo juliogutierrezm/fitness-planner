@@ -7,5 +7,6 @@ export const environment = {
     redirectUri: 'http://localhost:4200/callback' // igualita a la de Cognito
   },
   // Dev uses proxy to avoid CORS
-  apiBase: '/api'
+  apiBase: '/api',
+  apiUrl: '/api'
 };

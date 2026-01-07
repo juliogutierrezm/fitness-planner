@@ -20,3 +20,4 @@ export class AppComponent implements OnInit {
     await this.authService.checkAuthState();
   }
 }
+

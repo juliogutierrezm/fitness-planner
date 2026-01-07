@@ -6,6 +6,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService, UserProfile } from '../services/auth.service';
 
 @Component({
@@ -18,7 +19,8 @@ import { AuthService, UserProfile } from '../services/auth.service';
     MatToolbarModule,
     MatListModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
+    MatDividerModule
   ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.scss']

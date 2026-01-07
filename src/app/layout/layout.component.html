@@ -25,6 +25,13 @@
         <mat-icon>bug_report</mat-icon>
         <span>Diagnostics</span>
       </a>
+
+      <!-- Settings Section for Admin only -->
+      <mat-divider *ngIf="user?.role === 'admin'" style="margin: 8px 0;"></mat-divider>
+      <a class="nav-link" routerLink="/settings/appearance" routerLinkActive="active" *ngIf="user?.role === 'admin'">
+        <mat-icon>palette</mat-icon>
+        <span>Apariencia</span>
+      </a>
     </mat-nav-list>
   </mat-sidenav>
 

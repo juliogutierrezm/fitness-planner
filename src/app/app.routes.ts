@@ -90,6 +90,12 @@ export const routes: Routes = [
         canActivate: [AuthGuard],
         data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
+      {
+        path: 'settings/appearance',
+        loadComponent: () => import('./pages/settings/appearance-settings.component').then(m => m.AppearanceSettingsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN] }
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   }

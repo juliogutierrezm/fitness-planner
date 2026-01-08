@@ -1,0 +1,30 @@
+<div class="ai-timeline" role="status" aria-live="polite">
+  <div class="timeline-header">
+    <mat-icon class="timeline-icon">auto_awesome</mat-icon>
+    <div class="timeline-header-text">
+      <p class="timeline-title">Generando plan con IA</p>
+      <p class="timeline-subtitle">Proceso guiado y validado para asegurar resultados seguros.</p>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-line" aria-hidden="true"></div>
+
+    <div
+      class="timeline-step"
+      *ngFor="let step of steps; let i = index"
+      [class.step--completed]="isCompleted(i)"
+      [class.step--active]="isActive(i)"
+      [class.step--upcoming]="isUpcoming(i)">
+      <div class="step-indicator" aria-hidden="true">
+        <mat-icon *ngIf="isCompleted(i)">check_circle</mat-icon>
+        <mat-icon *ngIf="isActive(i)">radio_button_checked</mat-icon>
+        <mat-icon *ngIf="isUpcoming(i)">radio_button_unchecked</mat-icon>
+      </div>
+      <div class="step-content">
+        <div class="step-title">{{ step.title }}</div>
+        <div class="step-description">{{ step.description }}</div>
+      </div>
+    </div>
+  </div>
+</div>

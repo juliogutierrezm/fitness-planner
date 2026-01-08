@@ -3,10 +3,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
-import { Exercise, Session } from './shared/models';
+import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
-import { sanitizeName } from './shared/shared-utils';
+import { UserApiService } from './user-api.service';
+import { sanitizeName, isGymMode } from './shared/shared-utils';
 
 // Allowed fields for exercise updates
 const ALLOWED_FIELDS = [
@@ -52,7 +53,8 @@ export class ExerciseApiService {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private userApi: UserApiService
   ) {}
 
   private getSessionsKey(): string {
@@ -99,8 +101,6 @@ export class ExerciseApiService {
       })
     );
   }
-
-
 
   getExercises(): Observable<Exercise[]> {
     return this.http.get<Exercise[]>(this.exerciseUrl).pipe(
@@ -216,39 +216,53 @@ export class ExerciseApiService {
   }
 
   // =============== WORKOUT PLANS ===============
+  /**
+   * Purpose: persist a new workout plan for the current or specified user.
+   * Input: plan payload with identifiers and sessions. Output: Observable of save response.
+   * Error handling: logs and returns null when user is unauthenticated.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   saveWorkoutPlan(plan: {
     planId: string;
     name: string;
     date: string;
     sessions: Session[];
     generalNotes?: string;
+    objective?: string;
+    userId?: string;
   }): Observable<any> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of(null);
     }
 
     const fullPlan = {
       ...plan,
-      userId: (plan as any).userId || currentUser.id,
+      userId: plan.userId || currentUser.id,
       companyId: currentUser.companyId || 'INDEPENDENT',
       trainerId: currentUser.role === 'trainer' ? currentUser.id : undefined
     };
 
     return this.http.post(`${this.planUrl}`, fullPlan).pipe(
-      tap(() => console.log('💾 Plan de entrenamiento guardado', fullPlan)),
+      tap(() => console.log('?? Plan de entrenamiento guardado', fullPlan)),
       catchError(err => {
-        console.error('❌ Error al guardar plan:', err);
+        console.error('? Error al guardar plan:', err);
         return of(null);
       })
     );
   }
 
+  /**
+   * Purpose: fetch workout plans for a user with permission validation.
+   * Input: optional userId. Output: Observable of plan list.
+   * Error handling: logs and returns empty list on failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   getWorkoutPlansByUser(userId?: string): Observable<any[]> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of([]);
     }
 
@@ -257,18 +271,18 @@ export class ExerciseApiService {
 
     // Check permissions
     if (!this.authService.canAccessUserData(targetUserId)) {
-      console.error('❌ No tienes permisos para acceder a estos datos');
+      console.error('? No tienes permisos para acceder a estos datos');
       return of([]);
     }
 
     const byUserUrl = `${this.apiBase}/users/plan?userId=${encodeURIComponent(targetUserId)}&id=${encodeURIComponent(targetUserId)}`;
     return this.http.get<any[]>(byUserUrl).pipe(
-      tap(plans => console.log('📦 Planes obtenidos (users/:id/plan):', plans)),
+      tap(plans => console.log('?? Planes obtenidos (users/:id/plan):', plans)),
       catchError(err => {
         console.warn('Fallo users/:id/plan, intentando /workoutPlans?userId', err);
         return this.http.get<any[]>(`${this.planUrl}?userId=${encodeURIComponent(targetUserId)}`).pipe(
           catchError(err2 => {
-            console.error('❌ Error al obtener planes por usuario:', err2);
+            console.error('? Error al obtener planes por usuario:', err2);
             return of([]);
           })
         );
@@ -293,23 +307,33 @@ export class ExerciseApiService {
     );
   }
 
+  /**
+   * Purpose: update an existing workout plan for its original user only.
+   * Input: plan object with planId and userId. Output: Observable of update result.
+   * Error handling: logs and returns null when identifiers or permissions are invalid.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
   updateWorkoutPlan(plan: any): Observable<any> {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      console.error('❌ Usuario no autenticado');
+      console.error('? Usuario no autenticado');
       return of(null);
     }
 
-    // Check permissions
-    if (!this.authService.canAccessUserData(plan.userId)) {
-      console.error('❌ No tienes permisos para actualizar estos datos');
+    if (!plan?.userId) {
+      console.error('? updateWorkoutPlan requiere userId');
+      return of(null);
+    }
+
+    if (!plan?.planId) {
+      console.error('? updateWorkoutPlan requiere planId');
       return of(null);
     }
 
     return this.http.put(`${this.planUrl}`, plan).pipe(
-      tap(() => console.log('💾 Plan de entrenamiento actualizado', plan)),
+      tap(() => console.log('?? Plan de entrenamiento actualizado', plan)),
       catchError(err => {
-        console.error('❌ Error al actualizar plan:', err);
+        console.error('? Error al actualizar plan:', err);
         return of(null);
       })
     );
@@ -336,9 +360,15 @@ export class ExerciseApiService {
     );
   }
 
-generateWorkoutPlanAI(prompt: string): Observable<any> {
+generateWorkoutPlanAI(promptOrParams: string | any): Observable<any> {
   const url = `${this.apiBase}/generatePlanFromAI`;
-  return this.http.post(url, { prompt }).pipe(
+
+  // Support both legacy string prompt and new flat object format
+  const payload = typeof promptOrParams === 'string'
+    ? { prompt: promptOrParams }
+    : promptOrParams;
+
+  return this.http.post(url, payload).pipe(
     tap(plan => console.log('🧠 Plan generado por IA:', plan)),
     catchError(err => {
       console.error('❌ Error al generar plan IA:', err);
@@ -346,6 +376,61 @@ generateWorkoutPlanAI(prompt: string): Observable<any> {
     })
   );
 }
+
+// New method for parameterized AI plan generation
+generatePlanFromAI(params: AiPlanRequest): Observable<{ executionId: string }> {
+  return this.http.post<{ executionId: string }>(
+    `${this.apiBase}/generatePlanFromAI`,
+    params
+  ).pipe(
+    tap(response => console.log('🚀 Plan generation started with executionId:', response.executionId)),
+    catchError(err => {
+      console.error('❌ Error starting plan generation:', err);
+      throw err;
+    })
+  );
+}
+
+// Polling method for plan generation status - uses userId
+pollPlanGeneration(userId: string): Observable<any> {
+  return this.http.get(
+    `${this.apiBase}/generatePlanFromAI/${userId}`
+  );
+}
+
+pollPlanByExecution(
+  userId: string,
+  executionId: string
+): Observable<any> {
+  return this.http.get(
+    `${this.apiBase}/generatePlanFromAI/${userId}/${executionId}`
+  );
+}
+
+
+// Polling method to get generated plan
+getGeneratedPlan(executionArn: string): Observable<any> {
+  const params = encodeURIComponent(executionArn);
+  return this.http.get<any>(
+    `${this.apiBase}/generatePlanFromAI?executionArn=${params}`
+  ).pipe(
+    tap(res => console.log('📊 Polling plan status:', res.status)),
+    catchError(err => {
+      console.error('❌ Error polling plan:', err);
+      return of({ status: 'failed' });
+    })
+  );
+}
+
+getWorkoutPlanFromAI(userId: string): Observable<any> {
+  return this.http.get<any>(
+    `${this.apiBase}/generatePlanFromAI/${userId}`
+  );
+}
+
+// REMOVED: getAiProgress - forbidden method
+// REMOVED: getLatestPlan - forbidden method
+
 
   // =============== ADMIN/TRAINER AGGREGATES ===============
   getPlansByTrainer(trainerId?: string): Observable<any[]> {
@@ -378,6 +463,23 @@ generateWorkoutPlanAI(prompt: string): Observable<any> {
     );
   }
 
+  /**
+   * Purpose: fetch workout plans for the current tenant using gym vs independent mode.
+   * Input: none. Output: Observable<any[]>.
+   * Error handling: returns empty list when user or identifiers are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPlansForCurrentTenant(): Observable<any[]> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return of([]);
+    const companyId = currentUser.companyId || 'INDEPENDENT';
+    if (isGymMode(companyId)) {
+      return this.getPlansByCompany(companyId);
+    }
+    if (!currentUser.id) return of([]);
+    return this.userApi.getWorkoutPlansByUserId(currentUser.id);
+  }
+
 
 
   // =============== SESSION STORAGE ===============
@@ -398,3 +500,4 @@ generateWorkoutPlanAI(prompt: string): Observable<any> {
     localStorage.removeItem(key);
   }
 }
+

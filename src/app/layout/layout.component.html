@@ -2,7 +2,7 @@
   <mat-sidenav mode="side" [(opened)]="sidebarOpen" class="sidenav">
     <mat-nav-list class="sidebar-item">
       <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
-        <mat-icon>blur_on</mat-icon>
+        <mat-icon>dashboard</mat-icon>
         <span>Dashboard</span>
       </a>
       <a class="nav-link" routerLink="/exercise-manager" routerLinkActive="active">
@@ -10,16 +10,27 @@
         <span>Ejercicios</span>
       </a>
       <a class="nav-link" routerLink="/templates" routerLinkActive="active">
-        <mat-icon>library_books</mat-icon>
+        <mat-icon>view_list</mat-icon>
         <span>Plantillas</span>
       </a>
-      <a class="nav-link" routerLink="/users" routerLinkActive="active">
+      <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin'">
+        <mat-icon>sports</mat-icon>
+        <span>Entrenadores</span>
+      </a>
+      <a class="nav-link" routerLink="/clients" routerLinkActive="active">
         <mat-icon>group</mat-icon>
-        <span>Usuarios</span>
+        <span>Clientes</span>
       </a>
       <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
-        <mat-icon>bug_report</mat-icon>
+        <mat-icon>analytics</mat-icon>
         <span>Diagnostics</span>
+      </a>
+
+      <!-- Settings Section for Admin only -->
+      <mat-divider *ngIf="user?.role === 'admin'" style="margin: 8px 0;"></mat-divider>
+      <a class="nav-link" routerLink="/settings/appearance" routerLinkActive="active" *ngIf="user?.role === 'admin'">
+        <mat-icon>palette</mat-icon>
+        <span>Apariencia</span>
       </a>
     </mat-nav-list>
   </mat-sidenav>

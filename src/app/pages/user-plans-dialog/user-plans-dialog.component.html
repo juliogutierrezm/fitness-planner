@@ -2,9 +2,9 @@
   Planes de {{ data.user | userDisplayName }}
 </h2>
 
-<div class="plans-list" *ngIf="(data.plans || []).length; else noPlans">
-  <div class="plan-row" *ngFor="let p of data.plans">
-    <div class="title">{{ p.name || 'Plan' }}</div>
+<div class="plans-list" *ngIf="viewPlans.length; else noPlans">
+  <div class="plan-row" *ngFor="let p of viewPlans">
+    <div class="title">Plan {{ p.planOrdinal }}</div>
     <div class="meta">
       {{ p.date | date:'dd/MM/yyyy' }} · {{ (p.sessions?.length || 0) }} sesiones
     </div>

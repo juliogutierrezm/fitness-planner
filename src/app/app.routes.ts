@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './layout/layout.component';
 import { AuthGuard } from './guards/auth.guard';
+import { UserRole } from './services/auth.service';
 
 export const routes: Routes = [
   // OAuth callback route (outside of layout)
@@ -11,6 +12,10 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'unauthorized',
+    loadComponent: () => import('./components/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
   
   // Main application routes
@@ -25,22 +30,26 @@ export const routes: Routes = [
       {
         path: 'planner',
         loadComponent: () => import('./components/planner/planner.component').then(m => m.PlannerComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'planner/:id',
         loadComponent: () => import('./components/planner/planner.component').then(m => m.PlannerComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'templates',
         loadComponent: () => import('./pages/templates/templates.component').then(m => m.TemplatesComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'plan/:id',
         loadComponent: () => import('./pages/plan-view/plan-view.component').then(m => m.PlanViewPageComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'exercise-manager',
@@ -58,14 +67,34 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
       },
       {
+        path: 'trainers',
+        loadComponent: () => import('./pages/trainers/trainers.component').then(m => m.TrainersComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN] }
+      },
+      {
+        path: 'clients',
+        loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
         path: 'users',
-        loadComponent: () => import('./pages/users/users.component').then(m => m.UsersComponent),
-        canActivate: [AuthGuard]
+        loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'users/:id',
         loadComponent: () => import('./pages/user-detail/user-detail.component').then(m => m.UserDetailComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
+        path: 'settings/appearance',
+        loadComponent: () => import('./pages/settings/appearance-settings.component').then(m => m.AppearanceSettingsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN] }
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

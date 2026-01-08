@@ -47,7 +47,8 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
     { value: 'Roboto', label: 'Roboto' },
     { value: 'Poppins', label: 'Poppins' },
     { value: 'Montserrat', label: 'Montserrat' },
-    { value: 'Oswald', label: 'Oswald' }
+    { value: 'Oswald', label: 'Oswald' },
+    { value: 'Lato', label: 'Lato' }
   ];
 
   private destroy$ = new Subject<void>();
@@ -123,6 +124,56 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
     const config = this.form.getRawValue();
     // Preview is now handled via inline styles in the template only
     // No global application of theme
+  }
+
+  // Purpose: Normalize hex input and sync it with the form control.
+  // Inputs: event: Event, controlName: 'primaryColor' | 'accentColor'.
+  // Output: Updates the corresponding form control with a #RRGGBB value.
+  // Error-handling: Guard against missing control or invalid event targets.
+  // Standards Check: SRP OK | DRY OK | Tests N/A.
+  onHexInput(event: Event, controlName: 'primaryColor' | 'accentColor'): void {
+    const input = event.target as HTMLInputElement | null;
+    const control = this.form.get(controlName);
+    if (!input || !control) {
+      return;
+    }
+
+    const normalized = this.normalizeHexValue(input.value);
+    if (control.value !== normalized) {
+      control.setValue(normalized);
+    }
+    if (input.value !== normalized) {
+      input.value = normalized;
+    }
+  }
+
+  // Purpose: Sync color picker changes with the form control.
+  // Inputs: event: Event, controlName: 'primaryColor' | 'accentColor'.
+  // Output: Updates the corresponding form control with a #RRGGBB value.
+  // Error-handling: Guard against missing control or invalid event targets.
+  // Standards Check: SRP OK | DRY OK | Tests N/A.
+  onColorPicked(event: Event, controlName: 'primaryColor' | 'accentColor'): void {
+    const input = event.target as HTMLInputElement | null;
+    const control = this.form.get(controlName);
+    if (!input || !control) {
+      return;
+    }
+
+    const normalized = this.normalizeHexValue(input.value);
+    if (control.value !== normalized) {
+      control.setValue(normalized);
+    }
+  }
+
+  // Purpose: Coerce any hex-like string into #RRGGBB format.
+  // Inputs: value: string.
+  // Output: string in #RRGGBB format.
+  // Error-handling: N/A (sanitizes input to a safe format).
+  // Standards Check: SRP OK | DRY OK | Tests N/A.
+  private normalizeHexValue(value: string): string {
+    const cleaned = value.trim().replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+    const padded = cleaned.padEnd(6, '0');
+    return `#${padded.toUpperCase()}`;
   }
 
   onLogoSelected(event: any): void {
@@ -240,21 +291,4 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  resetToDefaults(): void {
-    const defaultTheme = this.themeService.getDefaultTheme();
-    const darkMode = defaultTheme.backgroundMode === 'dark';
-    const typography = defaultTheme.fontFamily || 'Inter';
-
-    this.form.patchValue({
-      primaryColor: defaultTheme.primaryColor,
-      accentColor: defaultTheme.accentColor,
-      darkMode: darkMode,
-      typography: typography,
-      appName: '',
-      tagline: ''
-    });
-    this.logoFile = null;
-    this.logoPreviewUrl = defaultTheme.logoUrl || null;
-    // updatePreview() called via valueChanges subscription
-  }
 }

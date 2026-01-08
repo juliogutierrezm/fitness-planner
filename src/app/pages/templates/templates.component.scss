@@ -7,6 +7,36 @@
   padding: 16px;
 }
 
+.header-card {
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+
+  mat-card-header {
+    margin: 0;
+    padding: 22px;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 26px;
+      margin: 0;
+      color: var(--primary-color, #1976d2);
+
+      mat-icon {
+        font-size: 30px;
+        width: 30px;
+        height: 30px;
+      }
+    }
+
+    mat-card-subtitle {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+
 .plans-card {
   padding: 16px;
 }
@@ -19,8 +49,9 @@
 }
 
 .plans-actions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-self: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
 }

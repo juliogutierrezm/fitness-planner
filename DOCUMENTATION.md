@@ -2,6 +2,7 @@
 
 ## Descripción general
 Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra un sistema de autenticación híbrido con AWS Cognito (OAuth 2.0 + PKCE + Amplify) y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR), rutas protegidas con control de acceso basado en roles (Admin, Trainer, Client), y funcionalidades administrativas avanzadas.
+Tambien incluye configuracion de apariencia por tenant (branding, colores, tipografia, modo claro/oscuro y logo) con vista previa para administradores.
 
 ## Arquitectura de Autenticación y AWS Cognito
 
@@ -241,6 +242,10 @@ fitness-planner/
 │   │   │   │   ├── plan-view.component.html
 │   │   │   │   ├── plan-view.component.scss
 │   │   │   │   └── plan-view.component.ts
+│   │   │   ├── settings/
+│   │   │   │   ├── appearance-settings.component.html
+│   │   │   │   ├── appearance-settings.component.scss
+│   │   │   │   └── appearance-settings.component.ts
 │   │   │   ├── templates/
 │   │   │   │   ├── templates.component.html
 │   │   │   │   ├── templates.component.scss
@@ -259,7 +264,8 @@ fitness-planner/
 │   │   │       ├── users.component.scss
 │   │   │       └── users.component.ts
 │   │   ├── services/
-│   │   │   └── auth.service.ts
+│   │       ├── auth.service.ts
+│   │       └── theme.service.ts
 │   │   └── shared/
 │   │       ├── feedback-utils.ts
 │   │       ├── models.ts
@@ -309,6 +315,7 @@ npm install
 export const environment = {
   production: false,
   apiBase: 'https://tu-api-endpoint.amazonaws.com/dev',
+  apiUrl: 'https://tu-api-endpoint.amazonaws.com/dev',
   cognito: {
     domain: 'tu-cognito-domain.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_XXXXXXXXX',
@@ -354,6 +361,7 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Confirmación de acciones**: Diálogos modales para confirmar operaciones críticas
 - **Notificaciones de no autorizado**: Manejo de accesos no permitidos
 - **Sistema de feedback centralizado**: Manejo consistente de mensajes de éxito, error e información
+- **Configuracion de apariencia**: Panel admin para branding (nombre, tagline, logo), colores, tipografia y modo claro/oscuro con vista previa en tiempo real
 - **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
 - **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
@@ -609,6 +617,12 @@ export class AiGenerationDialogComponent {
 - **Validación**: Verificación de ejercicios existentes en el catálogo antes de retornar el plan
 - **Formato estructurado**: Salida consistente con objetos plan y planLegacy para compatibilidad
 
+### Configuracion de apariencia y branding
+- **ThemeService** (`src/app/services/theme.service.ts`): Obtiene y guarda configuracion de tema en `/tenant/theme` con cache en memoria y defaults.
+- **Appearance Settings** (`src/app/pages/settings/appearance-settings.component.ts`): Panel admin con vista previa en tiempo real para colores, tipografia, modo claro/oscuro, nombre de app y tagline.
+- **Carga de logo**: Flujo con URL pre-firmada (`/tenant/logo-upload-url`) y subida directa a S3 usando `PUT`.
+- **Campos soportados**: primaryColor, accentColor, backgroundMode, fontFamily, appName, tagline, logoKey/logoUrl.
+
 ### Utilidades compartidas
 - **FeedbackUtils**: Sistema centralizado de manejo de feedback con temas semánticos (éxito, error, información)
 - **ErrorMapper**: Mapeo de códigos de error HTTP a mensajes amigables para el usuario
@@ -632,6 +646,7 @@ export class AiGenerationDialogComponent {
 - **Gestion de clientes y entrenadores**: Completo - Vistas separadas por rol con flujos claros y control de asignaciones
 - **Plantillas**: Completo - Creación y gestión de plantillas con funcionalidad de guardado y asignación de usuarios
 - **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
+- **Configuracion de apariencia y branding**: Completo - panel admin para colores, tipografia, modo claro/oscuro y logo con vista previa
 - **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
 - **Utilidades compartidas**: Completo - Funciones auxiliares para sanitización y procesamiento de datos
 - **SSR y optimizaciones**: Completo - Compatible con server-side rendering
@@ -646,6 +661,7 @@ export class AiGenerationDialogComponent {
 ## Cambios recientes (ultimos commits)
 
 ### Ultimas actualizaciones implementadas:
+- **Panel de apariencia y branding**: Configuracion visual para admin con preview, colores, tipografia y carga de logo con URL pre-firmada
 - **Separacion de clientes y entrenadores**: Nuevas vistas dedicadas con logica por rol y sin selector de rol en formularios
 - **Metricas de entrenadores**: Conteo de clientes asignados y planes creados por entrenador en la vista
 - **Plantillas para clientes**: Asignacion de plantillas filtrada solo a clientes con busqueda en dialogo

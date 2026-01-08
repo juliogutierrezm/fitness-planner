@@ -1,15 +1,22 @@
 <div class="main-container">
-  <mat-card class="plans-card">
-    <div class="plans-header">
-      <h3>Plantillas de {{ currentUser ? (currentUser.givenName || currentUser.email?.split('@')[0] || 'Entrenador') : 'Entrenamiento' }}</h3>
-      <div class="plans-actions">
-        <button mat-raised-button color="primary" (click)="createTemplate()">
-          <mat-icon>add</mat-icon>
-          Crear plantilla nueva
-        </button>
-      </div>
-    </div>
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>view_list</mat-icon>
+        Plantillas
+      </mat-card-title>
+      <mat-card-subtitle>Gestión de plantillas de entrenamiento reutilizables</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
 
+  <div class="plans-actions">
+    <button mat-raised-button color="primary" (click)="createTemplate()">
+      <mat-icon>add</mat-icon>
+      Crear plantilla nueva
+    </button>
+  </div>
+  
+  <mat-card class="plans-card">
     <div class="filters">
       <mat-form-field appearance="outline" class="q">
         <mat-label>Objetivo</mat-label>

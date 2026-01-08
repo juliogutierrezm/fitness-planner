@@ -5,10 +5,19 @@
       Volver
     </button>
   </div>
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>assignment</mat-icon>
+          Planes de entrenamiento de {{ user | userDisplayName }}
+      </mat-card-title>
+      <mat-card-subtitle>Gestión y seguimiento de planes personalizados</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
 
   <mat-card class="plans-card">
     <div class="plans-header">
-      <h3>Planes de entrenamiento de {{ user | userDisplayName }}</h3>
+      <h3></h3>
       <div class="plans-actions" *ngIf="userId as uid">
         <a
           mat-raised-button

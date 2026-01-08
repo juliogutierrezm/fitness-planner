@@ -1,7 +1,13 @@
 <div class="users-page">
-  <div class="header">
-    <h2>{{ pageTitle }}</h2>
-  </div>
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>{{ isTrainerView ? 'sports' : 'group' }}</mat-icon>
+        {{ pageTitle }}
+      </mat-card-title>
+      <mat-card-subtitle>{{ isTrainerView ? 'Administración de entrenadores y su rendimiento' : 'Gestión de clientes y planes asignados' }}</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
 
   <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
     <button mat-raised-button color="primary" (click)="showCreateForm = true">
@@ -78,9 +84,6 @@
   </mat-card>
 
   <mat-card class="list-card">
-    <div class="list-header">
-      <h3>Listado</h3>
-    </div>
     <div *ngIf="isLoading" class="loading-container" role="status" aria-live="polite" aria-busy="true">
       <mat-spinner diameter="40"></mat-spinner>
     </div>

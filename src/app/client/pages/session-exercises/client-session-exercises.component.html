@@ -1,0 +1,66 @@
+<div class="session-exercises-page">
+  <header class="session-header">
+    <button class="nav-back" type="button" (click)="goBack()" aria-label="Volver al plan" [disabled]="isLoading">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    </button>
+    <div class="session-header-text">
+      <p class="session-eyebrow">{{ planTitle }}</p>
+      <h1 class="session-title">{{ sessionTitle }}</h1>
+      <p class="session-count">{{ exercises.length }} ejercicios</p>
+    </div>
+  </header>
+
+  <div
+    class="session-loading"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite"
+    [attr.aria-busy]="isLoading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Cargando ejercicios...</p>
+  </div>
+
+  <section class="session-exercises-list" *ngIf="!isLoading && !sessionMissing">
+    <article
+      class="exercise-card"
+      *ngFor="let exercise of exercises; let i = index; trackBy: trackByExercise"
+      role="button"
+      tabindex="0"
+      (click)="openExercise(i)"
+      (keydown)="onExerciseKeydown($event, i)"
+      [attr.aria-label]="getExerciseAriaLabel(exercise, i)">
+      <div class="exercise-thumb">
+        <img
+          *ngIf="hasThumbnail(exercise, i); else thumbPlaceholder"
+          [src]="exercise.thumbnail"
+          [alt]="getExerciseTitle(exercise, i)"
+          (error)="onImageError(i)" />
+        <ng-template #thumbPlaceholder>
+          <mat-icon aria-hidden="true">image</mat-icon>
+        </ng-template>
+      </div>
+
+      <div class="exercise-info">
+        <h3 class="exercise-name">{{ getExerciseTitle(exercise, i) }}</h3>
+        <p class="exercise-program">{{ getProgrammingLine(exercise) }}</p>
+        <div class="exercise-tags" *ngIf="getExerciseMuscleLabel(exercise) || exercise.functional">
+          <span class="exercise-tag" *ngIf="getExerciseMuscleLabel(exercise) as muscle">{{ muscle }}</span>
+          <span class="exercise-tag" *ngIf="exercise.functional">Funcional</span>
+        </div>
+      </div>
+
+      <mat-icon class="exercise-chevron" aria-hidden="true">chevron_right</mat-icon>
+    </article>
+
+    <div class="session-empty" *ngIf="!exercises.length">
+      <mat-icon aria-hidden="true">fitness_center</mat-icon>
+      <p>Esta sesion aun no tiene ejercicios.</p>
+    </div>
+  </section>
+
+  <div class="session-missing" *ngIf="!isLoading && sessionMissing">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>No encontramos esta sesion.</p>
+    <button class="client-button" type="button" (click)="goBack()">Volver</button>
+  </div>
+</div>

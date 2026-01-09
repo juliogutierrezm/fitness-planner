@@ -7,6 +7,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import { catchError, finalize, map, switchMap, take, takeUntil } from 'rxjs/operators';
 import { ClientDataService, WorkoutPlan, WorkoutSession } from '../../services/client-data.service';
+import { getSessionExerciseCount, getSessionPrimaryMuscle, hasFunctionalExercise } from '../../utils/session-exercise.utils';
 
 /**
  * Purpose: Render a client plan detail view with its sessions list.
@@ -76,6 +77,34 @@ export class ClientPlanDetailComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Purpose: navigate to the selected session exercise list.
+   * Input: WorkoutSession and index. Output: void (navigation side effect).
+   * Error handling: shows snackbar when plan id is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openSession(index: number): void {
+    if (!this.planId) {
+      this.snackBar.open('No pudimos abrir esta sesion.', 'Cerrar', { duration: 3500 });
+      return;
+    }
+
+    this.router.navigate(['/client/plans', this.planId, 'sessions', index]);
+  }
+
+  /**
+   * Purpose: support keyboard activation on session cards.
+   * Input: KeyboardEvent, WorkoutSession, index. Output: void.
+   * Error handling: guards against unrelated keys.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onSessionKeydown(event: KeyboardEvent, index: number): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.openSession(index);
+    }
+  }
+
+  /**
    * Purpose: compute the display title for the plan header.
    * Input: none. Output: string.
    * Error handling: uses safe fallbacks.
@@ -119,7 +148,38 @@ export class ClientPlanDetailComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   getSessionItemsCount(session: WorkoutSession): number {
-    return Array.isArray(session?.items) ? session.items.length : 0;
+    return getSessionExerciseCount(session);
+  }
+
+  /**
+   * Purpose: resolve a primary muscle group label for a session card.
+   * Input: WorkoutSession. Output: string | null.
+   * Error handling: returns null when not available.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getSessionPrimaryMuscle(session: WorkoutSession): string | null {
+    return getSessionPrimaryMuscle(session);
+  }
+
+  /**
+   * Purpose: detect if the session includes functional exercises.
+   * Input: WorkoutSession. Output: boolean.
+   * Error handling: returns false on missing data.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  isSessionFunctional(session: WorkoutSession): boolean {
+    return hasFunctionalExercise(session);
+  }
+
+  /**
+   * Purpose: build aria label for session cards.
+   * Input: WorkoutSession and index. Output: string.
+   * Error handling: uses safe fallbacks.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getSessionAriaLabel(session: WorkoutSession, index: number): string {
+    const title = this.getSessionTitle(session, index);
+    return `Abrir ${title}`;
   }
 
   /**

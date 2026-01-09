@@ -27,10 +27,23 @@
     <div class="sessions-list">
       <article
         class="client-card session-card"
-        *ngFor="let session of sessionList; let i = index">
+        *ngFor="let session of sessionList; let i = index"
+        role="button"
+        tabindex="0"
+        (click)="openSession(i)"
+        (keydown)="onSessionKeydown($event, i)"
+        [attr.aria-label]="getSessionAriaLabel(session, i)">
         <div class="session-main">
           <div class="session-title">{{ getSessionTitle(session, i) }}</div>
-          <div class="session-meta">{{ getSessionItemsCount(session) }} ejercicios</div>
+          <div class="session-meta">
+            <div class="session-chips">
+              <span class="session-chip" *ngIf="getSessionPrimaryMuscle(session) as muscle">
+                {{ muscle }}
+              </span>
+              <span class="session-chip" *ngIf="isSessionFunctional(session)">Funcional</span>
+              <span class="session-chip">{{ getSessionItemsCount(session) }} ejercicios</span>
+            </div>
+          </div>
         </div>
         <mat-icon class="session-chevron" aria-hidden="true">chevron_right</mat-icon>
       </article>

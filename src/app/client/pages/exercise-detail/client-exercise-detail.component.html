@@ -1,0 +1,94 @@
+<div class="exercise-detail-page">
+  <header class="detail-header">
+    <button class="nav-back" type="button" (click)="goBack()" aria-label="Volver a ejercicios" [disabled]="isLoading">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    </button>
+    <div class="detail-header-text">
+      <p class="detail-eyebrow">{{ planTitle }}</p>
+      <h1 class="detail-title">{{ getExerciseTitle(exercise) }}</h1>
+      <p class="detail-subtitle">{{ sessionTitle }}</p>
+    </div>
+  </header>
+
+  <div
+    class="detail-loading"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite"
+    [attr.aria-busy]="isLoading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Cargando ejercicio...</p>
+  </div>
+
+  <section class="detail-content" *ngIf="!isLoading && !exerciseMissing && exercise">
+    <div class="detail-media">
+      <img
+        *ngIf="hasThumbnail(exercise); else mediaPlaceholder"
+        [src]="exercise.thumbnail"
+        [alt]="getExerciseTitle(exercise)"
+        (error)="onImageError()" />
+      <ng-template #mediaPlaceholder>
+        <mat-icon aria-hidden="true">image</mat-icon>
+      </ng-template>
+    </div>
+
+    <div class="detail-programming">
+      <div class="program-item">
+        <span class="program-label">Series</span>
+        <span class="program-value">{{ formatValue(exercise.sets) }}</span>
+      </div>
+      <div class="program-item">
+        <span class="program-label">Reps</span>
+        <span class="program-value">{{ formatValue(exercise.reps) }}</span>
+      </div>
+      <div class="program-item">
+        <span class="program-label">Descanso</span>
+        <span class="program-value">{{ formatRest(exercise.rest) }}</span>
+      </div>
+    </div>
+
+    <button class="primary-button" type="button" *ngIf="videoUrl" (click)="openVideo()" [disabled]="isLoading">
+      <mat-icon aria-hidden="true">play_circle</mat-icon>
+      Ver video
+    </button>
+
+    <div class="detail-sections">
+      <details class="detail-panel" *ngIf="descriptionText">
+        <summary>Descripcion</summary>
+        <p>{{ descriptionText }}</p>
+      </details>
+
+      <details class="detail-panel" *ngIf="tips.length">
+        <summary>Tips</summary>
+        <ul>
+          <li *ngFor="let tip of tips">{{ tip }}</li>
+        </ul>
+      </details>
+
+      <details class="detail-panel" *ngIf="mistakes.length">
+        <summary>Errores comunes</summary>
+        <ul>
+          <li *ngFor="let mistake of mistakes">{{ mistake }}</li>
+        </ul>
+      </details>
+
+      <details class="detail-panel" *ngIf="primaryMuscle || secondaryMuscles.length">
+        <summary>Grupos musculares</summary>
+        <div class="muscle-row" *ngIf="primaryMuscle">
+          <span class="muscle-label">Principal</span>
+          <span class="muscle-value">{{ primaryMuscle }}</span>
+        </div>
+        <div class="muscle-row" *ngIf="secondaryMuscles.length">
+          <span class="muscle-label">Secundarios</span>
+          <span class="muscle-value">{{ secondaryMuscles.join(', ') }}</span>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="exercise-missing" *ngIf="!isLoading && exerciseMissing">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>No encontramos este ejercicio.</p>
+    <button class="client-button" type="button" (click)="goBack()">Volver</button>
+  </div>
+</div>

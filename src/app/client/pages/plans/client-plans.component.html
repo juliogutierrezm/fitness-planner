@@ -1,0 +1,47 @@
+<div class="plans-page">
+  <header class="plans-header">
+    <h1>Mis planes de entrenamiento</h1>
+    <p>Revisa tus planes activos y lo que sigue esta semana.</p>
+  </header>
+
+  <div
+    class="plans-loading"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite"
+    [attr.aria-busy]="isLoading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Cargando tus planes...</p>
+  </div>
+
+  <section class="plans-list" *ngIf="!isLoading">
+    <article
+      class="client-card plan-card"
+      *ngFor="let plan of plans; trackBy: trackByPlan"
+      tabindex="0">
+
+      <!-- Fecha (anclada a la derecha) -->
+      <div class="plan-meta" *ngIf="plan.date">
+        <span class="plan-date">
+          {{ plan.date | date:'dd/MM/yyyy' }}
+        </span>
+      </div>
+
+      <!-- Objetivo -->
+      <h3 class="plan-objective">
+        {{ plan.objective || 'Objetivo pendiente' }}
+      </h3>
+
+      <!-- Sesiones -->
+      <p class="plan-sessions">
+        <mat-icon aria-hidden="true">calendar_today</mat-icon>
+        <span>{{ getSessionCount(plan) }} sesiones</span>
+      </p>
+    </article>
+
+    <div class="plans-empty" *ngIf="!plans.length">
+      <mat-icon>event_busy</mat-icon>
+      <p>Aún no tienes planes de entrenamiento asignados.</p>
+    </div>
+  </section>
+</div>

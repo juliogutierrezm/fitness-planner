@@ -17,6 +17,12 @@ export const routes: Routes = [
     path: 'unauthorized',
     loadComponent: () => import('./components/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
+  {
+    path: 'client',
+    loadChildren: () => import('./client/client.routes').then(m => m.CLIENT_ROUTES),
+    canActivate: [AuthGuard],
+    data: { roles: [UserRole.CLIENT] }
+  },
   
   // Main application routes
   {
@@ -25,7 +31,9 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent)
+        loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'planner',
@@ -54,17 +62,20 @@ export const routes: Routes = [
       {
         path: 'exercise-manager',
         loadComponent: () => import('./pages/exercise-manager/exercise-manager.component').then(m => m.ExerciseManagerComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'exercise-detail/:id',
         loadComponent: () => import('./pages/exercise-manager/components/exercise-detail/exercise-detail.component').then(m => m.ExerciseDetailComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'diagnostics',
         loadComponent: () => import('./pages/diagnostics/diagnostics.component').then(m => m.DiagnosticsComponent),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
         path: 'trainers',

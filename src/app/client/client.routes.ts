@@ -13,6 +13,10 @@ export const CLIENT_ROUTES: Routes = [
     component: ClientLayoutComponent,
     children: [
       {
+        path: 'plans/:planId',
+        loadComponent: () => import('./pages/plan-detail/client-plan-detail.component').then(m => m.ClientPlanDetailComponent)
+      },
+      {
         path: 'plans',
         loadComponent: () => import('./pages/plans/client-plans.component').then(m => m.ClientPlansComponent)
       },

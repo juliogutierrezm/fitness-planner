@@ -1,24 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ClientPlansService } from './client-data.service';
-import { AuthService } from '../../services/auth.service';
+import { ClientDataService } from './client-data.service';
 
-describe('ClientPlansService', () => {
-  const authServiceStub = {
-    getCurrentUserId: () => 'user-1'
-  };
+// Purpose: placeholder test for client data service creation.
+// Input: none. Output: service instance.
+// Error handling: N/A.
+// Standards Check: SRP OK | DRY OK | Tests Pending.
 
+describe('ClientDataService', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [
-        { provide: AuthService, useValue: authServiceStub }
-      ]
+      imports: [HttpClientTestingModule]
     });
   });
 
   it('should create', () => {
-    const service = TestBed.inject(ClientPlansService);
+    const service = TestBed.inject(ClientDataService);
     expect(service).toBeTruthy();
   });
 });

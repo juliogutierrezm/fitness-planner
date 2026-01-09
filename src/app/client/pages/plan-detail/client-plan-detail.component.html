@@ -1,0 +1,50 @@
+<div class="plan-detail-page">
+  <header class="plan-detail-header" *ngIf="plan && !isLoading">
+    <div class="plan-header-top">
+      <h1 class="plan-title">{{ planTitle }}</h1>
+      <span class="plan-chip" *ngIf="plan.date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
+    </div>
+    <div class="plan-header-meta">
+      <span class="plan-sessions">
+        <mat-icon aria-hidden="true">event</mat-icon>
+        <span>{{ getSessionCount(plan) }} sesiones</span>
+      </span>
+    </div>
+  </header>
+
+  <div
+    class="plan-loading"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite"
+    [attr.aria-busy]="isLoading">
+    <mat-spinner diameter="32"></mat-spinner>
+    <p>Cargando plan...</p>
+  </div>
+
+  <section class="plan-sessions-section" *ngIf="!isLoading && plan">
+    <h2>Sesiones</h2>
+    <div class="sessions-list">
+      <article
+        class="client-card session-card"
+        *ngFor="let session of sessionList; let i = index">
+        <div class="session-main">
+          <div class="session-title">{{ getSessionTitle(session, i) }}</div>
+          <div class="session-meta">{{ getSessionItemsCount(session) }} ejercicios</div>
+        </div>
+        <mat-icon class="session-chevron" aria-hidden="true">chevron_right</mat-icon>
+      </article>
+
+      <div class="sessions-empty" *ngIf="!sessionList.length">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        <p>Este plan aun no tiene sesiones asignadas.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="plan-empty" *ngIf="!isLoading && planMissing">
+    <mat-icon aria-hidden="true">event_busy</mat-icon>
+    <p>No encontramos este plan.</p>
+    <button class="client-button" type="button" (click)="goBack()">Volver</button>
+  </div>
+</div>

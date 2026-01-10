@@ -11,6 +11,15 @@
   --c-surface-2: color-mix(in srgb, Canvas 90%, CanvasText 10%);
   --c-border: color-mix(in srgb, CanvasText 12%, transparent);
   --c-shadow: 0 16px 30px color-mix(in srgb, CanvasText 16%, transparent);
+  /* Liquid UI tokens */
+  --glass-bg-light: rgba(255, 255, 255, 0.55);
+  --glass-bg-dark: rgba(20, 25, 35, 0.55);
+  --glass-border-light: rgba(255, 255, 255, 0.35);
+  --glass-border-dark: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+  --glass-radius: 14px;
+  --glass-shadow-light: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --glass-shadow-dark: 0 16px 40px rgba(0, 0, 0, 0.35);
 
   min-height: 100vh;
   font-family: var(--c-font);

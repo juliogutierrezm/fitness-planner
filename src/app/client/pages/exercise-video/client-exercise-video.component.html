@@ -20,7 +20,7 @@
   </div>
 
   <section class="video-body" *ngIf="!isLoading && !videoMissing">
-    <div class="video-frame" *ngIf="videoUrl; else videoEmpty">
+    <div class="video-frame liquid-card" *ngIf="videoUrl; else videoEmpty">
       <iframe
         *ngIf="isYoutube(); else fileVideo"
         [src]="embedUrl"
@@ -33,7 +33,7 @@
       </ng-template>
     </div>
     <ng-template #videoEmpty>
-      <div class="video-empty">
+      <div class="video-empty liquid-card">
         <mat-icon aria-hidden="true">movie_off</mat-icon>
         <p>No hay video disponible.</p>
       </div>

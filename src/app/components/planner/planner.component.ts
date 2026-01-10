@@ -49,6 +49,17 @@ import {
   sortPlansByCreatedAt
 } from '../../shared/shared-utils';
 
+interface ProgressionWeek {
+  week: number;
+  title?: string;
+  note: string;
+}
+
+interface PlanProgressions {
+  showProgressions: boolean;
+  totalWeeks: number;
+  weeks: ProgressionWeek[];
+}
 
 
 @Component({
@@ -91,8 +102,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: '',
-    functionalOnly: false
+    equipmentTypeFilter: ''
   };
 
   // Filter options populated from data
@@ -101,6 +111,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
     muscleGroupOptions: [],
     equipmentTypeOptions: []
   };
+  private readonly functionalCategoryLabel = 'Funcional';
+
+  private readonly progressionGuide: ProgressionWeek[] = [
+    { week: 1, title: 'Semana base', note: 'Realiza el plan tal como esta escrito' },
+    { week: 2, title: 'Estabilidad', note: 'Manten series y repeticiones, mejora la tecnica' },
+    { week: 3, title: 'Progresion de volumen', note: 'Intenta anadir 1-2 repeticiones por serie si te sientes bien' },
+    { week: 4, title: 'Carga', note: 'Si completas el rango, aumenta ligeramente el peso' },
+    { week: 5, title: 'Deload', note: 'Reduce intensidad, concentrate en ejecucion' }
+  ];
+  progressions: PlanProgressions = this.createDefaultProgressions(false);
 
   // Persistence key
   private readonly STORAGE_KEY = 'planner-filters';
@@ -302,6 +322,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     // Update form with plan data
     this.form.patchValue(patch);
+    if (aiPlan?.progressions) {
+      this.setProgressionsFromPlan(aiPlan.progressions);
+    }
 
     // Normalize sessions for consistent render structure
     const normalizedSessions = normalizePlanSessionsForRender(sessions);
@@ -436,6 +459,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
       isTemplate: true,
       templateName
     };
+    if (this.progressions.showProgressions) {
+      templatePayload.progressions = this.progressions;
+    }
 
     this.isSavingTemplate = true;
     this.cdr.markForCheck();
@@ -553,6 +579,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
       },
       { emitEvent: false }
     );
+    this.setProgressionsFromPlan(templatePlan?.progressions);
     this.persist();
     this.applyUiState();
     this.snackBar.open('Plantilla cargada en el planificador', 'Cerrar', { duration: 2500 });
@@ -816,6 +843,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
               },
               { emitEvent: false }
             );
+            this.setProgressionsFromPlan(plan.progressions);
             this.sessions = parsedSessions;
             this.rebuildDropLists();
             this.applyUiState();
@@ -871,10 +899,32 @@ export class PlannerComponent implements OnInit, OnDestroy {
       searchValue: '',
       categoryFilter: '',
       muscleGroupFilter: '',
-      equipmentTypeFilter: '',
-      functionalOnly: false
+      equipmentTypeFilter: ''
     };
     this.applyCombinedFilter();
+  }
+
+  onProgressionsToggle(show: boolean): void {
+    this.progressions.showProgressions = show;
+    if (show) {
+      this.syncProgressionWeeks(this.progressions.totalWeeks);
+    }
+  }
+
+  onTotalWeeksChange(value: number): void {
+    const parsed = Number(value);
+    const totalWeeks = Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 1;
+    this.syncProgressionWeeks(totalWeeks);
+  }
+
+  getProgressionNotePlaceholder(week: number): string {
+    const guide = this.progressionGuide.find(item => item.week === week);
+    return guide?.note || 'Describe la guia para esta semana';
+  }
+
+  getProgressionTitlePlaceholder(week: number): string {
+    const guide = this.progressionGuide.find(item => item.week === week);
+    return guide?.title || 'Titulo opcional';
   }
 
   private populateFilterOptions(): void {
@@ -892,6 +942,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
       if (equipmentType) equipmentTypes.add(equipmentType);
     });
 
+    categories.add(this.functionalCategoryLabel);
+
     this.filterOptions = {
       categoryOptions: Array.from(categories).sort(),
       muscleGroupOptions: Array.from(muscleGroups).sort(),
@@ -908,8 +960,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
           searchValue: filters.searchValue || '',
           categoryFilter: filters.categoryFilter || '',
           muscleGroupFilter: filters.muscleGroupFilter || '',
-          equipmentTypeFilter: filters.equipmentTypeFilter || '',
-          functionalOnly: filters.functionalOnly || false
+          equipmentTypeFilter: filters.equipmentTypeFilter || ''
         };
       }
     } catch (error) {
@@ -942,6 +993,13 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
   }
 
+  private isFunctionalExercise(exercise: Exercise): boolean {
+    const functionalValue = (exercise as any).functional;
+    if (functionalValue === true) return true;
+    if (typeof functionalValue === 'string') return functionalValue.trim().length > 0;
+    return false;
+  }
+
   private applyCombinedFilter(): void {
     // Combine all filters and apply to data source
     this.filteredExercises = this.exercises.filter(exercise => {
@@ -951,8 +1009,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
           .includes(this.currentFilters.searchValue.toLowerCase());
 
       // Category filter
-      const matchesCategory = !this.currentFilters.categoryFilter ||
-        this.getFieldValue(exercise, 'category') === this.currentFilters.categoryFilter;
+      const selectedCategory = this.currentFilters.categoryFilter;
+      const matchesCategory = !selectedCategory ||
+        (selectedCategory === this.functionalCategoryLabel
+          ? this.isFunctionalExercise(exercise)
+          : this.getFieldValue(exercise, 'category') === selectedCategory);
 
       // Muscle group filter
       const matchesMuscleGroup = !this.currentFilters.muscleGroupFilter ||
@@ -962,13 +1023,71 @@ export class PlannerComponent implements OnInit, OnDestroy {
       const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
         this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
 
-      // Functional filter
-      const matchesFunctional = !this.currentFilters.functionalOnly || exercise.functional === true;
-
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesFunctional;
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
     });
 
     this.saveFiltersToStorage();
+  }
+
+  private createDefaultProgressions(showProgressions: boolean): PlanProgressions {
+    return {
+      showProgressions,
+      totalWeeks: this.progressionGuide.length,
+      weeks: this.progressionGuide.map(item => ({ ...item }))
+    };
+  }
+
+  private setProgressionsFromPlan(progressions?: PlanProgressions | null): void {
+    if (!progressions) {
+      this.progressions = this.createDefaultProgressions(false);
+      return;
+    }
+
+    const weeks = Array.isArray(progressions.weeks)
+      ? progressions.weeks.map(week => ({ ...week }))
+      : [];
+    const totalWeeks = Number.isFinite(progressions.totalWeeks)
+      ? progressions.totalWeeks
+      : weeks.length || this.progressionGuide.length;
+    const showProgressions = progressions.showProgressions === true ||
+      (progressions.showProgressions !== false && weeks.length > 0);
+
+    this.progressions = {
+      showProgressions,
+      totalWeeks,
+      weeks
+    };
+
+    if (this.progressions.showProgressions) {
+      this.syncProgressionWeeks(this.progressions.totalWeeks);
+    }
+  }
+
+  private syncProgressionWeeks(totalWeeks: number): void {
+    const sanitizedTotal = Number.isFinite(totalWeeks) ? Math.max(1, Math.floor(totalWeeks)) : 1;
+    const existingWeeks = new Map(this.progressions.weeks.map(week => [week.week, week]));
+    const nextWeeks: ProgressionWeek[] = [];
+
+    for (let week = 1; week <= sanitizedTotal; week += 1) {
+      const existing = existingWeeks.get(week);
+      if (existing) {
+        nextWeeks.push(existing);
+      } else {
+        nextWeeks.push(this.createProgressionWeek(week));
+      }
+    }
+
+    this.progressions.totalWeeks = sanitizedTotal;
+    this.progressions.weeks = nextWeeks;
+  }
+
+  private createProgressionWeek(week: number): ProgressionWeek {
+    const guide = this.progressionGuide.find(item => item.week === week);
+    return {
+      week,
+      title: guide?.title,
+      note: guide?.note || ''
+    };
   }
 
   private applyUiState() {
@@ -1201,7 +1320,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
       const ex = event.item.data as Exercise;
         const newItem: PlanItem = {
           ...ex,
-          id: Date.now().toString(),
+          id: ex.id,
           name: ex.name_es || ex.name || 'Ejercicio sin nombre',
           name_es: ex.name_es,
           equipment_type: ex.equipment_type || '',
@@ -1399,7 +1518,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   addExerciseToSession(session: Session, ex: Exercise) {
     const item: PlanItem = {
-      id: Date.now().toString(),
+      id: ex.id,
       name: ex.name_es || ex.name || 'Ejercicio sin nombre',
       name_es: ex.name_es,
       equipment_type: ex.equipment_type || '',
@@ -1493,6 +1612,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   trackByItem = (_: number, i: PlanItem) => i.id;
   trackByChild = (_: number, i: PlanItem) => i.id;
   trackByPlan = (_: number, p: any) => getPlanKey(p) || p.name;
+  trackByProgressionWeek = (_: number, w: ProgressionWeek) => w.week;
 
   getUserDisplayName(): string {
     const formValue = this.form.value;
@@ -1624,6 +1744,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
       objective: formValue.objective,
       userId: planUserId
     };
+    if (this.progressions.showProgressions) {
+      planData.progressions = this.progressions;
+    }
     if (this.isTemplateMode) {
       planData.isTemplate = true;
       if (resolvedTemplateName) {
@@ -1721,4 +1844,3 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
   }
 }
-

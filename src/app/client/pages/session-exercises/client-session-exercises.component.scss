@@ -1,4 +1,6 @@
 /* Purpose: Styling for client session exercises view. Inputs: local --c-* tokens. Error-handling: N/A. Standards Check: SRP OK | DRY OK | Tests Pending. */
+@use '../../styles/liquid';
+
 .session-exercises-page {
   display: flex;
   flex-direction: column;
@@ -80,12 +82,15 @@
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border-radius: 12px;
-  background-color: var(--c-surface);
-  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
   cursor: pointer;
   transition: transform 120ms ease, border-color 120ms ease;
   max-width: 80%;
+}
+
+.exercise-card:not(.liquid-card) {
+  border-radius: 12px;
+  background-color: var(--c-surface);
+  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
 }
 
 .exercise-card:active {
@@ -122,15 +127,11 @@
 
 .exercise-name {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
   color: var(--c-text);
 }
 
 .exercise-program {
   margin: 0;
-  font-size: 12px;
-  color: var(--c-muted);
 }
 
 .exercise-tags {
@@ -140,7 +141,6 @@
 }
 
 .exercise-tag {
-  font-size: 11px;
   padding: 3px 8px;
   border-radius: 6px;
   background-color: var(--c-surface-2);

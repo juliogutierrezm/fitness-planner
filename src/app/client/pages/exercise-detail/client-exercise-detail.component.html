@@ -5,8 +5,8 @@
     </button>
     <div class="detail-header-text">
       <p class="detail-eyebrow">{{ planTitle }}</p>
-      <h1 class="detail-title">{{ getExerciseTitle(exercise) }}</h1>
-      <p class="detail-subtitle">{{ sessionTitle }}</p>
+      <h1 class="detail-title liquid-title">{{ getExerciseTitle(exercise) }}</h1>
+      <p class="detail-subtitle liquid-subtitle">{{ sessionTitle }}</p>
     </div>
   </header>
 
@@ -21,7 +21,7 @@
   </div>
 
   <section class="detail-content" *ngIf="!isLoading && !exerciseMissing && exercise">
-    <div class="detail-media">
+    <div class="detail-media liquid-card">
       <img
         *ngIf="hasThumbnail(exercise); else mediaPlaceholder"
         [src]="exercise.thumbnail"
@@ -32,22 +32,22 @@
       </ng-template>
     </div>
 
-    <div class="detail-programming">
+    <div class="detail-programming liquid-card">
       <div class="program-item">
-        <span class="program-label">Series</span>
-        <span class="program-value">{{ formatValue(exercise.sets) }}</span>
+        <span class="program-label liquid-meta">Series</span>
+        <span class="program-value liquid-title">{{ formatValue(exercise.sets) }}</span>
       </div>
       <div class="program-item">
-        <span class="program-label">Reps</span>
-        <span class="program-value">{{ formatValue(exercise.reps) }}</span>
+        <span class="program-label liquid-meta">Reps</span>
+        <span class="program-value liquid-title">{{ formatValue(exercise.reps) }}</span>
       </div>
       <div class="program-item">
-        <span class="program-label">Descanso</span>
-        <span class="program-value">{{ formatRest(exercise.rest) }}</span>
+        <span class="program-label liquid-meta">Descanso</span>
+        <span class="program-value liquid-title">{{ formatRest(exercise.rest) }}</span>
       </div>
     </div>
 
-    <button class="primary-button" type="button" *ngIf="videoUrl" (click)="openVideo()" [disabled]="isLoading">
+    <button class="primary-button liquid-button" type="button" *ngIf="videoUrl" (click)="openVideo()" [disabled]="isLoading">
       <mat-icon aria-hidden="true">play_circle</mat-icon>
       Ver video
     </button>

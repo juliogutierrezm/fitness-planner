@@ -22,7 +22,7 @@
 
   <section class="session-exercises-list" *ngIf="!isLoading && !sessionMissing">
     <article
-      class="exercise-card"
+      class="exercise-card liquid-card"
       *ngFor="let exercise of exercises; let i = index; trackBy: trackByExercise"
       role="button"
       tabindex="0"
@@ -41,11 +41,11 @@
       </div>
 
       <div class="exercise-info">
-        <h3 class="exercise-name">{{ getExerciseTitle(exercise, i) }}</h3>
-        <p class="exercise-program">{{ getProgrammingLine(exercise) }}</p>
+        <h3 class="exercise-name liquid-title">{{ getExerciseTitle(exercise, i) }}</h3>
+        <p class="exercise-program liquid-subtitle">{{ getProgrammingLine(exercise) }}</p>
         <div class="exercise-tags" *ngIf="getExerciseMuscleLabel(exercise) || exercise.functional">
-          <span class="exercise-tag" *ngIf="getExerciseMuscleLabel(exercise) as muscle">{{ muscle }}</span>
-          <span class="exercise-tag" *ngIf="exercise.functional">Funcional</span>
+          <span class="exercise-tag liquid-meta" *ngIf="getExerciseMuscleLabel(exercise) as muscle">{{ muscle }}</span>
+          <span class="exercise-tag liquid-meta" *ngIf="exercise.functional">Funcional</span>
         </div>
       </div>
 

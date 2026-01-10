@@ -1,4 +1,6 @@
 /* Purpose: Styling for client plan detail view. Inputs: local --c-* tokens. Error-handling: N/A. Standards Check: SRP OK | DRY OK | Tests Pending. */
+@use '../../styles/liquid';
+
 .plan-detail-page {
   display: flex;
   flex-direction: column;
@@ -26,7 +28,6 @@
 }
 
 .plan-chip {
-  font-size: 11px;
   padding: 4px 10px;
   border-radius: 999px;
   background-color: var(--c-surface-2);
@@ -76,12 +77,15 @@
 }
 
 .client-card {
+  padding: 16px;
+  width: 80%;
+}
+
+.client-card:not(.liquid-card) {
   border-radius: 8px;
   border: 1px solid var(--c-border);
   background-color: var(--c-surface);
   box-shadow: var(--c-shadow);
-  padding: 16px;
-  width: 80%;
 }
 
 .session-card {
@@ -121,7 +125,6 @@
 }
 
 .session-chip {
-  font-size: 11px;
   padding: 4px 8px;
   border-radius: 6px;
   color: var(--c-muted);

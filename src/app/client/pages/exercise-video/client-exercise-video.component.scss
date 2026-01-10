@@ -1,4 +1,6 @@
 /* Purpose: Styling for client exercise video view. Inputs: local --c-* tokens. Error-handling: N/A. Standards Check: SRP OK | DRY OK | Tests Pending. */
+@use '../../styles/liquid';
+
 .exercise-video-page {
   display: flex;
   flex-direction: column;
@@ -73,8 +75,11 @@
 .video-frame {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 14px;
+  border-radius: var(--glass-radius);
   overflow: hidden;
+}
+
+.video-frame:not(.liquid-card) {
   background-color: var(--c-surface-2);
   border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
 }
@@ -91,15 +96,24 @@
 .video-empty,
 .video-missing {
   padding: 18px;
-  border-radius: 12px;
-  border: 1px dashed color-mix(in srgb, var(--c-muted) 35%, transparent);
-  background-color: var(--c-surface-2);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   color: var(--c-muted);
   text-align: center;
+}
+
+.video-empty:not(.liquid-card) {
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--c-muted) 35%, transparent);
+  background-color: var(--c-surface-2);
+}
+
+.video-missing {
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--c-muted) 35%, transparent);
+  background-color: var(--c-surface-2);
 }
 
 .video-empty mat-icon,

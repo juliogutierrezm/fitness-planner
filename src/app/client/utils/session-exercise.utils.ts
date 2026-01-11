@@ -10,6 +10,7 @@ export interface SessionExercise {
   sets?: number;
   reps?: number | string;
   rest?: number;
+  weight?: number | string | null;
   muscle_group?: string;
   secondary_muscles?: string[];
   functional?: boolean;

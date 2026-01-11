@@ -22,13 +22,23 @@
 
   <section class="detail-content" *ngIf="!isLoading && !exerciseMissing && exercise">
     <div class="detail-media liquid-card">
-      <img
-        *ngIf="hasThumbnail(exercise); else mediaPlaceholder"
-        [src]="exercise.thumbnail"
-        [alt]="getExerciseTitle(exercise)"
-        (error)="onImageError()" />
-      <ng-template #mediaPlaceholder>
-        <mat-icon aria-hidden="true">image</mat-icon>
+      <ng-container *ngIf="previewUrl; else mediaFallback">
+        <video
+          class="detail-video"
+          [src]="previewUrl"
+          [poster]="exercise.thumbnail"
+          controls
+          playsinline></video>
+      </ng-container>
+      <ng-template #mediaFallback>
+        <img
+          *ngIf="hasThumbnail(exercise); else mediaPlaceholder"
+          [src]="exercise.thumbnail"
+          [alt]="getExerciseTitle(exercise)"
+          (error)="onImageError()" />
+        <ng-template #mediaPlaceholder>
+          <mat-icon aria-hidden="true">image</mat-icon>
+        </ng-template>
       </ng-template>
     </div>
 
@@ -45,11 +55,20 @@
         <span class="program-label liquid-meta">Descanso</span>
         <span class="program-value liquid-title">{{ formatRest(exercise.rest) }}</span>
       </div>
+      <div class="program-item" *ngIf="getWeightValue(exercise.weight) as weight">
+        <span class="program-label liquid-meta">Peso</span>
+        <span class="program-value liquid-title">{{ weight }}</span>
+      </div>
     </div>
 
-    <button class="primary-button liquid-button" type="button" *ngIf="videoUrl" (click)="openVideo()" [disabled]="isLoading">
+    <button
+      class="secondary-button liquid-button"
+      type="button"
+      *ngIf="youtubeUrl"
+      (click)="openYoutube()"
+      [disabled]="isLoading">
       <mat-icon aria-hidden="true">play_circle</mat-icon>
-      Ver video
+      Ver en YouTube
     </button>
 
     <div class="detail-sections">

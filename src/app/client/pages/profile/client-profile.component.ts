@@ -34,6 +34,7 @@ export class ClientProfileComponent implements OnInit, OnDestroy {
   displayAge: number | null = null;
   injuriesList: string[] = [];
   injuriesText = '';
+  trainerName = '';
 
   private destroy$ = new Subject<void>();
 
@@ -104,13 +105,15 @@ export class ClientProfileComponent implements OnInit, OnDestroy {
     this.displayName = this.buildDisplayName(profile);
     this.displayAge = this.resolveAge(profile);
     this.normalizeInjuries(profile);
+    this.trainerName = profile.trainerName || '';
 
     this.hasProfileData = Boolean(
       this.displayName ||
       profile.email ||
       this.displayAge !== null ||
       this.injuriesList.length ||
-      this.injuriesText
+      this.injuriesText ||
+      this.trainerName
     );
   }
 

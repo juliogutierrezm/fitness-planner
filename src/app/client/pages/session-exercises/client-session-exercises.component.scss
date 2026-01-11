@@ -84,7 +84,7 @@
   padding: 14px;
   cursor: pointer;
   transition: transform 120ms ease, border-color 120ms ease;
-  max-width: 80%;
+  max-width: 85%;
 }
 
 .exercise-card:not(.liquid-card) {
@@ -153,6 +153,77 @@
   font-size: 20px;
   opacity: 0.7;
 }
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  width: 85%;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 25%, var(--c-muted) 15%);
+  background: color-mix(in srgb, var(--c-surface) 70%, var(--c-surface-2) 30%);
+}
+
+.group-card:not(.liquid-card) {
+  background-color: var(--c-surface);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--c-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 45%, transparent);
+  color: var(--c-text);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.group-name {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.child-card {
+  max-width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
+  background-color: var(--c-surface);
+}
+
+.child-card .exercise-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.child-card .exercise-name {
+  font-size: 14px;
+}
+
+.child-card .exercise-program {
+  font-size: 12px;
+}
+
+.child-card .exercise-chevron {
+  font-size: 18px;
+}
+
 
 .session-empty,
 .session-missing {

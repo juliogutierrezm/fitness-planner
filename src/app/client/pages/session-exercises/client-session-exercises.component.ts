@@ -7,11 +7,25 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import { catchError, finalize, map, switchMap, take, takeUntil } from 'rxjs/operators';
 import { ClientDataService, WorkoutPlan, WorkoutSession } from '../../services/client-data.service';
-import { SessionExercise, flattenSessionItems } from '../../utils/session-exercise.utils';
+import { SessionExercise } from '../../utils/session-exercise.utils';
 
 interface SessionLookup {
   plan: WorkoutPlan | null;
   session: WorkoutSession | null;
+}
+
+interface SessionDisplayChild {
+  exercise: SessionExercise;
+  flatIndex: number;
+}
+
+interface SessionDisplayItem {
+  kind: 'exercise' | 'group';
+  exercise?: SessionExercise;
+  group?: SessionExercise;
+  label?: string;
+  children?: SessionDisplayChild[];
+  flatIndex?: number;
 }
 
 /**
@@ -38,7 +52,8 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
   planTitle = 'Plan de entrenamiento';
   sessionTitle = 'Sesion';
   sessionMissing = false;
-  exercises: SessionExercise[] = [];
+  sessionItems: SessionDisplayItem[] = [];
+  exerciseCount = 0;
 
   private planId: string | null = null;
   private sessionIndex: number | null = null;
@@ -148,8 +163,12 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
     const sets = this.formatValue(exercise?.sets);
     const reps = this.formatValue(exercise?.reps);
     const rest = this.formatRest(exercise?.rest);
-    const equipment = this.getEquipmentLabel(exercise);
-    return `${sets} x ${reps} · ${rest} · ${equipment}`;
+    const weight = this.formatWeight(exercise?.weight);
+    const segments = [`${sets} x ${reps}`, rest];
+    if (weight) {
+      segments.push(weight);
+    }
+    return segments.join(' • ');
   }
 
   /**
@@ -164,13 +183,37 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Purpose: provide a stable trackBy key for exercise rendering.
-   * Input: index and exercise. Output: string.
-   * Error handling: falls back to index when id is missing.
+   * Purpose: determine the label for a grouped superserie/circuito block.
+   * Input: SessionExercise. Output: string label.
+   * Error handling: falls back to "Superserie" on missing data.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  trackByExercise = (index: number, exercise: SessionExercise): string => {
-    return exercise?.id || `${index}`;
+  getGroupLabel(group: SessionExercise): string {
+    const name = group?.name || '';
+    return name.toLowerCase().includes('circuit') ? 'Circuito' : 'Superserie';
+  }
+
+  /**
+   * Purpose: provide a stable trackBy key for grouped session items.
+   * Input: index and SessionDisplayItem. Output: string.
+   * Error handling: falls back to index when ids are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  trackBySessionItem = (index: number, item: SessionDisplayItem): string => {
+    if (item.kind === 'group') {
+      return item.group?.id || `group-${index}`;
+    }
+    return item.exercise?.id || `exercise-${index}`;
+  };
+
+  /**
+   * Purpose: provide a stable trackBy key for grouped child exercises.
+   * Input: index and SessionDisplayChild. Output: string.
+   * Error handling: falls back to flat index when ids are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  trackByGroupChild = (index: number, child: SessionDisplayChild): string => {
+    return child.exercise?.id || `${child.flatIndex}-${index}`;
   };
 
   /**
@@ -249,7 +292,8 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
   private applySessionSnapshot(result: SessionLookup | null): void {
     if (!result?.plan || !result.session) {
       this.sessionMissing = true;
-      this.exercises = [];
+      this.sessionItems = [];
+      this.exerciseCount = 0;
       this.sessionTitle = 'Sesion';
       return;
     }
@@ -257,7 +301,9 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
     this.sessionMissing = false;
     this.planTitle = result.plan.objective || result.plan.name || 'Plan de entrenamiento';
     this.sessionTitle = this.getSessionTitle(result.session, this.sessionIndex ?? 0);
-    this.exercises = flattenSessionItems(result.session.items);
+    const display = this.buildSessionDisplay(result.session.items);
+    this.sessionItems = display.items;
+    this.exerciseCount = display.count;
   }
 
   /**
@@ -299,16 +345,6 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Purpose: provide an equipment label for programming line.
-   * Input: SessionExercise. Output: string.
-   * Error handling: returns a neutral fallback when missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private getEquipmentLabel(exercise: SessionExercise): string {
-    return exercise?.equipment_type || exercise?.equipment_specific || 'Peso';
-  }
-
-  /**
    * Purpose: format numbers or strings for display.
    * Input: unknown value. Output: string.
    * Error handling: returns '-' for missing values.
@@ -325,6 +361,23 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Purpose: format weight values for programming display.
+   * Input: unknown weight value. Output: string | null.
+   * Error handling: returns null when missing or invalid.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private formatWeight(weight: unknown): string | null {
+    if (typeof weight === 'number') {
+      return Number.isFinite(weight) ? `${weight}` : null;
+    }
+    if (typeof weight === 'string') {
+      const trimmed = weight.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return null;
+  }
+
+  /**
    * Purpose: format rest values with seconds suffix.
    * Input: number | undefined. Output: string.
    * Error handling: returns '-' when missing.
@@ -335,6 +388,71 @@ export class ClientSessionExercisesComponent implements OnInit, OnDestroy {
       return `${rest}s`;
     }
     return '-';
+  }
+
+  /**
+   * Purpose: build display items preserving grouping and order.
+   * Input: unknown items payload. Output: SessionDisplayItem[] and count.
+   * Error handling: skips invalid entries and returns empty data for bad input.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private buildSessionDisplay(items: unknown): { items: SessionDisplayItem[]; count: number } {
+    const baseItems = this.normalizeSessionItems(items);
+    const displayItems: SessionDisplayItem[] = [];
+    let flatIndex = 0;
+
+    baseItems.forEach(item => {
+      if (item.isGroup && Array.isArray(item.children) && item.children.length > 0) {
+        const children = this.normalizeSessionItems(item.children);
+        const displayChildren = children.map(child => ({
+          exercise: child,
+          flatIndex: flatIndex++
+        }));
+        displayItems.push({
+          kind: 'group',
+          group: item,
+          label: this.getGroupLabel(item),
+          children: displayChildren
+        });
+        return;
+      }
+
+      displayItems.push({
+        kind: 'exercise',
+        exercise: item,
+        flatIndex: flatIndex++
+      });
+    });
+
+    return { items: displayItems, count: flatIndex };
+  }
+
+  /**
+   * Purpose: normalize unknown item arrays into SessionExercise values.
+   * Input: unknown list. Output: SessionExercise[].
+   * Error handling: returns empty array for invalid inputs.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private normalizeSessionItems(items: unknown): SessionExercise[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items
+      .map(item => this.toSessionExercise(item))
+      .filter((item): item is SessionExercise => Boolean(item));
+  }
+
+  /**
+   * Purpose: cast unknown values to SessionExercise safely.
+   * Input: unknown value. Output: SessionExercise | null.
+   * Error handling: returns null for non-object inputs.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private toSessionExercise(value: unknown): SessionExercise | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    return value as SessionExercise;
   }
 
   /**

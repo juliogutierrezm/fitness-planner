@@ -1,14 +1,19 @@
 <div class="plan-detail-page">
-  <header class="plan-detail-header" *ngIf="plan && !isLoading">
+  <header class="plan-detail-header">
     <div class="plan-header-top">
-      <h1 class="plan-title">{{ planTitle }}</h1>
-      <span class="plan-chip liquid-meta" *ngIf="plan.date">{{ plan.date | date:'dd/MM/yyyy' }}</span>
-    </div>
-    <div class="plan-header-meta">
-      <span class="plan-sessions">
-        <mat-icon aria-hidden="true">event</mat-icon>
-        <span>{{ getSessionCount(plan) }} sesiones</span>
-      </span>
+      <button class="nav-back" type="button" (click)="goBack()" aria-label="Volver a planes">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      </button>
+      <div class="plan-header-main" *ngIf="plan && !isLoading">
+        <h1 class="plan-title">{{ planTitle }}</h1>
+        <div class="plan-header-meta">
+          <span class="plan-sessions">
+            <mat-icon aria-hidden="true">event</mat-icon>
+            <span>{{ getSessionCount(plan) }} sesiones</span>
+          </span>
+        </div>
+      </div>
+      <span class="plan-chip liquid-meta" *ngIf="plan?.date && !isLoading">{{ plan?.date | date:'dd/MM/yyyy' }}</span>
     </div>
   </header>
 
@@ -23,6 +28,20 @@
   </div>
 
   <section class="plan-sessions-section" *ngIf="!isLoading && plan">
+    <details class="progressions-accordion liquid-card" *ngIf="plan.progressions?.showProgressions">
+      <summary>Progresiones semanales</summary>
+      <p class="progressions-subtitle">Guia — no modifica el plan base</p>
+      <div class="progressions-weeks">
+        <article class="progressions-week" *ngFor="let week of plan.progressions?.weeks || []; trackBy: trackByProgressionWeek">
+          <div class="week-heading">
+            <span class="week-label">Semana {{ week.week }}</span>
+            <span class="week-title" *ngIf="week.title">— {{ week.title }}</span>
+          </div>
+          <p class="week-note">{{ week.note }}</p>
+        </article>
+      </div>
+    </details>
+
     <h2>Sesiones</h2>
     <div class="sessions-list">
       <article

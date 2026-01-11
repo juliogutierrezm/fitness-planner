@@ -45,7 +45,8 @@ export class ClientExerciseDetailComponent implements OnInit, OnDestroy {
   mistakes: string[] = [];
   primaryMuscle: string | null = null;
   secondaryMuscles: string[] = [];
-  videoUrl: string | null = null;
+  previewUrl: string | null = null;
+  youtubeUrl: string | null = null;
 
   private planId: string | null = null;
   private sessionIndex: number | null = null;
@@ -97,26 +98,17 @@ export class ClientExerciseDetailComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Purpose: navigate to the exercise video view.
-   * Input: none. Output: void (navigation side effect).
-   * Error handling: shows snackbar when routing params are missing.
+   * Purpose: open the YouTube video in a new tab.
+   * Input: none. Output: void (window side effect).
+   * Error handling: shows snackbar when the URL is missing.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  openVideo(): void {
-    if (!this.planId || this.sessionIndex === null || this.exerciseIndex === null) {
-      this.snackBar.open('No pudimos abrir el video.', 'Cerrar', { duration: 3500 });
+  openYoutube(): void {
+    if (!this.youtubeUrl) {
+      this.snackBar.open('No hay video de YouTube disponible.', 'Cerrar', { duration: 2500 });
       return;
     }
-
-    this.router.navigate([
-      '/client/plans',
-      this.planId,
-      'sessions',
-      this.sessionIndex,
-      'exercises',
-      this.exerciseIndex,
-      'video'
-    ]);
+    window.open(this.youtubeUrl, '_blank', 'noopener');
   }
 
   /**
@@ -144,6 +136,23 @@ export class ClientExerciseDetailComponent implements OnInit, OnDestroy {
       return value.trim();
     }
     return '-';
+  }
+
+  /**
+   * Purpose: return a weight label only when data exists.
+   * Input: unknown weight. Output: string | null.
+   * Error handling: returns null for missing values.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getWeightValue(weight: unknown): string | null {
+    if (typeof weight === 'number') {
+      return Number.isFinite(weight) ? `${weight}` : null;
+    }
+    if (typeof weight === 'string') {
+      const trimmed = weight.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return null;
   }
 
   /**
@@ -236,16 +245,17 @@ export class ClientExerciseDetailComponent implements OnInit, OnDestroy {
    */
   private applyExerciseSnapshot(result: ExerciseLookup | null): void {
     if (!result?.plan || !result.session || !result.exercise) {
-      this.exerciseMissing = true;
-      this.exercise = null;
-      this.descriptionText = '';
-      this.tips = [];
-      this.mistakes = [];
-      this.primaryMuscle = null;
-      this.secondaryMuscles = [];
-      this.videoUrl = null;
-      return;
-    }
+    this.exerciseMissing = true;
+    this.exercise = null;
+    this.descriptionText = '';
+    this.tips = [];
+    this.mistakes = [];
+    this.primaryMuscle = null;
+    this.secondaryMuscles = [];
+    this.previewUrl = null;
+    this.youtubeUrl = null;
+    return;
+  }
 
     this.exerciseMissing = false;
     this.exercise = result.exercise;
@@ -256,7 +266,8 @@ export class ClientExerciseDetailComponent implements OnInit, OnDestroy {
     this.mistakes = this.normalizeTextList(result.exercise.common_mistakes);
     this.primaryMuscle = this.normalizeText(result.exercise.muscle_group);
     this.secondaryMuscles = this.normalizeTextList(result.exercise.secondary_muscles);
-    this.videoUrl = result.exercise.youtube_url || result.exercise.preview_url || null;
+    this.previewUrl = result.exercise.preview_url || null;
+    this.youtubeUrl = result.exercise.youtube_url || null;
   }
 
   /**

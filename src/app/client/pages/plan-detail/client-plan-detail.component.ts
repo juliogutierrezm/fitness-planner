@@ -6,7 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import { catchError, finalize, map, switchMap, take, takeUntil } from 'rxjs/operators';
-import { ClientDataService, WorkoutPlan, WorkoutSession } from '../../services/client-data.service';
+import { ClientDataService, PlanProgressionWeek, WorkoutPlan, WorkoutSession } from '../../services/client-data.service';
 import { getSessionExerciseCount, getSessionPrimaryMuscle, hasFunctionalExercise } from '../../utils/session-exercise.utils';
 
 /**
@@ -181,6 +181,16 @@ export class ClientPlanDetailComponent implements OnInit, OnDestroy {
     const title = this.getSessionTitle(session, index);
     return `Abrir ${title}`;
   }
+
+  /**
+   * Purpose: provide a stable trackBy key for progression week entries.
+   * Input: index and PlanProgressionWeek. Output: string.
+   * Error handling: falls back to index when week is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  trackByProgressionWeek = (index: number, week: PlanProgressionWeek): string => {
+    return Number.isFinite(week?.week) ? `${week.week}` : `${index}`;
+  };
 
   /**
    * Purpose: load plan details based on the route param.

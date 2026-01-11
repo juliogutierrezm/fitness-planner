@@ -17,11 +17,25 @@ export interface ClientProfile {
   dateOfBirth?: string;
   injuries?: string | string[];
   noInjuries?: boolean;
+  trainerId?: string;
+  trainerName?: string;
 }
 
 export interface WorkoutSession {
   name?: string;
   items?: unknown[]; // TODO: type exercises when contracts are available.
+}
+
+export interface PlanProgressionWeek {
+  week: number;
+  title?: string;
+  note: string;
+}
+
+export interface PlanProgressions {
+  showProgressions: boolean;
+  totalWeeks: number;
+  weeks: PlanProgressionWeek[];
 }
 
 export interface WorkoutPlan {
@@ -32,12 +46,15 @@ export interface WorkoutPlan {
   totalSessions?: number;
   name?: string;
   sessions?: WorkoutSession[];
+  trainerName?: string;
+  progressions?: PlanProgressions | null;
 }
 
 
 export interface ClientDataResponse {
   user: ClientProfile;
   plans: WorkoutPlan[];
+  trainerName?: string;
 }
 
 /* ============================
@@ -71,10 +88,17 @@ export class ClientDataService {
 
     const startedAt = this.getNowMs();
     this.clientData$ = this.http.get<ClientDataResponse>(this.clientUrl).pipe(
-      map(res => ({
-        user: res?.user || ({} as ClientProfile),
-        plans: this.normalizePlans(res?.plans || [])
-      })),
+      map(res => {
+        const user = res?.user || ({} as ClientProfile);
+        const trainerName = user.trainerName || res?.trainerName || '';
+        return {
+          user: {
+            ...user,
+            trainerName
+          },
+          plans: this.normalizePlans(res?.plans || [])
+        };
+      }),
       catchError(error => {
         const elapsedMs = this.getElapsedMs(startedAt);
         console.error('[ClientDataService] getClientData failed', { elapsedMs, error });
@@ -87,15 +111,16 @@ export class ClientDataService {
   }
 
   /**
-   * Purpose: normalize raw plan payloads and parse serialized sessions.
-   * Input: raw plan list (sessions may be stringified JSON).
-   * Output: WorkoutPlan[] with sessions normalized to arrays.
-   * Error handling: logs parse failures and falls back to empty sessions.
+   * Purpose: normalize raw plan payloads and parse serialized sessions/progressions.
+   * Input: raw plan list (sessions or progressions may be stringified JSON).
+   * Output: WorkoutPlan[] with sessions and progressions normalized.
+   * Error handling: logs parse failures and falls back to safe defaults.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private normalizePlans(plans: Array<Omit<WorkoutPlan, 'sessions'> & { sessions?: unknown }>): WorkoutPlan[] {
     return (plans || []).map(plan => {
       let sessions: WorkoutSession[] = [];
+      const progressions = this.normalizeProgressions(plan?.progressions);
 
       if (typeof plan?.sessions === 'string') {
         try {
@@ -114,9 +139,35 @@ export class ClientDataService {
       return {
         ...plan,
         planId: plan?.planId,
-        sessions
+        sessions,
+        progressions
       };
     });
+  }
+
+  /**
+   * Purpose: normalize a plan progressions payload that may arrive as JSON.
+   * Input: unknown progressions payload. Output: PlanProgressions | null.
+   * Error handling: logs parse failures and returns null for invalid inputs.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private normalizeProgressions(progressions: unknown): PlanProgressions | null {
+    if (!progressions) {
+      return null;
+    }
+    if (typeof progressions === 'string') {
+      try {
+        const parsed = JSON.parse(progressions);
+        return parsed && typeof parsed === 'object' ? (parsed as PlanProgressions) : null;
+      } catch (error) {
+        console.warn('[ClientDataService] Invalid progressions JSON', { error });
+        return null;
+      }
+    }
+    if (typeof progressions === 'object') {
+      return progressions as PlanProgressions;
+    }
+    return null;
   }
 
 

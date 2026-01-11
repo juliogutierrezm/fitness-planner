@@ -28,7 +28,7 @@
 
       <div class="profile-row" *ngIf="displayAge !== null">
         <span class="profile-label">Edad</span>
-        <span class="profile-value">{{ displayAge }} anos</span>
+        <span class="profile-value">{{ displayAge }} años</span>
       </div>
 
       <div class="profile-row" *ngIf="injuriesList.length || injuriesText">
@@ -41,6 +41,10 @@
             <span>{{ injuriesText }}</span>
           </ng-template>
         </div>
+      </div>
+        <div class="profile-row" *ngIf="trainerName">
+        <span class="profile-label">Entrenador</span>
+        <span class="profile-value">{{ trainerName }}</span>
       </div>
     </article>
 

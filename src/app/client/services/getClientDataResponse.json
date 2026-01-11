@@ -22,6 +22,20 @@
     "trainerName": "Andy test",
     "plans": [
         {
+            "date": "2026-01-11T07:44:37.307Z",
+            "companyId": "gym-123",
+            "schemaVersion": 5,
+            "generalNotes": "PROGRESIONES 1",
+            "objective": "PROGRESIONES ACTIVAS",
+            "createdAt": "2026-01-11T07:45:45.425Z",
+            "sessions": "[{\"id\":1,\"name\":\"Sesión 1\",\"items\":[{\"id\":\"Push_Pull_Cooldown_Flow_XULS2PFPj5I\",\"name\":\"Flujo de enfriamiento de empuje y tracción\",\"name_es\":\"Flujo de enfriamiento de empuje y tracción\",\"equipment_type\":\"Peso corporal\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"1768117525029\",\"name\":\"Superserie\",\"sets\":0,\"reps\":0,\"rest\":0,\"isGroup\":true,\"children\":[{\"id\":\"Side_Plank_Cable_Row_AyU_W4ENpMY\",\"name\":\"Remo en plancha lateral (Side Plank Cable Row)\",\"name_es\":\"Remo en plancha lateral (Side Plank Cable Row)\",\"equipment_type\":\"Máquina\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"Walking_Good_Morning_-_OPEX_Exercise_Library_IGZ_APNaqAQ\",\"name\":\"Caminata de Buenos Días (Walking Good Morning)\",\"name_es\":\"Caminata de Buenos Días (Walking Good Morning)\",\"equipment_type\":\"Barra\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false}]}]},{\"id\":2,\"name\":\"Sesión 2\",\"items\":[{\"id\":\"Half_Moon_xjGSDIGacqY\",\"name\":\"Media Luna\",\"name_es\":\"Media Luna\",\"equipment_type\":\"Peso corporal\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"Barbell_Windshield_Wipers_gvxlTrF04oI\",\"name\":\"Limpiaparabrisas con barra (Barbell Windshield Wipers)\",\"name_es\":\"Limpiaparabrisas con barra (Barbell Windshield Wipers)\",\"equipment_type\":\"Barra\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"Deadlift_to_Knee_-_OPEX_Exercise_Library_AUoQsclQQow\",\"name\":\"Peso muerto hasta la rodilla (Deadlift to Knee)\",\"name_es\":\"Peso muerto hasta la rodilla (Deadlift to Knee)\",\"equipment_type\":\"Barra\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false}]},{\"id\":3,\"name\":\"Sesión 3\",\"items\":[{\"id\":\"Saddle_Eagle_Arms_Rsf78_18-Hw\",\"name\":\"Brazos de Águila en Silla (Saddle Eagle Arms)\",\"name_es\":\"Brazos de Águila en Silla (Saddle Eagle Arms)\",\"equipment_type\":\"Peso corporal\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"Swiss_Ball_Deadbug_IZE8woIduAU\",\"name\":\"Bicho muerto con pelota suiza (Swiss Ball Deadbug)\",\"name_es\":\"Bicho muerto con pelota suiza (Swiss Ball Deadbug)\",\"equipment_type\":\"Mancuernas\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false},{\"id\":\"Single_Leg_Standing_Calf_Raise_a6YrB_aULZY\",\"name\":\"Elevación de gemelos de pie con una pierna (Single Leg Standing Calf Raise)\",\"name_es\":\"Elevación de gemelos de pie con una pierna (Single Leg Standing Calf Raise)\",\"equipment_type\":\"Peso corporal\",\"sets\":3,\"reps\":10,\"rest\":60,\"selected\":false,\"isGroup\":false}]}]",
+            "progressions": "{\"showProgressions\":true,\"totalWeeks\":5,\"weeks\":[{\"week\":1,\"title\":\"Semana base\",\"note\":\"Realiza el plan tal como esta escrito\"},{\"week\":2,\"title\":\"Estabilidad\",\"note\":\"Manten series y repeticiones, mejora la tecnica\"},{\"week\":3,\"title\":\"Progresion de volumen\",\"note\":\"Intenta anadir 1-2 repeticiones por serie si te sientes bien\"},{\"week\":4,\"title\":\"Carga\",\"note\":\"Si completas el rango, aumenta ligeramente el peso\"},{\"week\":5,\"title\":\"Deload\",\"note\":\"Reduce intensidad, concentrate en ejecucion\"}]}",
+            "PK": "USER#942884e8-e0a1-70f0-acea-db371ccf34ab",
+            "name": "Plan de Julio Gutierrez Morales",
+            "SK": "PLAN#plan-1768117543885",
+            "trainerName": "Andy test"
+        },
+        {
             "PK": "USER#942884e8-e0a1-70f0-acea-db371ccf34ab",
             "companyId": "gym-123",
             "createdAt": "2026-01-11T06:40:27.126Z",

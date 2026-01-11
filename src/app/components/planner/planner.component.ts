@@ -21,6 +21,7 @@ import { TextFieldModule } from '@angular/cdk/text-field';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError, tap, finalize } from 'rxjs/operators';
 
@@ -87,6 +88,7 @@ interface PlanProgressions {
     MatDialogModule,
     MatProgressSpinnerModule,
     MatProgressBarModule,
+    MatExpansionModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './planner.component.html',
@@ -1057,10 +1059,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
       totalWeeks,
       weeks
     };
-
-    if (this.progressions.showProgressions) {
-      this.syncProgressionWeeks(this.progressions.totalWeeks);
-    }
+    this.syncProgressionWeeks(this.progressions.totalWeeks);
   }
 
   private syncProgressionWeeks(totalWeeks: number): void {

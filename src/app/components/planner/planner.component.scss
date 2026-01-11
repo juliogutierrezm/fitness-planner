@@ -143,29 +143,47 @@
   }
 }
 
-.progressions-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.progressions-panel {
   margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--bg-0);
   border-radius: var(--radius-sm);
   border: 1px solid #e5e7eb;
+  background: var(--bg-0);
+  box-shadow: none;
 
-  .progressions-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+  .mat-expansion-panel-header {
+    padding: 0 16px;
+    min-height: 44px;
+    gap: 1.5rem;
   }
 
-  .progressions-title {
-    margin: 0;
-    font-size: 16px;
+  .mat-expansion-panel-header.mat-expanded {
+    min-height: 44px;
+  }
+
+  .mat-expansion-panel-header-title {
+    font-size: 15px;
     font-weight: 600;
     color: var(--ink-900);
+  }
+
+  .mat-expansion-panel-header-description {
+    flex: 1;
+    justify-content: flex-end;
+    margin-right: 0;
+  }
+
+  .mat-expansion-panel-body {
+    padding: 0 16px 16px;
+  }
+
+  .progressions-toggle {
+    margin-left: auto;
+  }
+
+  .progressions-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .progressions-controls {

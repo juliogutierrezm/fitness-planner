@@ -120,51 +120,61 @@
     </div>
   </form>
 
-  <section class="progressions-section">
-    <div class="progressions-header">
-      <h3 class="progressions-title">Progresion</h3>
-      <mat-checkbox [(ngModel)]="progressions.showProgressions" (change)="onProgressionsToggle($event.checked)">
-        Mostrar progresiones semanales
-      </mat-checkbox>
-    </div>
+  <mat-expansion-panel class="progressions-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Progresion semanal (guia)</mat-panel-title>
+      <mat-panel-description>
+        <mat-checkbox
+          class="progressions-toggle"
+          [(ngModel)]="progressions.showProgressions"
+          (change)="onProgressionsToggle($event.checked)"
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        >
+          Mostrar progresiones al cliente
+        </mat-checkbox>
+      </mat-panel-description>
+    </mat-expansion-panel-header>
 
-    <div class="progressions-body" *ngIf="progressions.showProgressions">
-      <div class="progressions-controls">
-        <mat-form-field appearance="outline" class="compact-field progressions-total">
-          <mat-label>Total de semanas</mat-label>
-          <input
-            matInput
-            type="number"
-            min="1"
-            [(ngModel)]="progressions.totalWeeks"
-            (ngModelChange)="onTotalWeeksChange($event)"
-          />
-        </mat-form-field>
-        <span class="progressions-hint">Guia textual semanal (no afecta el plan base).</span>
-      </div>
+    <ng-template matExpansionPanelContent>
+      <div class="progressions-body">
+        <div class="progressions-controls">
+          <mat-form-field appearance="outline" class="compact-field progressions-total">
+            <mat-label>Total de semanas</mat-label>
+            <input
+              matInput
+              type="number"
+              min="1"
+              [(ngModel)]="progressions.totalWeeks"
+              (ngModelChange)="onTotalWeeksChange($event)"
+            />
+          </mat-form-field>
+          <span class="progressions-hint">Guia textual semanal (no afecta el plan base).</span>
+        </div>
 
-      <div class="progressions-weeks">
-        <div class="progression-week" *ngFor="let week of progressions.weeks; trackBy: trackByProgressionWeek">
-          <div class="week-header">
-            <span class="week-label">Semana {{ week.week }}</span>
-            <mat-form-field appearance="outline" class="compact-field week-title">
-              <mat-label>Titulo (opcional)</mat-label>
-              <input matInput [(ngModel)]="week.title" [placeholder]="getProgressionTitlePlaceholder(week.week)" />
+        <div class="progressions-weeks">
+          <div class="progression-week" *ngFor="let week of progressions.weeks; trackBy: trackByProgressionWeek">
+            <div class="week-header">
+              <span class="week-label">Semana {{ week.week }}</span>
+              <mat-form-field appearance="outline" class="compact-field week-title">
+                <mat-label>Titulo (opcional)</mat-label>
+                <input matInput [(ngModel)]="week.title" [placeholder]="getProgressionTitlePlaceholder(week.week)" />
+              </mat-form-field>
+            </div>
+            <mat-form-field appearance="outline" class="week-note compact-textarea">
+              <mat-label>Nota</mat-label>
+              <textarea
+                matInput
+                rows="2"
+                [(ngModel)]="week.note"
+                [placeholder]="getProgressionNotePlaceholder(week.week)"
+              ></textarea>
             </mat-form-field>
           </div>
-          <mat-form-field appearance="outline" class="week-note compact-textarea">
-            <mat-label>Nota</mat-label>
-            <textarea
-              matInput
-              rows="2"
-              [(ngModel)]="week.note"
-              [placeholder]="getProgressionNotePlaceholder(week.week)"
-            ></textarea>
-          </mat-form-field>
         </div>
       </div>
-    </div>
-  </section>
+    </ng-template>
+  </mat-expansion-panel>
 
   <!-- Filtros -->
   <div class="filters-section">

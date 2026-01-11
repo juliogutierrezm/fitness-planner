@@ -1,38 +1,119 @@
 {
-    "user": {
-        "PK": "USER#942884e8-e0a1-70f0-acea-db371ccf34ab",
-        "cognitoSub": "942884e8-e0a1-70f0-acea-db371ccf34ab",
-        "companyId": "gym-123",
-        "createdAt": "2026-01-08T06:05:30.349Z",
-        "dateOfBirth": "1987-02-03T06:00:00.000Z",
-        "email": "juliogutierreztrader@gmail.com",
-        "familyName": "Gutierrez Morales",
-        "gender": "Masculino",
-        "givenName": "Julio",
-        "id": "942884e8-e0a1-70f0-acea-db371ccf34ab",
-        "injuries": "Pubalgia cronica izquierda",
-        "noInjuries": false,
-        "notes": "Esto es una nota de prueba",
-        "role": "client",
-        "telephone": "84140507",
-        "trainerId": "8418c428-7041-7050-99a6-8b1d41dd1b39",
-        "updatedAt": "2026-01-08T21:43:18.307Z",
-        "SK": "USER#942884e8-e0a1-70f0-acea-db371ccf34ab"
-    },
-    "plans": [
+    "planId": "plan-1768108266747",
+    "name": "Plan de Julio Gutierrez Morales",
+    "date": "2026-01-11T05:10:18.667Z",
+    "sessions": [
         {
-            "PK": "USER#942884e8-e0a1-70f0-acea-db371ccf34ab",
-            "companyId": "gym-123",
-            "createdAt": "2026-01-10T20:42:34.207Z",
-            "date": "2026-01-10T20:39:18.576Z",
-            "generalNotes": "Notas generales test",
-            "name": "Plan de Julio Gutierrez Morales",
-            "objective": "TARGET 2",
-            "progressions": "{\"showProgressions\":true,\"totalWeeks\":5,\"weeks\":[{\"week\":1,\"title\":\"Semana base\",\"note\":\"Realiza el plan tal como esta escrito\"},{\"week\":2,\"title\":\"Estabilidad\",\"note\":\"Manten series y repeticiones, mejora la tecnica\"},{\"week\":3,\"title\":\"Progresion de volumen\",\"note\":\"Intenta anadir 1-2 repeticiones por serie si te sientes bien\"},{\"week\":4,\"title\":\"Carga\",\"note\":\"Si completas el rango, aumenta ligeramente el peso\"},{\"week\":5,\"title\":\"Deload\",\"note\":\"Reduce intensidad, concentrate en ejecucion\"}]}",
-            "schemaVersion": 3,
-            "sessions": "[{\"id\":1,\"name\":\"Sesión 1\",\"items\":[{\"id\":\"1768077732475\",\"name\":\"Superserie\",\"sets\":0,\"reps\":0,\"rest\":0,\"isGroup\":true,\"children\":[{\"id\":\"Seated_Row_Machine_V-Bar_Row_mlef9Vm8GsU\",\"name_es\":\"Remo sentado en máquina con barra en V\",\"name_en\":\"Seated Row Machine V-Bar Row\",\"aliases\":[],\"description_es\":\"Un ejercicio compuesto que trabaja los músculos de la espalda, particularmente el dorsal ancho, los romboides y los bíceps. Se realiza sentado en una máquina de remo con una barra en forma de V unida al cable, el movimiento implica jalar la barra hacia el cuerpo mientras se contraen las escápulas.\",\"description_en\":\"A compound exercise that targets the back muscles, particularly the latissimus dorsi, rhomboids, and biceps. Performed seated on a rowing machine with a V-shaped bar attached to the cable, the movement involves pulling the bar towards the body while squeezing the shoulder blades together.\",\"category\":\"Pull\",\"muscle_group\":\"Dorsales\",\"secondary_muscles\":[],\"movement_pattern\":\"Pull\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Compuesto\",\"functional\":false,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Máquina\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Seated_Row_Machine_V-Bar_Row_mlef9Vm8GsU_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Seated_Row_Machine_V-Bar_Row_mlef9Vm8GsU_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=mlef9Vm8GsU\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true},{\"id\":\"Single_Arm_Standing_Low_Cable_Row_denvqHFmbAg\",\"name_es\":\"Remo unilateral de pie con cable bajo\",\"name_en\":\"Single Arm Standing Low Cable Row\",\"aliases\":[],\"description_es\":\"Párate frente a una máquina de cable con el cable en la posición más baja. Toma el mango con una mano e inclínate hacia adelante desde las caderas formando un ángulo de 45 grados con tu torso. Jala el cable hacia tu axila remando tu brazo hacia atrás, manteniendo tu codo pegado a tu cuerpo. Regresa a la posición inicial de manera controlada.\",\"description_en\":\"Stand facing a cable machine with the cable set at the lowest position. Grab the handle with one arm and hinge forward at the hips to form a 45-degree angle with your torso. Pull the cable towards your armpit by rowing your arm back, keeping your elbow tucked close to your body. Return to the starting position in a controlled motion.\",\"category\":\"Pull\",\"muscle_group\":\"Dorsales\",\"secondary_muscles\":[],\"movement_pattern\":\"Pull\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Compuesto\",\"functional\":false,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Máquina\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Single_Arm_Standing_Low_Cable_Row_denvqHFmbAg_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Single_Arm_Standing_Low_Cable_Row_denvqHFmbAg_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=denvqHFmbAg\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true}]},{\"id\":\"Banded_Bicep_Curl_0hZboUNuogA\",\"name_es\":\"Curl de bíceps con banda (Banded Bicep Curl)\",\"name_en\":\"Banded Bicep Curl\",\"aliases\":[],\"description_es\":\"Párate con los pies separados a la anchura de las caderas y coloca una banda de resistencia debajo de ambos pies. Agarra la parte superior de la banda con ambas manos, manteniendo los codos pegados al cuerpo. Realiza un curl llevando las manos hacia los hombros flexionando los codos, luego baja las manos hasta extender completamente los brazos.\",\"description_en\":\"Stand with your feet hip-width apart and place a resistance band under both feet. Grab the top of the band with both hands, keeping your elbows close to your sides. Curl your hands up towards your shoulders by bending your elbows, then lower them back down until your arms are fully extended.\",\"category\":\"Pull\",\"muscle_group\":\"Bíceps\",\"secondary_muscles\":[],\"movement_pattern\":\"Pull\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Aislado\",\"functional\":false,\"difficulty\":\"Principiante\",\"equipment_type\":\"Bandas\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Banded_Bicep_Curl_0hZboUNuogA_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Banded_Bicep_Curl_0hZboUNuogA_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=0hZboUNuogA\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true},{\"id\":\"Squat_Cooldown_Flow_HD_c6AKOOVs\",\"name_es\":\"Flujo de enfriamiento en cuclillas\",\"name_en\":\"Squat Cooldown Flow\",\"aliases\":[],\"description_es\":\"Una serie de variaciones dinámicas de sentadillas realizadas en una secuencia fluida para promover la recuperación activa y mejorar la movilidad después de un entrenamiento.\",\"description_en\":\"A series of dynamic squat variations performed in a flowing sequence to promote active recovery and improve mobility after a workout.\",\"category\":\"Lunge\",\"muscle_group\":\"Cuádriceps\",\"secondary_muscles\":[],\"movement_pattern\":\"Squat\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Funcional\",\"functional\":true,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Peso corporal\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Mobility/Squat_Cooldown_Flow_HD_c6AKOOVs_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Mobility/Squat_Cooldown_Flow_HD_c6AKOOVs_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=HD_c6AKOOVs\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true}]},{\"id\":2,\"name\":\"Sesión 2\",\"items\":[{\"id\":\"1768077694499\",\"name\":\"Superserie\",\"sets\":0,\"reps\":0,\"rest\":0,\"isGroup\":true,\"children\":[{\"id\":\"Seated_Single_Arm_Dumbbell_Bicep_Curl_-_OPEX_Exercise_Library_tMEGqKuOa-M\",\"name_es\":\"Curl de bíceps con mancuerna sentado con un brazo (Seated Single Arm Dumbbell Bicep Curl)\",\"name_en\":\"Seated Single Arm Dumbbell Bicep Curl\",\"aliases\":[],\"description_es\":\"Comienza el curl de bíceps con mancuerna sentado con un brazo con una mancuerna en una mano, en posición sentada con los pies separados al ancho de los hombros y las manos a los costados. Levanta la mancuerna manteniendo los codos cerca del cuerpo y el brazo superior estacionario, alcanzando el nivel del hombro. Baja lentamente la mancuerna de vuelta a la posición inicial.\",\"description_en\":\"Start the Seated Single-Arm Dumbbell Curl with a dumbbell in one hand, in a seated position with feet shoulder-width apart and hands by the sides. Lift the dumbbell keeping the elbows close to the body and the upper arm stationary, reaching the shoulder level. Slowly lower the dumbbell back to the starting position.\",\"category\":\"Pull\",\"muscle_group\":\"Bíceps\",\"secondary_muscles\":[],\"movement_pattern\":\"Pull\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Aislado\",\"functional\":false,\"difficulty\":\"Principiante\",\"equipment_type\":\"Mancuernas\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Seated_Single_Arm_Dumbbell_Bicep_Curl_-_OPEX_Exercise_Library_tMEGqKuOa-M_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Seated_Single_Arm_Dumbbell_Bicep_Curl_-_OPEX_Exercise_Library_tMEGqKuOa-M_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=tMEGqKuOa-M\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60},{\"id\":\"Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k\",\"name_es\":\"Remo con barra inclinado (Bent Over Barbell Row)\",\"name_en\":\"Bent Over Barbell Row\",\"aliases\":[],\"description_es\":\"Inicia el Remo con barra inclinado con los pies separados a la anchura de los hombros mientras sostienes una barra con un agarre en pronación. Inclínate hacia adelante desde las caderas manteniendo la espalda recta hasta que tu torso esté aproximadamente paralelo al suelo. Contrayendo tus dorsales, jala la barra hacia tu esternón, luego bájala lentamente a la posición inicial.\",\"description_en\":\"Start the Bent Over Barbell Row with your feet shoulder-width apart while holding a barbell using an overhand grip. Bend forward at the hips while keeping your back straight until your torso is roughly parallel to the floor. Contracting your lats, pull the bar towards your sternum, then slowly lower it to the starting position.\",\"category\":\"Pull\",\"muscle_group\":\"Dorsales\",\"secondary_muscles\":[],\"movement_pattern\":\"Pull\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Compuesto\",\"functional\":false,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Barra\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Bend/Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Bend/Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=9Gf-Ourup_k\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60}]},{\"id\":\"Squat_Cooldown_Flow_HD_c6AKOOVs\",\"name_es\":\"Flujo de enfriamiento en cuclillas\",\"name_en\":\"Squat Cooldown Flow\",\"aliases\":[],\"description_es\":\"Una serie de variaciones dinámicas de sentadillas realizadas en una secuencia fluida para promover la recuperación activa y mejorar la movilidad después de un entrenamiento.\",\"description_en\":\"A series of dynamic squat variations performed in a flowing sequence to promote active recovery and improve mobility after a workout.\",\"category\":\"Lunge\",\"muscle_group\":\"Cuádriceps\",\"secondary_muscles\":[],\"movement_pattern\":\"Squat\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Funcional\",\"functional\":true,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Peso corporal\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Mobility/Squat_Cooldown_Flow_HD_c6AKOOVs_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Mobility/Squat_Cooldown_Flow_HD_c6AKOOVs_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=HD_c6AKOOVs\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true}]},{\"id\":3,\"name\":\"Sesión 3\",\"items\":[{\"id\":\"Single_Arm_Dumbbell_Cuban_Rotation_6s9umFb0xys\",\"name_es\":\"Rotación cubana con mancuerna de un brazo\",\"name_en\":\"Single Arm Dumbbell Cuban Rotation\",\"aliases\":[],\"description_es\":\"Un ejercicio rotacional para el hombro realizado sosteniendo una mancuerna con una mano y rotándola en un movimiento de arco mientras se mantiene el brazo extendido.\",\"description_en\":\"A rotational shoulder exercise performed by holding a dumbbell in one hand and rotating it in an arc motion while keeping the arm extended.\",\"category\":\"Pull\",\"muscle_group\":\"Deltoides\",\"secondary_muscles\":[],\"movement_pattern\":\"Rotation\",\"plane_of_motion\":\"Transversal\",\"exercise_type\":\"Aislado\",\"functional\":false,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Mancuernas\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Single_Arm_Dumbbell_Cuban_Rotation_6s9umFb0xys_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Single_Arm_Dumbbell_Cuban_Rotation_6s9umFb0xys_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=6s9umFb0xys\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true},{\"id\":\"Kettlebell_Front_Rack_Split_Squat_ExJCssj4YV0\",\"name_es\":\"Sentadilla con zancada con kettlebells en rack frontal (Kettlebell Front Rack Split Squat)\",\"name_en\":\"Kettlebell Front Rack Split Squat\",\"aliases\":[],\"description_es\":\"Comienza en una posición de zancada con los pies separados a la anchura de las caderas, sosteniendo dos kettlebells en la posición de rack frontal. Desciende flexionando las rodillas hasta que la rodilla trasera esté a punto de tocar el suelo. Impulsa a través de la pierna delantera para regresar a la posición de pie.\",\"description_en\":\"Start in a split stance position with feet hip-width apart, holding two kettlebells in the front rack position. Descend by bending the knees until the rear knee is hovering just above the floor. Drive through the front leg to return to the standing position.\",\"category\":\"Lunge\",\"muscle_group\":\"Cuádriceps\",\"secondary_muscles\":[],\"movement_pattern\":\"Squat\",\"plane_of_motion\":\"Sagital\",\"exercise_type\":\"Compuesto\",\"functional\":true,\"difficulty\":\"Intermedio\",\"equipment_type\":\"Kettlebell\",\"preview_url\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Lunge/Kettlebell_Front_Rack_Split_Squat_ExJCssj4YV0_preview.mp4\",\"thumbnail\":\"https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Lunge/Kettlebell_Front_Rack_Split_Squat_ExJCssj4YV0_thumb.0000000.jpg\",\"youtube_url\":\"https://www.youtube.com/watch?v=ExJCssj4YV0\",\"tips\":[],\"common_mistakes\":[],\"sets\":3,\"reps\":10,\"rest\":60,\"_customExercise\":true}]}]",
-            "updatedAt": "2026-01-10T22:42:42.934Z",
-            "SK": "PLAN#plan-1768077752410"
+            "id": 1,
+            "name": "Sesión 1",
+            "items": [
+                {
+                    "id": "1768108233187",
+                    "name": "Superserie",
+                    "sets": 0,
+                    "reps": 0,
+                    "rest": 0,
+                    "isGroup": true,
+                    "children": [
+                        {
+                            "id": "Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k",
+                            "name_en": "Bent Over Barbell Row",
+                            "name_es": "Remo con barra inclinado (Bent Over Barbell Row)",
+                            "category": "Pull",
+                            "difficulty": "Intermedio",
+                            "equipment_type": "Barra",
+                            "muscle_group": "Dorsales",
+                            "secondary_muscles": [
+                                "Antebrazos",
+                                "Bíceps",
+                                "Trapecios"
+                            ],
+                            "exercise_type": "Compuesto",
+                            "movement_pattern": "Pull",
+                            "functional": false,
+                            "plane_of_motion": "Sagital",
+                            "training_goal": "Fuerza",
+                            "description_en": "Start the Bent Over Barbell Row with your feet shoulder-width apart while holding a barbell using an overhand grip. Bend forward at the hips while keeping your back straight until your torso is roughly parallel to the floor. Contracting your lats, pull the bar towards your sternum, then slowly lower it to the starting position.",
+                            "description_es": "Inicia el Remo con barra inclinado con los pies separados a la anchura de los hombros mientras sostienes una barra con un agarre en pronación. Inclínate hacia adelante desde las caderas manteniendo la espalda recta hasta que tu torso esté aproximadamente paralelo al suelo. Contrayendo tus dorsales, jala la barra hacia tu esternón, luego bájala lentamente a la posición inicial.",
+                            "aliases": [
+                                "Barbell Row",
+                                "Bent Row",
+                                "Bent-Over Row"
+                            ],
+                            "tips": [
+                                "Contrae los abdominales",
+                                "Mantén la espalda recta",
+                                "Usa un agarre estrecho"
+                            ],
+                            "common_mistakes": [
+                                "Arquear la espalda",
+                                "Mover los codos hacia afuera",
+                                "Usar demasiado peso"
+                            ],
+                            "preview_url": "https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Bend/Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k_preview.mp4",
+                            "thumbnail": "https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Bend/Bent_Over_Barbell_Row_-_OPEX_Exercise_Library_9Gf-Ourup_k_thumb.0000000.jpg",
+                            "youtube_url": "https://www.youtube.com/watch?v=9Gf-Ourup_k",
+                            "gif_url": null,
+                            "name": "Remo con barra inclinado (Bent Over Barbell Row)",
+                            "sets": 3,
+                            "reps": 10,
+                            "rest": 60,
+                            "selected": false,
+                            "isGroup": false,
+                            "weight": "20"
+                        },
+                        {
+                            "id": "Prone_Trap_3_Raise_-_OPEX_Exercise_Library_ax9Gg8djfig",
+                            "name_en": "Prone Trap 3 Raise",
+                            "name_es": "Elevación de trapecios en posición prona con mancuernas (Prone Trap 3 Raise)",
+                            "category": "Pull",
+                            "difficulty": "Intermedio",
+                            "equipment_type": "Mancuernas",
+                            "muscle_group": "Trapecio",
+                            "secondary_muscles": [
+                                "Deltoides posteriores",
+                                "Romboides"
+                            ],
+                            "exercise_type": "Aislado",
+                            "movement_pattern": "Pull",
+                            "functional": false,
+                            "plane_of_motion": "Transversal",
+                            "training_goal": "Fuerza",
+                            "description_en": "Lie chest down on an incline bench with a dumbbell in each hand using a neutral grip, with the dumbbells facing up and down. Slowly raise the dumbbells out and away from you at the same time until you form a Y shape. Then return to the starting position.",
+                            "description_es": "Acuéstate boca abajo en un banco inclinado con una mancuerna en cada mano con un agarre neutro, con las mancuernas mirando hacia arriba y hacia abajo. Levanta lentamente las mancuernas hacia afuera y alejándolas de ti al mismo tiempo hasta formar una Y. Luego, regresa a la posición inicial.",
+                            "aliases": [
+                                "Prone Trap Raise",
+                                "Prone Y-Raise"
+                            ],
+                            "tips": [
+                                "Contrae los trapecios al final del movimiento",
+                                "Mantén la cabeza alineada con la columna",
+                                "Usa un rango de movimiento completo"
+                            ],
+                            "common_mistakes": [
+                                "Elevar demasiado los hombros",
+                                "Movimiento de balanceo",
+                                "Usar demasiado peso"
+                            ],
+                            "preview_url": "https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Prone_Trap_3_Raise_-_OPEX_Exercise_Library_ax9Gg8djfig_preview.mp4",
+                            "thumbnail": "https://exercise-videos-fitness-planner.s3.amazonaws.com/previews/Pull/Prone_Trap_3_Raise_-_OPEX_Exercise_Library_ax9Gg8djfig_thumb.0000000.jpg",
+                            "youtube_url": "https://www.youtube.com/watch?v=ax9Gg8djfig",
+                            "gif_url": null,
+                            "name": "Elevación de trapecios en posición prona con mancuernas (Prone Trap 3 Raise)",
+                            "sets": 3,
+                            "reps": 10,
+                            "rest": 60,
+                            "selected": false,
+                            "isGroup": false,
+                            "weight": "20"
+                        }
+                    ]
+                }
+            ]
         }
-    ]
+    ],
+    "generalNotes": "",
+    "objective": "Payload",
+    "userId": "942884e8-e0a1-70f0-acea-db371ccf34ab",
+    "companyId": "gym-123"
 }

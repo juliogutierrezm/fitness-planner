@@ -1,4 +1,4 @@
-import { PlanItem, Session } from './models';
+import { Exercise, PlanItem, Session } from './models';
 
 const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
 const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
@@ -114,6 +114,82 @@ export function normalizePlanSessionsForRender(sessions: Session[]): Session[] {
     ...session,
     items: normalizePlanItemsForRender(session.items || [])
   }));
+}
+
+/**
+ * Purpose: enrich AI plan items with ExerciseLibrary metadata using exerciseId.
+ * Input: sessions array + exercise map. Output: sessions array with enriched items.
+ * Error handling: returns original sessions when map is empty or exercise is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function enrichPlanSessionsFromLibrary(
+  sessions: Session[],
+  exerciseMap: Map<string, Exercise>
+): Session[] {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  const hasExerciseId = safeSessions.some(session => hasExerciseIdInItems(session?.items || []));
+  if (!hasExerciseId) return safeSessions;
+  if (!exerciseMap || exerciseMap.size === 0) {
+    console.warn('[PlanEnrichment] exercise map not ready; skipping AI enrichment');
+    return safeSessions;
+  }
+
+  return safeSessions.map(session => ({
+    ...session,
+    items: (session.items || []).map(item => enrichPlanItemFromLibrary(item, exerciseMap))
+  }));
+}
+
+/**
+ * Purpose: enrich a single plan item or group recursively with ExerciseLibrary data.
+ * Input: PlanItem (may include exerciseId) and exercise map. Output: PlanItem.
+ * Error handling: returns original item when base exercise is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exercise>): PlanItem {
+  if (item?.isGroup && Array.isArray(item.children)) {
+    return {
+      ...item,
+      children: item.children.map(child => enrichPlanItemFromLibrary(child, exerciseMap))
+    };
+  }
+
+  const exerciseId = (item as PlanItem & { exerciseId?: string })?.exerciseId;
+  if (exerciseId) {
+    const base = exerciseMap.get(exerciseId);
+    if (!base) {
+      console.warn('[PlanEnrichment] exercise not found:', exerciseId);
+      return item;
+    }
+
+    return {
+      ...base,
+      id: base.id,
+      sets: item.sets,
+      reps: item.reps,
+      rest: item.rest,
+      notes: item.notes,
+      selected: item.selected,
+      isGroup: false
+    };
+  }
+
+  return item;
+}
+
+/**
+ * Purpose: detect if any plan items contain exerciseId (AI signal).
+ * Input: PlanItem array. Output: boolean.
+ * Error handling: treats invalid arrays as empty.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+function hasExerciseIdInItems(items: PlanItem[]): boolean {
+  if (!Array.isArray(items)) return false;
+  for (const item of items) {
+    if ((item as PlanItem & { exerciseId?: string })?.exerciseId) return true;
+    if (item?.isGroup && hasExerciseIdInItems(item.children || [])) return true;
+  }
+  return false;
 }
 
 /**

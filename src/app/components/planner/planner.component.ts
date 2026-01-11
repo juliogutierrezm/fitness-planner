@@ -45,6 +45,7 @@ import {
   getPlanItemEquipmentLabel,
   getTemplateDisplayName,
   hasRenderablePlanContent,
+  enrichPlanSessionsFromLibrary,
   normalizePlanSessionsForRender,
   parsePlanSessions,
   sortPlansByCreatedAt
@@ -98,6 +99,13 @@ export class PlannerComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
+  /**
+   * Purpose: cache ExerciseLibrary data for AI plan enrichment.
+   * Input/Output: filled after library load; consumed during plan hydration.
+   * Error handling: empty map signals enrichment should be skipped.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private exerciseLibraryMap = new Map<string, Exercise>();
 
   // Current filters data
   currentFilters: ExerciseFilters = {
@@ -328,8 +336,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.setProgressionsFromPlan(aiPlan.progressions);
     }
 
+    // Enrich AI items using ExerciseLibrary metadata before normalization.
+    const enrichedSessions = enrichPlanSessionsFromLibrary(sessions, this.exerciseLibraryMap);
+
     // Normalize sessions for consistent render structure
-    const normalizedSessions = normalizePlanSessionsForRender(sessions);
+    const normalizedSessions = normalizePlanSessionsForRender(enrichedSessions);
 
     // Load sessions
     this.sessions = normalizedSessions;
@@ -565,17 +576,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
   private applyTemplateToPlanner(templatePlan: any): void {
     this.resetTemplateState();
     const parsedSessions = parsePlanSessions(templatePlan?.sessions);
-    if (!Array.isArray(parsedSessions) || parsedSessions.length === 0) {
+    const enrichedSessions = enrichPlanSessionsFromLibrary(parsedSessions, this.exerciseLibraryMap);
+    if (!Array.isArray(enrichedSessions) || enrichedSessions.length === 0) {
       this.snackBar.open('La plantilla no tiene sesiones validas.', 'Cerrar', { duration: 3000 });
       this.initializeNewPlanSessions();
       return;
     }
 
-    this.sessions = parsedSessions;
+    this.sessions = enrichedSessions;
     this.rebuildDropLists();
     this.form.patchValue(
       {
-        sessionCount: parsedSessions.length,
+        sessionCount: enrichedSessions.length,
         notes: templatePlan?.generalNotes || '',
         objective: templatePlan?.objective || ''
       },
@@ -775,6 +787,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
         // Handle DynamoDB format if needed and flatten data
         const rawItems = libraryResponse.items;
         this.exercises = this.transformExercises(rawItems);
+        this.exerciseLibraryMap = new Map(this.exercises.map(ex => [ex.id, ex]));
+        const enrichedSessions = enrichPlanSessionsFromLibrary(this.sessions, this.exerciseLibraryMap);
+        if (enrichedSessions !== this.sessions) {
+          this.sessions = enrichedSessions;
+          this.rebuildDropLists();
+        }
         // Build filter options and apply initial filtering
         this.populateFilterOptions();
         this.loadFiltersFromStorage();
@@ -826,6 +844,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
         next: (plan) => {
           if (plan) {
             const parsedSessions = parsePlanSessions(plan.sessions);
+            const enrichedSessions = enrichPlanSessionsFromLibrary(parsedSessions, this.exerciseLibraryMap);
             this.syncTemplateState(plan);
             this.originalPlanUserId = this.extractPlanUserId(plan);
             this.resolveActiveUserId(this.originalPlanUserId, {
@@ -838,7 +857,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
               {
                 userName: this.isTemplateMode ? '' : plan.name.replace(/^(Plan de |.* Plan \d+ )/, ''),
                 templateName: this.isTemplateMode ? plan.templateName || '' : '',
-                sessionCount: parsedSessions.length,
+                sessionCount: enrichedSessions.length,
                 notes: plan.generalNotes,
                 objective: plan.objective || '',
                 date: plan.date ? new Date(plan.date) : new Date()
@@ -846,7 +865,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
               { emitEvent: false }
             );
             this.setProgressionsFromPlan(plan.progressions);
-            this.sessions = parsedSessions;
+            this.sessions = enrichedSessions;
             this.rebuildDropLists();
             this.applyUiState();
             this.cdr.markForCheck();

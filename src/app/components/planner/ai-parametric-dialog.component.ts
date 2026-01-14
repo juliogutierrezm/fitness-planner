@@ -50,10 +50,44 @@ export class AiParametricDialogComponent implements OnInit {
 
 
 
+  // Purpose: provide trainer-facing experience level definitions for AI filtering.
+  // Input/Output: static config consumed by the template for display and selection.
+  // Error handling: not applicable (static data).
+  // Standards Check: SRP OK | DRY OK | Tests Pending
   difficultyOptions = [
-    { value: 'Principiante', label: 'Principiante', desc: 'Nuevo en el entrenamiento' },
-    { value: 'Intermedio', label: 'Intermedio', desc: '6-12 meses de experiencia' },
-    { value: 'Avanzado', label: 'Avanzado', desc: 'Más de 3 años' },
+    {
+      value: 'Principiante',
+      title: 'Principiante',
+      purpose: 'Finalidad: proteger al usuario y asegurar una progresion segura con ejercicios basicos y controlados.',
+      criteria: [
+        '0-12 meses de entrenamiento regular.',
+        'Aun aprende la tecnica de movimientos basicos.',
+        'Requiere supervision frecuente y evita ejercicios complejos.'
+      ],
+      nextAction: 'Siguiente accion: priorizar tecnica, ejercicios guiados y volumen moderado.'
+    },
+    {
+      value: 'Intermedio',
+      title: 'Intermedio',
+      purpose: 'Finalidad: permitir variedad, progresion y estimulos mas exigentes sin comprometer la seguridad.',
+      criteria: [
+        'Mas de 12 meses entrenando de forma continua.',
+        'Ejecuta correctamente la mayoria de los ejercicios comunes.',
+        'Tolera mayor volumen e intensidad con supervision ocasional.'
+      ],
+      nextAction: 'Siguiente accion: introducir variaciones, superseries y progresiones controladas.'
+    },
+    {
+      value: 'Avanzado',
+      title: 'Avanzado',
+      purpose: 'Finalidad: exponer al usuario a ejercicios complejos y estimulos de alta exigencia de forma segura.',
+      criteria: [
+        '2-3 anos o mas de entrenamiento constante.',
+        'Tecnica solida y consistente.',
+        'Entrena de forma autonoma y maneja ejercicios complejos o de alta intensidad.'
+      ],
+      nextAction: 'Siguiente accion: ampliar variedad con ejercicios complejos y alta intensidad.'
+    }
   ];
 
   trainingGoalOptions = [

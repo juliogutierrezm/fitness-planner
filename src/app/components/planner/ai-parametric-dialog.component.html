@@ -52,17 +52,41 @@
           Datos Generales
         </h3>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Nivel de Experiencia</mat-label>
-            <mat-select formControlName="difficulty">
-              <mat-option *ngFor="let option of difficultyOptions" [value]="option.value">
-                {{ option.desc }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecciona tu nivel actual de entrenamiento</mat-hint>
-          </mat-form-field>
+        <div class="experience-field">
+          <div class="experience-header">
+            <div class="experience-title">
+              <mat-icon>military_tech</mat-icon>
+              <span>Nivel de Experiencia</span>
+            </div>
+            <p class="experience-subtitle">Define el nivel de exigencia y los ejercicios disponibles para la IA.</p>
+          </div>
 
+          <div class="experience-help">
+            <mat-icon class="help-icon">info</mat-icon>
+            <span>El nivel determina que ejercicios puede usar la IA. Si hay duda entre dos niveles, elige siempre el mas bajo.</span>
+          </div>
+
+          <mat-radio-group formControlName="difficulty" class="level-selector" aria-label="Nivel de experiencia">
+            <mat-radio-button
+              *ngFor="let option of difficultyOptions"
+              [value]="option.value"
+              class="level-card">
+              <div class="level-card-content">
+                <div class="level-card-header">
+                  <span class="level-card-title">{{ option.title }}</span>
+                  <span class="level-card-assignment">Asignacion: {{ option.value }}</span>
+                </div>
+                <p class="level-card-purpose">{{ option.purpose }}</p>
+                <ul class="level-card-criteria">
+                  <li *ngFor="let criterion of option.criteria">{{ criterion }}</li>
+                </ul>
+                <p class="level-card-action">{{ option.nextAction }}</p>
+              </div>
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+
+        <div class="form-row">
           <mat-form-field appearance="outline" class="form-field">
             <mat-label>Objetivo Principal</mat-label>
             <mat-select formControlName="trainingGoal">
@@ -70,7 +94,7 @@
                 {{ option.desc }}
               </mat-option>
             </mat-select>
-            <mat-hint>¿Qué quieres lograr con tu entrenamiento?</mat-hint>
+            <mat-hint>Que quieres lograr con tu entrenamiento?</mat-hint>
           </mat-form-field>
         </div>
       </div>
@@ -85,7 +109,7 @@
         <div class="form-row">
           <mat-form-field appearance="outline" class="form-field">
             <mat-label>Duración por sesión (minutos)</mat-label>
-            <input matInput type="number" formControlName="sessionDuration" min="30" max="180" step="15">
+            <input matInput type="number" formControlName="sessionDuration" min="15" max="180" step="5">
             <mat-hint>Tiempo disponible por sesión de entrenamiento (30-180 min)</mat-hint>
           </mat-form-field>
 

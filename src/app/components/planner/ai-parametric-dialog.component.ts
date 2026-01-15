@@ -171,28 +171,33 @@ export class AiParametricDialogComponent implements OnInit {
     // Initialize session blueprint
     this.updateSessionBlueprint();
   }
-  
 
-
+  // Purpose: rebuild session blueprint while preserving existing muscle selections.
+  // Input/Output: reads totalSessions + current FormArray values, writes updated FormArray.
+  // Error handling: defaults to empty targets when prior values are missing.
+  // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    const existingValues = sessionBlueprintArray.controls.map((control) => ({
+      targets: Array.isArray(control.get('targets')?.value)
+        ? [...(control.get('targets')?.value as string[])]
+        : []
+    }));
 
-    // Clear existing controls
+    const totalSessions = this.form.get('totalSessions')?.value || 4;
+
     while (sessionBlueprintArray.length > 0) {
       sessionBlueprintArray.removeAt(0);
     }
 
-    const totalSessions = this.form.get('totalSessions')?.value || 4;
-    for (let i = 1; i <= totalSessions; i++) {
+    for (let i = 0; i < totalSessions; i++) {
+      const existingTargets = existingValues[i]?.targets ?? [];
       sessionBlueprintArray.push(this.fb.group({
-        name: [`Sesión ${i}`, Validators.required],
-        targets: [[], Validators.required]
+        name: [`Sesion ${i + 1}`, Validators.required],
+        targets: [existingTargets, Validators.required]
       }));
     }
-    //this.getWorkoutPlanFromAI();
   }
-
-
 
   getSessionBlueprintControls(): FormGroup[] {
     return (this.form.get('sessionBlueprint') as FormArray).controls as FormGroup[];

@@ -32,7 +32,7 @@ export interface Exercise {
   s3_key?: string;
 }
 
-export interface PlanItem {
+export interface PlanItem extends Partial<Exercise> {
   id: string;
   name: string;
   name_es?: string;

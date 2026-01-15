@@ -126,7 +126,7 @@
       <mat-panel-description>
         <mat-checkbox
           class="progressions-toggle"
-          [(ngModel)]="progressions.showProgressions"
+          [checked]="progressions.showProgressions"
           (change)="onProgressionsToggle($event.checked)"
           (click)="$event.stopPropagation()"
           (keydown)="$event.stopPropagation()"

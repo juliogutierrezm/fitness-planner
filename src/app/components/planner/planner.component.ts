@@ -44,6 +44,7 @@ import {
   getPlanItemDisplayName,
   getPlanItemEquipmentLabel,
   getTemplateDisplayName,
+  findIncompletePlanItems,
   hasRenderablePlanContent,
   enrichPlanSessionsFromLibrary,
   normalizePlanSessionsForRender,
@@ -460,12 +461,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
     const displayName = formValue.userName || this.getUserDisplayName() || 'Usuario';
     const planName = `Plan de ${displayName}`;
     const planStartDate = formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString();
+    const preparedSessions = this.prepareSessionsForSave();
+    if (!preparedSessions) {
+      return;
+    }
 
     const templatePayload: any = {
       planId: `plan-${Date.now()}`,
       name: planName,
       date: planStartDate,
-      sessions: normalizePlanSessionsForRender(this.sessions),
+      sessions: normalizePlanSessionsForRender(preparedSessions),
       generalNotes: formValue.notes,
       objective: formValue.objective,
       userId: currentUser.id,
@@ -1064,14 +1069,33 @@ export class PlannerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const weeks = Array.isArray(progressions.weeks)
-      ? progressions.weeks.map(week => ({ ...week }))
+    // Parse progressions if it comes as a JSON string from the backend
+    let normalizedProgressions: PlanProgressions | null = null;
+    if (typeof progressions === 'string') {
+      try {
+        const parsed = JSON.parse(progressions);
+        normalizedProgressions = parsed && typeof parsed === 'object' ? (parsed as PlanProgressions) : null;
+      } catch (error) {
+        console.warn('[Planner] Invalid progressions JSON', { error });
+        normalizedProgressions = null;
+      }
+    } else if (typeof progressions === 'object') {
+      normalizedProgressions = progressions as PlanProgressions;
+    }
+
+    if (!normalizedProgressions) {
+      this.progressions = this.createDefaultProgressions(false);
+      return;
+    }
+
+    const weeks = Array.isArray(normalizedProgressions.weeks)
+      ? normalizedProgressions.weeks.map(week => ({ ...week }))
       : [];
-    const totalWeeks = Number.isFinite(progressions.totalWeeks)
-      ? progressions.totalWeeks
+    const totalWeeks = Number.isFinite(normalizedProgressions.totalWeeks)
+      ? normalizedProgressions.totalWeeks
       : weeks.length || this.progressionGuide.length;
-    const showProgressions = progressions.showProgressions === true ||
-      (progressions.showProgressions !== false && weeks.length > 0);
+    const showProgressions = normalizedProgressions.showProgressions === true ||
+      (normalizedProgressions.showProgressions !== false && weeks.length > 0);
 
     this.progressions = {
       showProgressions,
@@ -1302,6 +1326,27 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }, {} as any);
   }
 
+  private buildPlanItemFromExercise(ex: Exercise, overrides: Partial<PlanItem> = {}): PlanItem {
+    const defaults: Partial<PlanItem> = {
+      sets: 3,
+      reps: 10,
+      rest: 60,
+      weight: undefined,
+      selected: false,
+      isGroup: false
+    };
+
+    return {
+      ...ex,
+      ...defaults,
+      ...overrides,
+      id: ex.id,
+      name: ex.name_es || ex.name || 'Ejercicio sin nombre',
+      name_es: ex.name_es,
+      equipment_type: ex.equipment_type || ''
+    } as PlanItem;
+  }
+
   dropSession(event: CdkDragDrop<Session[]>) {
     if (event.previousContainer === event.container) {
       moveItemInArray(this.sessions, event.previousIndex, event.currentIndex);
@@ -1336,18 +1381,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     if (prevId === 'exerciseList' && session) {
       const ex = event.item.data as Exercise;
-        const newItem: PlanItem = {
-          ...ex,
-          id: ex.id,
-          name: ex.name_es || ex.name || 'Ejercicio sin nombre',
-          name_es: ex.name_es,
-          equipment_type: ex.equipment_type || '',
-          sets: 3,
-        reps: 10,
-        rest: 60,
-        selected: false,
-        isGroup: false
-      };
+      const newItem = this.buildPlanItemFromExercise(ex);
       session.items.splice(event.currentIndex, 0, newItem);
       session.items = [...session.items];
       this.persist();
@@ -1535,18 +1569,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   addExerciseToSession(session: Session, ex: Exercise) {
-    const item: PlanItem = {
-      id: ex.id,
-      name: ex.name_es || ex.name || 'Ejercicio sin nombre',
-      name_es: ex.name_es,
-      equipment_type: ex.equipment_type || '',
-      sets: 3,
-      reps: 10,
-      rest: 60,
-      weight: undefined,
-      selected: false,
-      isGroup: false
-    };
+    const item = this.buildPlanItemFromExercise(ex, { weight: undefined });
     session.items = [item, ...session.items];
     this.persist();
     this.cdr.markForCheck();
@@ -1725,6 +1748,36 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  private prepareSessionsForSave(): Session[] | null {
+    const enrichedSessions = enrichPlanSessionsFromLibrary(this.sessions, this.exerciseLibraryMap);
+    if (enrichedSessions !== this.sessions) {
+      this.sessions = enrichedSessions;
+      this.rebuildDropLists();
+      this.cdr.markForCheck();
+    }
+
+    const incompleteItems = findIncompletePlanItems(enrichedSessions);
+    if (incompleteItems.length === 0) {
+      return enrichedSessions;
+    }
+
+    const sampleIds = incompleteItems
+      .map(item => item.id)
+      .filter(Boolean)
+      .slice(0, 5);
+
+    console.warn('[Planner] Incomplete exercises before save', {
+      count: incompleteItems.length,
+      sampleIds
+    });
+
+    const message = this.exerciseLibraryMap.size === 0
+      ? 'La biblioteca de ejercicios aun no esta disponible; espera a que cargue para guardar el plan.'
+      : 'Hay ejercicios incompletos. Recarga la biblioteca o reemplazalos antes de guardar.';
+    this.snackBar.open(message, 'Cerrar', { duration: 4500 });
+    return null;
+  }
+
   /**
    * Purpose: save or update the workout plan with async UI feedback.
    * Input: none (uses reactive form + planner state). Output: void.
@@ -1752,12 +1805,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
       : planName;
     const planStartDate = formValue.date ? new Date(formValue.date).toISOString() : new Date().toISOString();
     const planUserId = requestedUserId;
+    const preparedSessions = this.prepareSessionsForSave();
+    if (!preparedSessions) {
+      return;
+    }
 
     const planData: any = {
       planId: this.isEditMode ? this.planId! : `plan-${Date.now()}`,
       name: resolvedPlanName,
       date: planStartDate,
-      sessions: this.sessions,
+      sessions: preparedSessions,
       generalNotes: formValue.notes,
       objective: formValue.objective,
       userId: planUserId

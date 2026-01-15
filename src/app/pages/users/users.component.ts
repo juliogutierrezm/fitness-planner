@@ -21,6 +21,7 @@ import { finalize, takeUntil } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { AuthService, UserRole } from '../../services/auth.service';
+import { isIndependentTenant } from '../../shared/shared-utils';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
 
@@ -61,6 +62,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   canCreate = false;
   isAdmin = false;
+  isIndependentTenant = false;
   editingId: string | null = null;
   editForm!: FormGroup;
   isLoading = false;
@@ -114,6 +116,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       .subscribe(user => {
         this.currentUser = user;
         this.isAdmin = user?.role === UserRole.ADMIN;
+        this.isIndependentTenant = isIndependentTenant(user?.companyId);
         this.canCreate = this.api.canCreateUsers();
         this.loadUsersForCurrentUser(user);
       });
@@ -141,6 +144,16 @@ export class UsersComponent implements OnInit, OnDestroy {
    */
   get isTrainerView(): boolean {
     return this.contextRole === 'trainer';
+  }
+
+  /**
+   * Purpose: determine whether trainer management UI should render.
+   * Input: none. Output: boolean indicator.
+   * Error handling: not applicable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get showTrainerManagement(): boolean {
+    return !this.isTrainerView || !this.isIndependentTenant;
   }
 
   private getPageTitle(): string {
@@ -478,13 +491,14 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   getAvailableTrainers(): AppUser[] {
+    if (this.isIndependentTenant) return [];
     const currentUser = this.auth.getCurrentUser();
     const companyId = currentUser?.companyId || 'INDEPENDENT';
     return this.allUsers.filter(u => u.role === 'trainer' && (u.companyId === companyId || u.companyId === 'INDEPENDENT'));
   }
 
   assignTrainer(client: AppUser) {
-    if (!this.isAdmin || !this.isClientView) return;
+    if (!this.isAdmin || !this.isClientView || this.isIndependentTenant) return;
     this.selectedClientForAssignment = client;
     if (!this.trainerSelectDialog) {
       this.snack.open('Error: No se pudo abrir el selector de entrenadores.', 'Cerrar', { duration: 3000 });

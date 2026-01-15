@@ -89,6 +89,17 @@ export function isGymMode(companyId?: string | null): boolean {
 }
 
 /**
+ * Purpose: determine independent tenant mode based on the tenant companyId claim.
+ * Input: companyId string | null | undefined. Output: boolean.
+ * Error handling: treats missing companyId as INDEPENDENT fallback.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function isIndependentTenant(companyId?: string | null): boolean {
+  const normalized = companyId || 'INDEPENDENT';
+  return normalized === 'INDEPENDENT';
+}
+
+/**
  * Purpose: sanitize exercise name for ID generation by replacing spaces and special characters with underscores.
  * Input: name string. Output: normalized string.
  * Error handling: none; pure string transform with safe defaults.

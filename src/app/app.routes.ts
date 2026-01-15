@@ -81,7 +81,7 @@ export const routes: Routes = [
         path: 'trainers',
         loadComponent: () => import('./pages/trainers/trainers.component').then(m => m.TrainersComponent),
         canActivate: [AuthGuard],
-        data: { roles: [UserRole.ADMIN] }
+        data: { roles: [UserRole.ADMIN], excludeIndependent: true }
       },
       {
         path: 'clients',

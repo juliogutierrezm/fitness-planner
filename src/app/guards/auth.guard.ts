@@ -3,6 +3,7 @@ import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnaps
 import { Observable, of, from } from 'rxjs';
 import { map, take, switchMap } from 'rxjs/operators';
 import { AuthService, UserRole } from '../services/auth.service';
+import { isIndependentTenant } from '../shared/shared-utils';
 
 @Injectable({
   providedIn: 'root'
@@ -48,6 +49,11 @@ export class AuthGuard implements CanActivate, CanActivateChild {
               take(1),
               map(user => {
                 if (!user || !requiredRoles.includes(user.role)) {
+                  this.router.navigate(['/unauthorized']);
+                  return false;
+                }
+                const excludeIndependent = route.data?.['excludeIndependent'] === true;
+                if (excludeIndependent && isIndependentTenant(user?.companyId)) {
                   this.router.navigate(['/unauthorized']);
                   return false;
                 }

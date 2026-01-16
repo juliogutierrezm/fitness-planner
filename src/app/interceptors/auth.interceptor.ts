@@ -6,49 +6,50 @@ import { AuthService } from '../services/auth.service';
 import { environment } from '../../environments/environment';
 import { Router } from '@angular/router';
 
+
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const isApiRequest = req.url.startsWith(environment.apiBase);
-    const isAIGenerate = req.url.includes('/generatePlanFromAI');
 
-    // Skip auth for non-API or public endpoints
-    if (!isApiRequest || isAIGenerate || this.isPublicEndpoint(req.url)) {
+    // Requests que no van al API
+    if (!isApiRequest || this.isPublicEndpoint(req.url)) {
       return next.handle(req);
     }
 
-    // Requests to API require auth (except public). If not authenticated, redirect to login.
+    // Usuario no autenticado
     if (!this.authService.isAuthenticatedSync()) {
       try { this.router.navigate(['/login']); } catch {}
-      // Let the request pass without token to avoid blocking; backend will 401 if needed
       return next.handle(req);
     }
 
-    // Authenticated: attach token (avoid CORS preflight for simple GETs unless endpoint is protected)
-    const needsAuthHeaderForGet = /\/(users|workoutPlans)|\/exercise(?!\/bulk)/.test(req.url);
+    // 🔑 SIEMPRE adjuntar ID token
     return this.authService.getIdToken().pipe(
       switchMap(token => {
-        // Attach Authorization on non-GET requests, and on GET if explicitly required
-        if (token && (req.method !== 'GET' || needsAuthHeaderForGet)) {
-          const authReq = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
-          return next.handle(authReq);
+        if (!token) {
+          return next.handle(req);
         }
-        return next.handle(req);
-      }),
-      catchError(() => next.handle(req))
+
+        const authReq = req.clone({
+          setHeaders: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        return next.handle(authReq);
+      })
     );
   }
 
   private isPublicEndpoint(url: string): boolean {
-    const publicEndpoints = [
-      '/assets',
-      '/health',
-      '/public'
-    ];
-    
-    return publicEndpoints.some(endpoint => url.includes(endpoint));
+    return ['/assets', '/health', '/public'].some(p => url.includes(p));
   }
 }
+
+

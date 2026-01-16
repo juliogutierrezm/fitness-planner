@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,9 +21,13 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { UserApiService, AppUser } from '../../user-api.service';
 import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
+import { TemplateAssignmentService } from '../../services/template-assignment.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
+import { finalize } from 'rxjs/operators';
+import { buildPlanOrdinalMap, getPlanKey, getTemplateDisplayName, sortPlansByCreatedAt } from '../../shared/shared-utils';
 
 @Component({
   selector: 'app-user-detail',
@@ -60,6 +64,11 @@ export class UserDetailComponent implements OnInit {
   plans: any[] = [];
   viewPlans: any[] = [];
   loadingPlans = false;
+  templates: any[] = [];
+  templateDialogLoading = false;
+  @ViewChild('templateSelectDialog') templateSelectDialog?: TemplateRef<any>;
+  private templateDialogRef: any = null;
+  planOrdinalMap = new Map<string, number>();
 
   // filtros
   q = '';
@@ -70,10 +79,11 @@ export class UserDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private userApi: UserApiService,
     private planApi: ExerciseApiService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private templateAssignment: TemplateAssignmentService
   ) {}
 
   ngOnInit() {
@@ -84,7 +94,8 @@ export class UserDetailComponent implements OnInit {
     this.loadingPlans = true;
     this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
       list => {
-        this.plans = (list || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        this.plans = sortPlansByCreatedAt(list || []);
+        this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
         this.applyFilters();
         this.loadingPlans = false;
         this.cdr.markForCheck();
@@ -97,12 +108,7 @@ export class UserDetailComponent implements OnInit {
   }
 
   getPlanId(p: any): string {
-    if (p?.planId) return p.planId;
-    if (p?.id) return p.id;
-    if (p?.SK && typeof p.SK === 'string' && p.SK.startsWith('PLAN#')) {
-      return p.SK.substring(5);
-    }
-    return '';
+    return getPlanKey(p);
   }
 
   applyFilters() {
@@ -111,16 +117,15 @@ export class UserDetailComponent implements OnInit {
     const to = this.dateTo ? new Date(this.dateTo).getTime() : null;
 
     let arr = this.plans.filter(p => {
-      const name = (p.name || '').toLowerCase();
-      const notes = (p.generalNotes || '').toLowerCase();
+      const objective = (p.objective || '').toLowerCase();
       const t = p.date ? new Date(p.date).getTime() : 0;
-      const matchQ = !qn || name.includes(qn) || notes.includes(qn);
+      const matchQ = !qn || objective.includes(qn);
       const matchFrom = from === null || t >= from!;
       const matchTo = to === null || t <= to!;
       return matchQ && matchFrom && matchTo;
     });
 
-    this.viewPlans = arr.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    this.viewPlans = sortPlansByCreatedAt(arr);
   }
 
   clearFilters() {
@@ -131,7 +136,92 @@ export class UserDetailComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  preview(plan: any) { this.router.navigate(['/plan', this.getPlanId(plan)]); }
+  /**
+   * Purpose: open the template picker dialog for this user.
+   * Input: none. Output: opens dialog and loads templates.
+   * Error handling: shows snackbar when prerequisites are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openTemplateDialog(): void {
+    if (!this.userId) {
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    if (!this.templateSelectDialog) {
+      this.snackBar.open('No se pudo abrir el selector de plantillas.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.templateDialogRef = this.dialog.open(this.templateSelectDialog, {
+      width: '600px',
+      maxWidth: '92vw'
+    });
+    this.loadTemplatesForDialog();
+  }
+
+  /**
+   * Purpose: load tenant templates for selection in the dialog.
+   * Input: none. Output: updates templates list state.
+   * Error handling: logs and shows snackbar on API failures.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadTemplatesForDialog(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.id) {
+      this.templateDialogLoading = false;
+      this.templates = [];
+      this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.templateDialogLoading = true;
+    this.cdr.markForCheck();
+
+    this.planApi.getPlansForCurrentTenant().pipe(
+      finalize(() => {
+        this.templateDialogLoading = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (list) => {
+        const templatesOnly = (list || []).filter((plan: any) => plan?.isTemplate === true);
+        this.templates = templatesOnly.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      },
+      error: (error) => {
+        console.error('Error al cargar plantillas:', error);
+        this.templates = [];
+        this.snackBar.open('No se pudieron cargar las plantillas.', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
+
+  /**
+   * Purpose: navigate to planner with the selected template preloaded.
+   * Input: template plan object. Output: navigation side effect.
+   * Error handling: shows snackbar when ids are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  selectTemplate(template: any): void {
+    const templateId = this.getPlanId(template);
+    this.templateAssignment.assignTemplateToUser({
+      userId: this.userId,
+      snackBar: this.snackBar,
+      templateId,
+      onBeforeNavigate: () => this.templateDialogRef?.close()
+    });
+  }
+
+  /**
+   * Purpose: resolve a template display name with templateName priority.
+   * Input: template plan object. Output: display name string.
+   * Error handling: falls back to a generic label when names are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getTemplateName(template: any): string {
+    const name = getTemplateDisplayName(template);
+    return name || 'Plantilla sin nombre';
+  }
 
   getSessionCount(plan: any): number {
     if (!plan) return 0;
@@ -165,6 +255,24 @@ export class UserDetailComponent implements OnInit {
     return names.join(', ');
   }
 
+  /**
+   * Purpose: resolve the visual plan ordinal based on createdAt ordering.
+   * Input: plan object. Output: ordinal number or 0.
+   * Error handling: returns 0 when map or key is unavailable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPlanOrdinal(plan: any): number {
+    const key = getPlanKey(plan);
+    if (!key) return 0;
+    return this.planOrdinalMap.get(key) || 0;
+  }
+
+  private getPlanCreatedAtTime(plan: any): number {
+    const raw = plan?.createdAt || plan?.created_at;
+    const ts = raw ? new Date(raw).getTime() : 0;
+    return Number.isNaN(ts) ? 0 : ts;
+  }
+
   deletePlan(planId: string) {
     if (!planId) { return; }
     const ref = this.dialog.open(ConfirmDialogComponent, {
@@ -183,20 +291,24 @@ export class UserDetailComponent implements OnInit {
       this.planApi.deleteWorkoutPlan(planId).subscribe(res => {
         this.loadingPlans = false;
         if (res !== null) {
+          // Actualización inmediata para reflejar la eliminación en la vista
+          this.plans = [...this.plans.filter(p => (p.planId || p.id) !== planId)];
+          this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
+          this.applyFilters();
+          this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
+          this.cdr.markForCheck();
+
           // Recargar la lista completa desde el servidor para asegurar sincronización
           if (this.userId) {
             this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
               updatedPlans => {
-                this.plans = (updatedPlans || []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                this.plans = sortPlansByCreatedAt(updatedPlans || []);
+                this.planOrdinalMap = buildPlanOrdinalMap(this.plans);
                 this.applyFilters();
-                this.snackBar.open('Plan eliminado correctamente', 'Cerrar', { duration: 2500 });
                 this.cdr.markForCheck();
               },
               error => {
                 console.error('Error al recargar planes después de eliminación:', error);
-                // Eliminación optimista si falla la recarga
-                this.plans = [...this.plans.filter(p => (p.planId || p.id) !== planId)];
-                this.applyFilters();
                 this.snackBar.open('Plan eliminado (con error de sincronización)', 'Cerrar', { duration: 3000 });
                 this.cdr.markForCheck();
               }

@@ -1,3 +1,33 @@
+.header-card {
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+
+  mat-card-header {
+    margin: 0;
+    padding: 22px;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 26px;
+      margin: 0;
+      color: var(--primary-color, #1976d2);
+
+      mat-icon {
+        font-size: 30px;
+        width: 30px;
+        height: 30px;
+      }
+    }
+
+    mat-card-subtitle {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+
 .user-detail {
   max-width: 1200px;
   margin: 0 auto;
@@ -41,6 +71,12 @@
   justify-content: space-between;
   margin-bottom: 16px;
 }
+.plans-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
 
 .filters {
   display: flex;
@@ -64,15 +100,62 @@
   text-align: center;
 }
 
+.dialog-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.no-templates {
+  padding: 0.75rem 0;
+  color: var(--ink-500);
+}
+
+.secondary {
+  color: var(--ink-500);
+  font-size: 12px;
+}
+
+.template-row {
+  width: 90%;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #e5e7eb;
+  background: var(--bg-0);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.template-row:hover {
+  background: var(--bg-50);
+  border-color: #d1d5db;
+}
+
+.template-row:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+.template-row:last-child {
+  margin-bottom: 0;
+}
+
 .plans-accordion {
   background: transparent;
 }
 .plans-accordion .mat-expansion-panel {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border-radius: var(--radius-lg);
+  border: 1px solid var(--bg-200);
+  box-shadow: none;
 }
 .plans-accordion .mat-expansion-panel:last-child {
   margin-bottom: 0;
+}
+.plans-accordion .mat-expansion-panel-header {
+  padding: 0 12px;
+  min-height: 54px;
 }
 
 .plan-header {
@@ -81,18 +164,59 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  min-width: 0;
 }
-.plan-header .title {
-  font-weight: 600;
-}
-.plan-header .meta {
+.plan-header .plan-main {
   display: flex;
-  gap: .5rem;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+.plan-header .right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.plan-header .plan-title {
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+  font-size: 14px;
+}
+.plan-header .plan-meta {
+  display: flex;
+  gap: 8px;
   color: var(--ink-500);
   align-items: center;
+  font-size: 12px;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
-.plan-header .notes {
-  max-width: 420px;
+.plan-header .meta-sep {
+  color: var(--ink-400);
+  font-size: 12px;
+}
+.plan-header .objective-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(var(--primary-600), 0.08);
+  color: var(--primary-700);
+  border: 1px solid rgba(var(--primary-600), 0.2);
+  font-size: 12px;
+  min-width: 0;
+  max-width: 320px;
+}
+.plan-header .objective-badge mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+.plan-header .objective-badge span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

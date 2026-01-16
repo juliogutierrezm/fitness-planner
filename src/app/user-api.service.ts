@@ -4,6 +4,7 @@ import { Observable, of } from 'rxjs';
 import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 import { AuthService, UserRole } from './services/auth.service';
+import { isGymMode } from './shared/shared-utils';
 
 export interface AppUser {
   id?: string;
@@ -11,10 +12,30 @@ export interface AppUser {
   givenName?: string;
   familyName?: string;
   telephone?: string;
+  gender?: string;      // Gender: 'Masculino', 'Femenino', 'Otro', 'Prefiero no decirlo'
   role: 'client' | 'trainer' | 'admin';
   companyId?: string;
   trainerId?: string; // owner trainer for independent trainers
+  dateOfBirth?: string; // ISO format: YYYY-MM-DD
+  noInjuries?: boolean;  // true if user explicitly has NO injuries
+  injuries?: string;    // Free text, optional (null when noInjuries=true)
+  notes?: string;       // Trainer internal notes, optional
   createdAt?: string;
+}
+
+export interface CreateUserWithRoleRequest {
+  email: string;
+  role: 'client' | 'trainer';
+  companyId: string;
+  givenName?: string;
+  familyName?: string;
+}
+
+export interface CreateUserWithRoleResponse {
+  id: string;
+  role: 'client' | 'trainer';
+  companyId: string;
+  email: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,12 +57,16 @@ export class UserApiService {
     if (!u) return of(null);
     // Enforce server-side relevant ownership fields
     const body: any = { ...payload };
+    const normalizedCompanyId = u.companyId || 'INDEPENDENT';
     if (u.role === UserRole.TRAINER) {
       // Entrenador crea clientes. Asignar siempre trainerId, y companyId si el entrenador pertenece a una compañía
       body.role = 'client';
       body.trainerId = u.id;
       // companyId requerido por GSI2 del backend: usar el del entrenador o 'INDEPENDENT'
-      body.companyId = u.companyId || 'INDEPENDENT';
+      body.companyId = normalizedCompanyId;
+    }
+    if (u.role === UserRole.ADMIN && !body.companyId) {
+      body.companyId = normalizedCompanyId;
     }
     // Sanitizar otros posibles nulos (companyId ya está normalizado)
     if (!body.trainerId) delete body.trainerId;
@@ -51,6 +76,27 @@ export class UserApiService {
     return this.http.post(this.base, body).pipe(
       tap(res => console.log('User created', res)),
       catchError(err => { console.error('Create user error', err); return of(null); })
+    );
+  }
+
+  createUserWithRole(payload: CreateUserWithRoleRequest): Observable<CreateUserWithRoleResponse | null> {
+    const u = this.auth.getCurrentUser();
+    if (!u) return of(null);
+    // Determine companyId
+    const normalizedCompanyId = u.companyId || 'INDEPENDENT';
+    // Enforce role based on actor permissions
+    const body: CreateUserWithRoleRequest = {
+      ...payload,
+      companyId: normalizedCompanyId
+    };
+    if (u.role === UserRole.TRAINER) {
+      // Trainer can only create clients
+      body.role = 'client';
+    }
+    // Admin can create trainer or client as specified
+    return this.http.post<CreateUserWithRoleResponse>(this.base, body).pipe(
+      tap(res => console.log('User created with role', res)),
+      catchError(err => { console.error('Create user with role error', err); return of(null); })
     );
   }
 
@@ -65,12 +111,31 @@ export class UserApiService {
 
   getUsersByCompany(companyId?: string): Observable<AppUser[]> {
     const u = this.auth.getCurrentUser();
-    if (!u || u.role !== UserRole.ADMIN) return of([]);
+    if (!u) return of([]);
+    if (u.role !== UserRole.ADMIN && u.role !== UserRole.TRAINER) return of([]);
     const id = companyId || (u.companyId || '');
-    if (!id) return of([]);
+    if (!id || id === 'INDEPENDENT') return of([]);
     return this.http.get<AppUser[]>(`${this.base}?companyId=${encodeURIComponent(id)}`).pipe(
       catchError(err => { console.error('getUsersByCompany error', err); return of([]); })
     );
+  }
+
+  /**
+   * Purpose: fetch users for the current tenant using gym vs independent mode.
+   * Input: none. Output: Observable<AppUser[]>.
+   * Error handling: returns empty list when user or identifiers are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getUsersForCurrentTenant(): Observable<AppUser[]> {
+    const u = this.auth.getCurrentUser();
+    if (!u) return of([]);
+    if (u.role !== UserRole.ADMIN && u.role !== UserRole.TRAINER) return of([]);
+    const companyId = u.companyId || 'INDEPENDENT';
+    if (isGymMode(companyId)) {
+      return this.getUsersByCompany(companyId);
+    }
+    if (!u.id) return of([]);
+    return this.getUsersByTrainer(u.id);
   }
 
   updateUser(user: AppUser): Observable<any> {
@@ -87,36 +152,71 @@ export class UserApiService {
     );
   }
 
-  getUserById(userId: string): Observable<AppUser | null> {
-    if (!userId) return of(null);
-    return this.http.get<AppUser>(`${this.base}/${encodeURIComponent(userId)}`).pipe(
-      catchError(err => { console.error('getUserById error', err); return of(null); })
+getUserById(userId: string): Observable<AppUser | null> {
+  if (!userId) return of(null);
+
+  const url = `${this.base}/${encodeURIComponent(userId)}`;
+  console.log('getUserById URL:', url);
+
+  return this.http.get<any>(url).pipe(
+    map(res => {
+      // Caso 1: backend ya devuelve el usuario directo
+      if (res && !res.body && res.id) {
+        return res as AppUser;
+      }
+
+      // Caso 2: API Gateway proxy { statusCode, body }
+      if (res && typeof res.body === 'string') {
+        try {
+          return JSON.parse(res.body) as AppUser;
+        } catch {
+          return null;
+        }
+      }
+
+      return null;
+    }),
+    catchError(err => {
+      console.error('getUserById error', err);
+      return of(null);
+    })
+  );
+}
+
+
+
+  assignTrainer(clientId: string, trainerId: string): Observable<any> {
+    if (!clientId || !trainerId) return of(null);
+    const payload = { clientId, trainerId };
+    return this.http.put(`${this.base}/trainers`, payload).pipe(
+      tap(res => console.log('Trainer assigned', res)),
+      catchError(err => { console.error('assignTrainer error', err); return of(null); })
     );
   }
 
-  getWorkoutPlansByUserId(userId: string): Observable<any[]> {
-    if (!userId) return of([]);
-    const url = `${this.base}/plan?userId=${encodeURIComponent(userId)}`;
-    return this.http.get<any>(url).pipe(
-      // Normaliza respuesta de API Gateway proxy ({ statusCode, body }) o lista directa
-      // y hace fallback a /workoutPlans?userId cuando no hay arreglo.
-      // Evita romper la UI con (list || []).slice cuando no es array.
-      // 1) Si es array, úsalo.
-      // 2) Si trae body, intenta parsear JSON y extraer arreglo.
-      // 3) Si mensaje indica parámetro faltante, retorna [] y que el caller decida.
-      // 4) Último recurso: fallback al endpoint alterno.
-      switchMap((res: any) => {
-        const arr = normalizePlans(res);
-        if (arr) return of(arr);
-        // Fallback al otro endpoint publicado
-        const fallback = `${environment.apiBase}/workoutPlans?userId=${encodeURIComponent(userId)}`;
-        return this.http.get<any>(fallback).pipe(
-          map((r: any) => normalizePlans(r) || [])
-        );
-      }),
-      catchError(err => { console.error('getWorkoutPlansByUserId error', err); return of([]); })
-    );
-  }
+getWorkoutPlansByUserId(userId: string): Observable<any[]> {
+  if (!userId) return of([]);
+  const url = `${this.base}/plan?userId=${encodeURIComponent(userId)}`;
+  return this.http.get<any>(url).pipe(
+    // Normaliza respuesta de API Gateway proxy ({ statusCode, body }) o lista directa
+    // y hace fallback a /workoutPlans?userId cuando no hay arreglo.
+    // Evita romper la UI con (list || []).slice cuando no es array.
+    // 1) Si es array, úsalo.
+    // 2) Si trae body, intenta parsear JSON y extraer arreglo.
+    // 3) Si mensaje indica parámetro faltante, retorna [] y que el caller decida.
+    // 4) Último recurso: fallback al endpoint alterno.
+    switchMap((res: any) => {
+      const arr = normalizePlans(res);
+      if (arr) return of(arr);
+      // Fallback al otro endpoint publicado
+      const fallback = `${environment.apiBase}/workoutPlans?userId=${encodeURIComponent(userId)}`;
+      return this.http.get<any>(fallback).pipe(
+        map((r: any) => normalizePlans(r) || [])
+      );
+    }),
+    catchError(err => { console.error('getWorkoutPlansByUserId error', err); return of([]); })
+  );
+}
 }
 
 // Helpers (local scope)

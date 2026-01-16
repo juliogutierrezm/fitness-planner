@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view.component';
 
 @Component({
   selector: 'app-plan-preview-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, WorkoutPlanViewComponent],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatCheckboxModule, WorkoutPlanViewComponent],
   template: `
     <div class="dialog-container">
       <div class="dialog-header">
@@ -16,6 +17,11 @@ import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view
         <button mat-icon-button (click)="close()" aria-label="Cerrar">
           <mat-icon>close</mat-icon>
         </button>
+      </div>
+      <div class="dialog-progressions">
+        <mat-checkbox [checked]="data.plan?.progressions?.showProgressions === true" disabled>
+          Mostrar progresiones al cliente
+        </mat-checkbox>
       </div>
       <div class="dialog-content">
         <app-workout-plan-view [plan]="data.plan"></app-workout-plan-view>
@@ -43,6 +49,11 @@ import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view
     .dialog-content {
       flex: 1;
       overflow: auto;
+    }
+    .dialog-progressions {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
     }
     .dialog-actions {
       display: flex;

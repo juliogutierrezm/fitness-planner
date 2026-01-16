@@ -83,3 +83,59 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .mat-mdc-select-panel {
   border-radius: var(--radius-sm);
 }
+
+/* AI Generation Modal Enhancements */
+.ai-generation-backdrop {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(7px) !important;
+}
+
+.ai-generation-dialog .mat-mdc-dialog-container {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  animation: ai-modal-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+@keyframes ai-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================
+   Client tokens defaults
+   (no afecta Admin)
+   ========================== */
+:root {
+  --client-bg: #ffffff;
+  --client-surface: #ffffff;
+  --client-surface-strong: rgba(0,0,0,0.06);
+  --client-text: #111827;
+  --client-text-muted: rgba(17,24,39,0.65);
+  --client-border: rgba(17,24,39,0.10);
+
+  --client-header-text: #ffffff;
+  --client-header-muted: rgba(255,255,255,0.80);
+  --client-header-chip: rgba(255,255,255,0.20);
+
+  --client-shadow-1: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+:root.dark {
+  --client-bg: #0b1220;
+  --client-surface: #111827;             /* ← SIDEBAR sólido */
+  --client-surface-strong: #1f2937;      /* hover/active */
+  --client-text: rgba(255,255,255,0.92);
+  --client-text-muted: rgba(255,255,255,0.70);
+  --client-border: rgba(255,255,255,0.10);
+
+  --client-header-text: #ffffff;
+  --client-header-muted: rgba(255,255,255,0.85);
+  --client-header-chip: rgba(255,255,255,0.20);
+
+  --client-shadow-1: 0 8px 24px rgba(0,0,0,0.30);
+}

@@ -1,0 +1,218 @@
+<!-- Purpose: Appearance settings layout and live preview. Inputs: Reactive form controls via [formGroup]. Error-handling: N/A (visual only). Standards Check: SRP OK | DRY OK | Tests N/A. -->
+<div class="appearance-settings-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>palette</mat-icon>
+        Configuracion de Apariencia
+      </mat-card-title>
+      <mat-card-subtitle>Personaliza los colores y estilos de tu aplicacion</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+  <div class="action-buttons" *ngIf="!isLoading">
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="saveChanges()"
+      [disabled]="form.invalid || isSaving"
+    >
+      <mat-icon *ngIf="!isSaving">save</mat-icon>
+      <mat-spinner *ngIf="isSaving" diameter="24" class="button-spinner"></mat-spinner>
+      {{ isSaving ? 'Guardando...' : 'Guardar Cambios' }}
+    </button>
+  </div>
+  <mat-card class="settings-card" *ngIf="!isLoading">
+    <mat-card-content>
+      <form [formGroup]="form" class="appearance-form">
+        <div class="appearance-grid">
+        <div class="settings-section">
+          <h3>Branding</h3>
+          <mat-divider></mat-divider>
+
+          <mat-form-field class="full-width">
+            <mat-label>Nombre de la App</mat-label>
+            <input matInput type="text" formControlName="appName" placeholder="Ej: TrainGrid" maxlength="40">
+            <mat-hint align="end">{{ form.get('appName')?.value?.length || 0 }}/40</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field class="full-width">
+            <mat-label>Tagline / Eslogan</mat-label>
+            <textarea matInput formControlName="tagline" placeholder="Ej: Entrena mejor. Progresa mas rapido." maxlength="80" rows="3"></textarea>
+            <mat-hint align="end">{{ form.get('tagline')?.value?.length || 0 }}/80</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="settings-section">
+          <h3>Logo</h3>
+          <mat-divider></mat-divider>
+
+          <div class="logo-upload">
+            <div class="logo-preview" *ngIf="logoPreviewUrl">
+              <img [src]="logoPreviewUrl" alt="Logo preview" class="logo-image">
+            </div>
+            <div class="upload-input">
+              <input
+                #logoInput
+                type="file"
+                accept="image/*"
+                (change)="onLogoSelected($event)"
+                style="display: none"
+              >
+              <button
+                mat-raised-button
+                type="button"
+                (click)="logoInput.click()"
+                color="primary"
+              >
+                <mat-icon>cloud_upload</mat-icon>
+                Cargar Logo
+              </button>
+              <p class="upload-hint">PNG, JPG o GIF. Maximo 5MB.</p>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div class="appearance-grid">
+          <div class="settings-stack">
+            <mat-card class="panel-card colors-panel">
+              <div class="panel-title">Colores</div>
+              <mat-divider></mat-divider>
+
+              <div class="color-row">
+                <div class="color-swatch">
+                  <input
+                    type="color"
+                    class="color-input"
+                    [value]="form.get('primaryColor')?.value"
+                    (input)="onColorPicked($event, 'primaryColor')"
+                    aria-label="Color primario"
+                  >
+                </div>
+                <mat-form-field class="color-hex">
+                  <mat-label>Primario (Hex)</mat-label>
+                  <input
+                    matInput
+                    type="text"
+                    formControlName="primaryColor"
+                    placeholder="#1976D2"
+                    maxlength="7"
+                    autocomplete="off"
+                    spellcheck="false"
+                    (input)="onHexInput($event, 'primaryColor')"
+                  >
+                </mat-form-field>
+              </div>
+
+              <div class="color-row">
+                <div class="color-swatch">
+                  <input
+                    type="color"
+                    class="color-input"
+                    [value]="form.get('accentColor')?.value"
+                    (input)="onColorPicked($event, 'accentColor')"
+                    aria-label="Color acento"
+                  >
+                </div>
+                <mat-form-field class="color-hex">
+                  <mat-label>Acento (Hex)</mat-label>
+                  <input
+                    matInput
+                    type="text"
+                    formControlName="accentColor"
+                    placeholder="#FF4081"
+                    maxlength="7"
+                    autocomplete="off"
+                    spellcheck="false"
+                    (input)="onHexInput($event, 'accentColor')"
+                  >
+                </mat-form-field>
+              </div>
+            </mat-card>
+
+            <mat-card class="panel-card typography-panel">
+              <div class="panel-title">Tipografia</div>
+              <mat-divider></mat-divider>
+              <mat-form-field class="full-width">
+                <mat-label>Tipografia</mat-label>
+                <mat-select formControlName="typography">
+                  <mat-option *ngFor="let option of typographyOptions" [value]="option.value">
+                    {{ option.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="type-sample" [style.font-family]="form.get('typography')?.value">
+                Aa Bb Cc 123
+              </div>
+            </mat-card>
+          </div>
+
+          <mat-card class="preview-card">
+            <mat-card-header class="preview-toolbar">
+              <mat-card-title>Vista Previa</mat-card-title>
+              <div class="preview-mode-toggle">
+                <mat-icon class="mode-icon" [class.active]="!form.get('darkMode')?.value">light_mode</mat-icon>
+                <mat-slide-toggle
+                  class="compact-toggle"
+                  formControlName="darkMode"
+                  aria-label="Alternar modo oscuro"
+                ></mat-slide-toggle>
+                <mat-icon class="mode-icon" [class.active]="form.get('darkMode')?.value">dark_mode</mat-icon>
+              </div>
+            </mat-card-header>
+            <mat-card-content>
+              <div
+                class="preview-content"
+                [class.is-dark]="form.get('darkMode')?.value"
+                [style.--preview-primary]="form.get('primaryColor')?.value"
+                [style.--preview-accent]="form.get('accentColor')?.value"
+                [style.--preview-font]="form.get('typography')?.value"
+              >
+                <div class="preview-header">
+                  <span class="preview-logo" *ngIf="logoPreviewUrl">
+                    <img [src]="logoPreviewUrl" alt="Preview logo">
+                  </span>
+                  <div class="preview-heading">
+                    <div class="preview-title">
+                      {{ form.get('appName')?.value || 'TrainGrid' }}
+                    </div>
+                    <div class="preview-subtitle">
+                      {{ form.get('tagline')?.value || 'Entrena mejor. Progresa mas rapido.' }}
+                    </div>
+                  </div>
+                  <span class="preview-badge">Pro</span>
+                </div>
+
+                <div class="preview-body">
+                  <div class="preview-surface">
+                    <h4>Entrenamiento de hoy</h4>
+                    <p>Sesion de fuerza + movilidad.</p>
+                    <div class="preview-actions">
+                      <button mat-raised-button type="button" class="primary-action">Primario</button>
+                      <button mat-stroked-button type="button" class="accent-action">Secundario</button>
+                    </div>
+                  </div>
+
+                  <div class="preview-metrics">
+                    <div class="metric-card primary-metric">
+                      <span class="metric-label">Calorias</span>
+                      <span class="metric-value">520</span>
+                    </div>
+                    <div class="metric-card accent-metric">
+                      <span class="metric-label">Ritmo</span>
+                      <span class="metric-value">5:10</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner></mat-spinner>
+    <p>Cargando configuracion...</p>
+  </div>
+</div>

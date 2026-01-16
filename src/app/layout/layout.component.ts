@@ -6,6 +6,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService, UserProfile } from '../services/auth.service';
 
 @Component({
@@ -18,7 +19,8 @@ import { AuthService, UserProfile } from '../services/auth.service';
     MatToolbarModule,
     MatListModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
+    MatDividerModule
   ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.scss']
@@ -51,6 +53,16 @@ export class LayoutComponent implements OnInit {
       return [first, last].filter(Boolean).join(' ');
     }
     return this.user.email?.split('@')[0] || 'Usuario';
+  }
+
+  /**
+   * Purpose: expose independent tenant flag for navigation visibility checks.
+   * Input: none. Output: boolean.
+   * Error handling: uses AuthService helper fallback for missing companyId.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get isIndependentTenant(): boolean {
+    return this.authService.isIndependentTenant();
   }
 
   login() {

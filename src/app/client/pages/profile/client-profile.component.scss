@@ -1,0 +1,105 @@
+/* Purpose: Styling for client profile view. Inputs: local --c-* tokens. Error-handling: N/A. Standards Check: SRP OK | DRY OK | Tests Pending. */
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--c-text);
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--c-muted);
+  }
+}
+
+.profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+  color: var(--c-muted);
+}
+
+.client-card {
+  border-radius: 8px;
+  border: 1px solid var(--c-border);
+  background-color: var(--c-surface);
+  box-shadow: var(--c-shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 80%;
+}
+
+.profile-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-muted);
+}
+
+.profile-value {
+  font-size: 15px;
+  color: var(--c-text);
+  word-break: break-word;
+}
+
+.injury-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.client-chip {
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+  background-color: var(--c-surface-2);
+  color: var(--c-text);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.profile-empty {
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px dashed var(--c-border);
+  background-color: var(--c-surface-2);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  color: var(--c-muted);
+  text-align: center;
+}
+
+.profile-empty mat-icon {
+  color: var(--c-accent);
+}
+
+@media (min-width: 720px) {
+  .profile-header h1 {
+    font-size: 26px;
+  }
+}

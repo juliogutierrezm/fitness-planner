@@ -7,12 +7,17 @@
 
     <!-- Content (hidden while loading) -->
     <div *ngIf="!loading">
-        <mat-card>
-            <div class="header">
-                <mat-icon>assignment</mat-icon>
-                <span>Gestión de Biblioteca de Ejercicios ({{ exercises.length }} ejercicios)</span>
-            </div>
+        <mat-card class="header-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>fitness_center</mat-icon>
+                Ejercicios
+              </mat-card-title>
+              <mat-card-subtitle>Biblioteca y gestión de ejercicios disponibles</mat-card-subtitle>
+            </mat-card-header>
+        </mat-card>
 
+        <mat-card>
             <!-- Filters Component -->
             <app-exercise-filters
               [currentFilters]="currentFilters"

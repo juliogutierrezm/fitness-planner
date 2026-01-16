@@ -1,0 +1,273 @@
+/* Purpose: Styling for client session exercises view. Inputs: local --c-* tokens. Error-handling: N/A. Standards Check: SRP OK | DRY OK | Tests Pending. */
+@use '../../styles/liquid';
+
+.session-exercises-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--c-text);
+}
+
+.session-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nav-back {
+  border: 1px solid color-mix(in srgb, var(--c-muted) 35%, transparent);
+  background-color: var(--c-surface);
+  color: var(--c-text);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-back:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nav-back:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.session-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.session-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.session-count {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.session-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+  color: var(--c-muted);
+}
+
+.session-exercises-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exercise-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+  max-width: 85%;
+}
+
+.exercise-card:not(.liquid-card) {
+  border-radius: 12px;
+  background-color: var(--c-surface);
+  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
+}
+
+.exercise-card:active {
+  transform: scale(0.99);
+}
+
+.exercise-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background-color: var(--c-surface-2);
+  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-muted);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.exercise-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.exercise-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise-name {
+  margin: 0;
+  color: var(--c-text);
+}
+
+.exercise-program {
+  margin: 0;
+}
+
+.exercise-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.exercise-tag {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: var(--c-surface-2);
+  color: var(--c-muted);
+  border: 1px solid color-mix(in srgb, var(--c-muted) 35%, transparent);
+}
+
+.exercise-chevron {
+  color: var(--c-muted);
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  width: 85%;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 25%, var(--c-muted) 15%);
+  background: color-mix(in srgb, var(--c-surface) 70%, var(--c-surface-2) 30%);
+}
+
+.group-card:not(.liquid-card) {
+  background-color: var(--c-surface);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--c-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 45%, transparent);
+  color: var(--c-text);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.group-name {
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.child-card {
+  max-width: 100%;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--c-muted) 30%, transparent);
+  background-color: var(--c-surface);
+}
+
+.child-card .exercise-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.child-card .exercise-name {
+  font-size: 14px;
+}
+
+.child-card .exercise-program {
+  font-size: 12px;
+}
+
+.child-card .exercise-chevron {
+  font-size: 18px;
+}
+
+
+.session-empty,
+.session-missing {
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--c-muted) 35%, transparent);
+  background-color: var(--c-surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-muted);
+  text-align: center;
+}
+
+.session-empty mat-icon,
+.session-missing mat-icon {
+  color: var(--c-accent);
+}
+
+.client-button {
+  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--c-muted) 35%, transparent);
+  background-color: var(--c-surface);
+  color: var(--c-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.client-button:hover {
+  background-color: var(--c-surface-2);
+  border-color: color-mix(in srgb, var(--c-muted) 55%, transparent);
+}
+
+.client-button:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 720px) {
+  .session-title {
+    font-size: 26px;
+  }
+}

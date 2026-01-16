@@ -4,7 +4,7 @@ import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { WorkoutPlanViewComponent } from '../workout-plan-view/workout-plan-view.component';
+import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-view.component';
 
 @Component({
   selector: 'app-plan-preview-dialog',

@@ -7,6 +7,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import { catchError, finalize, takeUntil } from 'rxjs/operators';
 import { ClientDataService, WorkoutPlan } from '../../services/client-data.service';
+import { sortPlansByCreatedAt } from '../../../shared/shared-utils';
 
 /**
  * Purpose: Render the client plans list view with real data.
@@ -115,7 +116,7 @@ export class ClientPlansComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe(plans => {
-        this.plans = plans ?? [];
+        this.plans = sortPlansByCreatedAt(plans ?? []);
         this.cdr.markForCheck();
       });
   }

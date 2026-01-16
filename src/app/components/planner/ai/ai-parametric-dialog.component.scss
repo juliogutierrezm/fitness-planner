@@ -290,6 +290,21 @@
   }
 }
 
+
+.form-footer {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 .session-config-row {
   flex-wrap: wrap;
   align-items: flex-start;
@@ -349,6 +364,7 @@
 
 .preference-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
 
@@ -474,7 +490,7 @@
 }
 
 .notes-field {
-  width: 100%;
+  width: 70%;
 
   textarea {
     resize: vertical;

@@ -48,6 +48,8 @@ export interface WorkoutPlan {
   sessions?: WorkoutSession[];
   trainerName?: string;
   progressions?: PlanProgressions | null;
+  createdAt?: string;
+  created_at?: string;
 }
 
 

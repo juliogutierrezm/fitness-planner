@@ -10,7 +10,7 @@
   </mat-card>
 
   <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
-    <button mat-raised-button color="primary" (click)="showCreateForm = true">
+    <button mat-fab extended color="primary" (click)="showCreateForm = true">
       <mat-icon>add</mat-icon>
       Crear nuevo {{ isTrainerView ? 'entrenador' : 'cliente' }}
     </button>
@@ -38,19 +38,19 @@
             Los apellidos son obligatorios
           </mat-error>
         </mat-form-field>
-        <!-- Campo Tel‚fono -->
+        <!-- Campo Teléfono -->
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Tel‚fono</mat-label>
+          <mat-label>Teléfono</mat-label>
           <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
         </mat-form-field>
-        <!-- Campo G‚nero -->
+        <!-- Campo Género -->
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>G‚nero</mat-label>
+          <mat-label>Género</mat-label>
           <mat-select formControlName="gender">
             <mat-option value="Masculino">Masculino</mat-option>
             <mat-option value="Femenino">Femenino</mat-option>
-            <mat-option value="Otro">Otro</mat-option>
-            <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
+<!--             <mat-option value="Otro">Otro</mat-option>
+            <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option> -->
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline">
@@ -77,8 +77,11 @@
         </mat-form-field>
       </div>
       <div class="actions">
-        <button mat-stroked-button type="button" (click)="showCreateForm = false">Cancelar</button>
-        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || isSaving">Guardar</button>
+        <button mat-fab extended type="button" (click)="showCreateForm = false">Cancelar</button>
+        <button mat-fab extended color="primary" type="submit" [disabled]="form.invalid || isSaving">
+        <mat-icon>how_to_reg</mat-icon>
+          Guardar
+        </button>
       </div>
     </form>
   </mat-card>
@@ -118,18 +121,18 @@
           </div>
         </div>
         <div class="row-actions">
-          <a *ngIf="isClientView" matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
-            <mat-icon>open_in_new</mat-icon>
+          <a *ngIf="isClientView" matTooltip="Ver planes"  mat-fab [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
+            <mat-icon>library_books</mat-icon>
           </a>
-          <button *ngIf="isClientView && isAdmin && !isIndependentTenant" mat-icon-button (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
+          
+          <button *ngIf="isClientView && isAdmin && !isIndependentTenant"  mat-fab (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
             <mat-icon>person_add</mat-icon>
           </button>
-          <button mat-icon-button (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
+          <button  mat-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
             <mat-icon>edit</mat-icon>
           </button>
-          <button matTooltip="Eliminar usuario" mat-icon-button color="warn" (click)="remove(u)" aria-label="Eliminar">
+          <button matTooltip="Eliminar usuario" mat-fab color="warn" (click)="remove(u)" aria-label="Eliminar">
             <mat-icon>delete</mat-icon>
-
           </button>
         </div>
       </ng-container>
@@ -154,14 +157,14 @@
               Los apellidos son obligatorios
             </mat-error>
           </mat-form-field>
-          <!-- Campo Tel‚fono -->
+          <!-- Campo Teléfono -->
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Tel‚fono</mat-label>
+            <mat-label>Teléfono</mat-label>
             <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
           </mat-form-field>
-          <!-- Campo G‚nero -->
+          <!-- Campo Género -->
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>G‚nero</mat-label>
+            <mat-label>Género</mat-label>
             <mat-select formControlName="gender">
               <mat-option value="Masculino">Masculino</mat-option>
               <mat-option value="Femenino">Femenino</mat-option>
@@ -182,7 +185,7 @@
             <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Lesiones o limitaciones</mat-label>
-              <textarea matInput formControlName="injuries" rows="2" placeholder="Describe cualquier lesi¢n, limitaci¢n f¡sica o condici¢n m‚dica relevante"></textarea>
+              <textarea matInput formControlName="injuries" rows="2" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
             </mat-form-field>
           </div>
           <mat-form-field appearance="outline" class="full-width">
@@ -190,8 +193,8 @@
             <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas del entrenador"></textarea>
           </mat-form-field>
           <div class="edit-actions">
-            <button mat-stroked-button type="button" (click)="cancelEdit()">Cancelar</button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="editForm.invalid || isSaving">Guardar</button>
+            <button mat-fab extended type="button" (click)="cancelEdit()">Cancelar</button>
+            <button mat-fab extended color="primary" type="submit" [disabled]="editForm.invalid || isSaving">Guardar</button>
           </div>
         </form>
       </ng-template>
@@ -216,7 +219,7 @@
         </div>
       </mat-dialog-content>
       <mat-dialog-actions>
-        <button mat-button mat-dialog-close>Cancelar</button>
+        <button mat-fab extended mat-dialog-close>Cancelar</button>
       </mat-dialog-actions>
     </ng-template>
   </ng-container>

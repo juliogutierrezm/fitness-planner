@@ -5,7 +5,7 @@
   </div>
   <p class="message">{{ data.message || '¿Estás seguro de continuar?' }}</p>
   <div class="actions">
-    <button mat-stroked-button (click)="close(false)">{{ data.cancelLabel || 'Cancelar' }}</button>
+    <button mat-fab extended (click)="close(false)">{{ data.cancelLabel || 'Cancelar' }}</button>
     <button mat-flat-button color="warn" (click)="close(true)">{{ data.confirmLabel || 'Eliminar' }}</button>
   </div>
 </div>

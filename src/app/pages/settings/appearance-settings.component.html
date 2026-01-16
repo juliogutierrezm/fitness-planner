@@ -11,7 +11,7 @@
   </mat-card>
   <div class="action-buttons" *ngIf="!isLoading">
     <button
-      mat-raised-button
+      mat-fab extended
       color="primary"
       (click)="saveChanges()"
       [disabled]="form.invalid || isSaving"
@@ -59,7 +59,7 @@
                 style="display: none"
               >
               <button
-                mat-raised-button
+                mat-fab extended
                 type="button"
                 (click)="logoInput.click()"
                 color="primary"

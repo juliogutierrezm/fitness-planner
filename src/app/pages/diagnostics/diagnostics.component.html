@@ -45,11 +45,11 @@
       <div class="section">
         <h3><mat-icon>api</mat-icon> API Tests</h3>
         <div class="button-group">
-          <button mat-raised-button color="primary" (click)="callExerciseApi()" [disabled]="loading">
+          <button mat-fab extended color="primary" (click)="callExerciseApi()" [disabled]="loading">
             <mat-icon>fitness_center</mat-icon>
             Call /exercise
           </button>
-          <button mat-raised-button color="accent" (click)="callWorkoutPlansApi()" [disabled]="loading">
+          <button mat-fab extended color="accent" (click)="callWorkoutPlansApi()" [disabled]="loading">
             <mat-icon>library_books</mat-icon>
             Call /workoutPlans
           </button>

@@ -52,17 +52,40 @@
           Datos Generales
         </h3>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Nivel de Experiencia</mat-label>
-            <mat-select formControlName="difficulty">
-              <mat-option *ngFor="let option of difficultyOptions" [value]="option.value">
-                {{ option.desc }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecciona tu nivel actual de entrenamiento</mat-hint>
-          </mat-form-field>
+        <div class="experience-field">
+          <div class="experience-header">
+            <div class="experience-title">
+              <mat-icon>military_tech</mat-icon>
+              <span>Nivel de Experiencia</span>
+            </div>
+            <p class="experience-subtitle">Define el nivel de exigencia y los ejercicios disponibles para la IA.</p>
+          </div>
 
+          <div class="experience-help">
+            <mat-icon class="help-icon">info</mat-icon>
+            <span>El nivel determina que ejercicios puede usar la IA. Si hay duda entre dos niveles, elige siempre el mas bajo.</span>
+          </div>
+
+          <mat-radio-group formControlName="difficulty" class="level-selector" aria-label="Nivel de experiencia">
+            <mat-radio-button
+              *ngFor="let option of difficultyOptions"
+              [value]="option.value"
+              class="level-card">
+              <div class="level-card-content">
+                <div class="level-card-header">
+                  <span class="level-card-assignment"> {{ option.value }}</span>
+                </div>
+                <p class="level-card-purpose">{{ option.purpose }}</p>
+                <ul class="level-card-criteria">
+                  <li *ngFor="let criterion of option.criteria">{{ criterion }}</li>
+                </ul>
+                <p class="level-card-action">{{ option.nextAction }}</p>
+              </div>
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+
+        <div class="form-row">
           <mat-form-field appearance="outline" class="form-field">
             <mat-label>Objetivo Principal</mat-label>
             <mat-select formControlName="trainingGoal">
@@ -70,64 +93,61 @@
                 {{ option.desc }}
               </mat-option>
             </mat-select>
-            <mat-hint>¿Qué quieres lograr con tu entrenamiento?</mat-hint>
+            <mat-hint>Que quieres lograr con tu entrenamiento?</mat-hint>
           </mat-form-field>
         </div>
       </div>
 
-      <!-- Availability Section -->
+      <!-- Session Configuration Section -->
       <div class="form-section">
         <h3 class="section-title">
-          <mat-icon>schedule</mat-icon>
-          Disponibilidad
+          <mat-icon>tune</mat-icon>
+          Configuracion de Sesiones
         </h3>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Duración por sesión (minutos)</mat-label>
+        <div class="form-row session-config-row">
+          <mat-form-field appearance="outline" class="form-field compact-field">
+            <mat-label>Duracion por sesion (minutos)</mat-label>
             <input matInput type="number" formControlName="sessionDuration" min="30" max="180" step="15">
-            <mat-hint>Tiempo disponible por sesión de entrenamiento (30-180 min)</mat-hint>
+            <mat-hint>Tiempo disponible por sesion (30-180 min)</mat-hint>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Número esperado de ejercicios por sesión</mat-label>
+          <mat-form-field appearance="outline" class="form-field compact-field">
+            <mat-label>Ejercicios esperados por sesion</mat-label>
             <input matInput type="number" formControlName="expectedExercisesPerSession" min="4" max="20">
-            <mat-hint>4-20 ejercicios (influencia complejidad del plan)</mat-hint>
+            <mat-hint>4-20 ejercicios por sesion</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="form-field compact-field">
+            <mat-label>Total de sesiones</mat-label>
+            <input matInput type="number" formControlName="totalSessions" min="1" max="8" step="1">
+            <mat-hint>Numero de sesiones en el plan (1-8)</mat-hint>
           </mat-form-field>
         </div>
-      </div>
 
-      <!-- Preferences Section -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>filter_list</mat-icon>
-          Filtros
-        </h3>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field equipment-field">
+        <div class="form-row session-config-row">
+          <mat-form-field appearance="outline" class="form-field equipment-field compact-field">
             <mat-label>Equipo disponible</mat-label>
             <mat-select formControlName="availableEquipment" multiple>
               <mat-option *ngFor="let equipment of equipmentOptions" [value]="equipment">
                 {{ equipment }}
               </mat-option>
             </mat-select>
-            <mat-hint>Selecciona todo el equipo que tienes disponible</mat-hint>
+            <mat-hint>Selecciona el equipo disponible</mat-hint>
           </mat-form-field>
-        </div>
 
-        <div class="form-row preferences-row">
-          <mat-checkbox formControlName="includeSupersets" class="supersets-checkbox">
-            Incluir superseries
-          </mat-checkbox>
-          <span class="checkbox-hint">Optimiza el tiempo combinando ejercicios</span>
-        </div>
-
-        <div class="form-row preferences-row">
-          <mat-checkbox formControlName="includeMobility" class="mobility-checkbox">
-            Incluir ejercicios de movilidad
-          </mat-checkbox>
-          <span class="checkbox-hint">Mejora flexibilidad y preparación articular</span>
+          <div class="session-preferences">
+            <div class="preference-item">
+              <mat-checkbox formControlName="includeSupersets" class="supersets-checkbox">
+                Incluir superseries
+              </mat-checkbox>
+            </div>
+            <div class="preference-item">
+              <mat-checkbox formControlName="includeMobility" class="mobility-checkbox">
+                Incluir ejercicios de movilidad
+              </mat-checkbox>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -135,26 +155,19 @@
       <div class="form-section">
         <h3 class="section-title">
           <mat-icon>view_list</mat-icon>
-          Configuración de Sesiones
+          Estructura de Sesiones
         </h3>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Número de sesiones</mat-label>
-            <input matInput type="number" formControlName="totalSessions" min="1" max="8" step="1">
-            <mat-hint>¿Cuántas sesiones quieres en tu plan? (1-8)</mat-hint>
-          </mat-form-field>
-        </div>
-
-        <p class="subsection-hint">Asigna nombre y grupos musculares a cada sesión de entrenamiento. El cardio se puede seleccionar como un grupo muscular más.</p>
+        <p class="subsection-hint">Asigna grupos musculares a cada sesion de entrenamiento. El cardio se puede seleccionar como un grupo muscular adicional.</p>
 
         <div class="custom-structure-section">
           <div class="custom-days-container">
             <div *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index" class="custom-day-item">
               <div class="session-controls">
                 <mat-form-field appearance="outline" class="session-name-field">
-                  <mat-label>Nombre de la sesión {{ i + 1 }}</mat-label>
-                  <input matInput [formControl]="getSessionNameControl(i)">
+                  <mat-label>Sesion {{ i + 1 }}</mat-label>
+                  <input matInput [formControl]="getSessionNameControl(i)" readonly>
+                  <mat-hint>Nombre generado automaticamente</mat-hint>
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="day-field">
                   <mat-label>Grupo muscular o tipo de ejercicio</mat-label>

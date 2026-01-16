@@ -13,7 +13,7 @@
         <mat-icon>view_list</mat-icon>
         <span>Plantillas</span>
       </a>
-      <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin'">
+      <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin' && !isIndependentTenant">
         <mat-icon>sports</mat-icon>
         <span>Entrenadores</span>
       </a>

@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserRole } from '../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -50,7 +50,7 @@ export class CallbackComponent implements OnInit {
 
       // Evaluate synchronously after state refresh to avoid initial false emission
       if (this.authService.isAuthenticatedSync()) {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate([this.resolvePostLoginRoute()]);
       } else {
         this.error = 'No se pudo completar la autenticación.';
       }
@@ -62,5 +62,19 @@ export class CallbackComponent implements OnInit {
 
   retryLogin() {
     this.authService.signInWithRedirect();
+  }
+
+  /**
+   * Purpose: select a post-login route based on the current user role.
+   * Input: none. Output: route path string.
+   * Error handling: defaults to admin/trainer dashboard when role is unknown.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private resolvePostLoginRoute(): string {
+    const role = this.authService.getCurrentUserRole();
+    if (role === UserRole.CLIENT) {
+      return '/client/plans';
+    }
+    return '/dashboard';
   }
 }

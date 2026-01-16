@@ -1,1 +1,3 @@
-<app-users contextRole="trainer"></app-users>
+<ng-container *ngIf="(authService.currentUser$ | async) as user">
+  <app-users *ngIf="!isIndependentTenant(user?.companyId)" contextRole="trainer"></app-users>
+</ng-container>

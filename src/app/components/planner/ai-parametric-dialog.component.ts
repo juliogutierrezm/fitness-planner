@@ -50,10 +50,44 @@ export class AiParametricDialogComponent implements OnInit {
 
 
 
+  // Purpose: provide trainer-facing experience level definitions for AI filtering.
+  // Input/Output: static config consumed by the template for display and selection.
+  // Error handling: not applicable (static data).
+  // Standards Check: SRP OK | DRY OK | Tests Pending
   difficultyOptions = [
-    { value: 'Principiante', label: 'Principiante', desc: 'Nuevo en el entrenamiento' },
-    { value: 'Intermedio', label: 'Intermedio', desc: '6-12 meses de experiencia' },
-    { value: 'Avanzado', label: 'Avanzado', desc: 'Más de 3 años' },
+    {
+      value: 'Principiante',
+      title: 'Principiante',
+      purpose: 'Finalidad: proteger al usuario y asegurar una progresion segura con ejercicios basicos y controlados.',
+      criteria: [
+        '0-12 meses de entrenamiento regular.',
+        'Aun aprende la tecnica de movimientos basicos.',
+        'Requiere supervision frecuente y evita ejercicios complejos.'
+      ],
+      nextAction: 'Siguiente accion: priorizar tecnica, ejercicios guiados y volumen moderado.'
+    },
+    {
+      value: 'Intermedio',
+      title: 'Intermedio',
+      purpose: 'Finalidad: permitir variedad, progresion y estimulos mas exigentes sin comprometer la seguridad.',
+      criteria: [
+        'Mas de 12 meses entrenando de forma continua.',
+        'Ejecuta correctamente la mayoria de los ejercicios comunes.',
+        'Tolera mayor volumen e intensidad con supervision ocasional.'
+      ],
+      nextAction: 'Siguiente accion: introducir variaciones, superseries y progresiones controladas.'
+    },
+    {
+      value: 'Avanzado',
+      title: 'Avanzado',
+      purpose: 'Finalidad: exponer al usuario a ejercicios complejos y estimulos de alta exigencia de forma segura.',
+      criteria: [
+        '2-3 anos o mas de entrenamiento constante.',
+        'Tecnica solida y consistente.',
+        'Entrena de forma autonoma y maneja ejercicios complejos o de alta intensidad.'
+      ],
+      nextAction: 'Siguiente accion: ampliar variedad con ejercicios complejos y alta intensidad.'
+    }
   ];
 
   trainingGoalOptions = [
@@ -137,28 +171,33 @@ export class AiParametricDialogComponent implements OnInit {
     // Initialize session blueprint
     this.updateSessionBlueprint();
   }
-  
 
-
+  // Purpose: rebuild session blueprint while preserving existing muscle selections.
+  // Input/Output: reads totalSessions + current FormArray values, writes updated FormArray.
+  // Error handling: defaults to empty targets when prior values are missing.
+  // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    const existingValues = sessionBlueprintArray.controls.map((control) => ({
+      targets: Array.isArray(control.get('targets')?.value)
+        ? [...(control.get('targets')?.value as string[])]
+        : []
+    }));
 
-    // Clear existing controls
+    const totalSessions = this.form.get('totalSessions')?.value || 4;
+
     while (sessionBlueprintArray.length > 0) {
       sessionBlueprintArray.removeAt(0);
     }
 
-    const totalSessions = this.form.get('totalSessions')?.value || 4;
-    for (let i = 1; i <= totalSessions; i++) {
+    for (let i = 0; i < totalSessions; i++) {
+      const existingTargets = existingValues[i]?.targets ?? [];
       sessionBlueprintArray.push(this.fb.group({
-        name: [`Sesión ${i}`, Validators.required],
-        targets: [[], Validators.required]
+        name: [`Sesion ${i + 1}`, Validators.required],
+        targets: [existingTargets, Validators.required]
       }));
     }
-    //this.getWorkoutPlanFromAI();
   }
-
-
 
   getSessionBlueprintControls(): FormGroup[] {
     return (this.form.get('sessionBlueprint') as FormArray).controls as FormGroup[];

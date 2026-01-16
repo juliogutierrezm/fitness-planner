@@ -1,4 +1,4 @@
-<div class="users-page">
+<div class="users-page" *ngIf="showTrainerManagement">
   <mat-card class="header-card">
     <mat-card-header>
       <mat-card-title>
@@ -108,7 +108,7 @@
               <span class="meta-item">Planes: {{ getTrainerPlanCount(u) }}</span>
             </ng-container>
           </div>
-          <div class="trainer-info" *ngIf="isClientView && isAdmin">
+          <div class="trainer-info" *ngIf="isClientView && isAdmin && !isIndependentTenant">
             <span class="trainer-label">Entrenador:</span>
             <span class="trainer-value">{{ getTrainerName(u) }}</span>
           </div>
@@ -121,7 +121,7 @@
           <a *ngIf="isClientView" matTooltip="Ver planes" mat-icon-button [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
             <mat-icon>open_in_new</mat-icon>
           </a>
-          <button *ngIf="isClientView && isAdmin" mat-icon-button (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
+          <button *ngIf="isClientView && isAdmin && !isIndependentTenant" mat-icon-button (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
             <mat-icon>person_add</mat-icon>
           </button>
           <button mat-icon-button (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
@@ -200,22 +200,24 @@
   </mat-card>
 
   <!-- Trainer Assignment Dialog -->
-  <ng-template #trainerSelectDialog>
-    <h2 mat-dialog-title>Asignar Entrenador</h2>
-    <mat-dialog-content>
-      <p>Selecciona un entrenador para <strong>{{ selectedClientForAssignment?.givenName }} {{ selectedClientForAssignment?.familyName }}</strong>:</p>
-      <mat-selection-list>
-        <mat-list-option *ngFor="let trainer of getAvailableTrainers()" [value]="trainer" (click)="confirmAssignTrainer(trainer)">
-          {{ trainer.givenName || '' }} {{ trainer.familyName || '' }} ({{ trainer.email }})
-        </mat-list-option>
-      </mat-selection-list>
-      <div *ngIf="isAssigningTrainer" class="loading-container" role="status" aria-live="polite" aria-busy="true">
-        <mat-spinner diameter="30"></mat-spinner>
-        <span>Asignando...</span>
-      </div>
-    </mat-dialog-content>
-    <mat-dialog-actions>
-      <button mat-button mat-dialog-close>Cancelar</button>
-    </mat-dialog-actions>
-  </ng-template>
+  <ng-container *ngIf="!isIndependentTenant">
+    <ng-template #trainerSelectDialog>
+      <h2 mat-dialog-title>Asignar Entrenador</h2>
+      <mat-dialog-content>
+        <p>Selecciona un entrenador para <strong>{{ selectedClientForAssignment?.givenName }} {{ selectedClientForAssignment?.familyName }}</strong>:</p>
+        <mat-selection-list>
+          <mat-list-option *ngFor="let trainer of getAvailableTrainers()" [value]="trainer" (click)="confirmAssignTrainer(trainer)">
+            {{ trainer.givenName || '' }} {{ trainer.familyName || '' }} ({{ trainer.email }})
+          </mat-list-option>
+        </mat-selection-list>
+        <div *ngIf="isAssigningTrainer" class="loading-container" role="status" aria-live="polite" aria-busy="true">
+          <mat-spinner diameter="30"></mat-spinner>
+          <span>Asignando...</span>
+        </div>
+      </mat-dialog-content>
+      <mat-dialog-actions>
+        <button mat-button mat-dialog-close>Cancelar</button>
+      </mat-dialog-actions>
+    </ng-template>
+  </ng-container>
 </div>

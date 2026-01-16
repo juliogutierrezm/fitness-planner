@@ -66,72 +66,133 @@
   </div>
 
   <form [formGroup]="form" class="planner-header">
-    <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name">
-      <mat-label>Nombre de plantilla</mat-label>
-      <input
-        matInput
-        formControlName="templateName"
-        placeholder="Ej: Fuerza base"
-        required
-      />
-      <mat-error *ngIf="form.get('templateName')!.hasError('required')">
-        El nombre de la plantilla es obligatorio.
-      </mat-error>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="field-objective">
-      <mat-label>Objetivo</mat-label>
-      <textarea
-        matInput
-        formControlName="objective"
-        placeholder="Describe el objetivo del cliente (ej: ganar masa muscular, perder peso, mejorar resistencia...)"
-        rows="2"
-      ></textarea>
-    </mat-form-field>
-
-    <!-- ➤ Nuevo campo para las notas generales -->
-    <mat-form-field appearance="outline" class="field-notes">
-      <mat-label>Notas generales</mat-label>
-      <textarea
-        matInput
-        formControlName="notes"
-        placeholder="Descripción, objetivos o comentarios para todo el plan"
-        rows="2"
-      ></textarea>
-    </mat-form-field>
-
-    <div class="narrow-fields">
-      <mat-form-field appearance="outline" class="field-date">
-        <mat-label>Inicio del plan</mat-label>
-        <input matInput [matDatepicker]="planDatePicker" formControlName="date" />
-        <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
-        <mat-datepicker #planDatePicker></mat-datepicker>
+    <div class="header-group header-group-text">
+      <mat-form-field appearance="outline" class="field-objective compact-textarea">
+        <mat-label>Objetivo</mat-label>
+        <textarea
+          matInput
+          formControlName="objective"
+          placeholder="Describe el objetivo del cliente (ej: ganar masa muscular, perder peso, mejorar resistencia...)"
+          rows="1"
+        ></textarea>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="field-sessions">
-        <mat-label>Sesiones</mat-label>
-        <input matInput type="number" formControlName="sessionCount" min="1"/>
+      <!-- ? Nuevo campo para las notas generales -->
+      <mat-form-field appearance="outline" class="field-notes compact-textarea">
+        <mat-label>Notas generales</mat-label>
+        <textarea
+          matInput
+          formControlName="notes"
+          placeholder="Descripcion, objetivos o comentarios para todo el plan"
+          rows="1"
+        ></textarea>
       </mat-form-field>
+      <div class="header-meta-fields">
+        <mat-form-field appearance="outline" class="field-date compact-field">
+          <mat-label>Inicio del plan</mat-label>
+          <input matInput [matDatepicker]="planDatePicker" formControlName="date" />
+          <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
+          <mat-datepicker #planDatePicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="field-sessions compact-field">
+          <mat-label>Sesiones</mat-label>
+          <input matInput type="number" formControlName="sessionCount" min="1"/>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="header-group header-group-meta">
+      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
+        <mat-label>Nombre de plantilla</mat-label>
+        <input
+          matInput
+          formControlName="templateName"
+          placeholder="Ej: Fuerza base"
+          required
+        />
+        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
+          El nombre de la plantilla es obligatorio.
+        </mat-error>
+      </mat-form-field>
+
+
     </div>
   </form>
+
+  <mat-expansion-panel class="progressions-panel">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Progresion semanal (guia)</mat-panel-title>
+      <mat-panel-description>
+        <mat-checkbox
+          class="progressions-toggle"
+          [checked]="progressions.showProgressions"
+          (change)="onProgressionsToggle($event.checked)"
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        >
+          Mostrar progresiones al cliente
+        </mat-checkbox>
+      </mat-panel-description>
+    </mat-expansion-panel-header>
+
+    <ng-template matExpansionPanelContent>
+      <div class="progressions-body">
+        <div class="progressions-controls">
+          <mat-form-field appearance="outline" class="compact-field progressions-total">
+            <mat-label>Total de semanas</mat-label>
+            <input
+              matInput
+              type="number"
+              min="1"
+              [(ngModel)]="progressions.totalWeeks"
+              (ngModelChange)="onTotalWeeksChange($event)"
+            />
+          </mat-form-field>
+          <span class="progressions-hint">Guia textual semanal (no afecta el plan base).</span>
+        </div>
+
+        <div class="progressions-weeks">
+          <div class="progression-week" *ngFor="let week of progressions.weeks; trackBy: trackByProgressionWeek">
+            <div class="week-header">
+              <span class="week-label">Semana {{ week.week }}</span>
+              <mat-form-field appearance="outline" class="compact-field week-title">
+                <mat-label>Titulo (opcional)</mat-label>
+                <input matInput [(ngModel)]="week.title" [placeholder]="getProgressionTitlePlaceholder(week.week)" />
+              </mat-form-field>
+            </div>
+            <mat-form-field appearance="outline" class="week-note compact-textarea">
+              <mat-label>Nota</mat-label>
+              <textarea
+                matInput
+                rows="2"
+                [(ngModel)]="week.note"
+                [placeholder]="getProgressionNotePlaceholder(week.week)"
+              ></textarea>
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </mat-expansion-panel>
 
   <!-- Filtros -->
   <div class="filters-section">
     <div class="filters-header">
       <h3 class="filters-title">Filtro de ejercicios</h3>
-      <button mat-raised-button color="primary" class="clear-filters" (click)="clearFilters()">
+      <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
         <mat-icon>filter_alt_off</mat-icon>
         Limpiar filtros
       </button>
     </div>
     <div class="filters-row">
-      <mat-form-field appearance="outline" class="search-field">
+      <mat-form-field appearance="outline" class="search-field compact-field">
         <mat-label>Buscar por nombre</mat-label>
         <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Categoría</mat-label>
         <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todas</mat-option>
@@ -139,7 +200,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Grupo Muscular</mat-label>
         <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
@@ -147,19 +208,13 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Tipo de Equipo</mat-label>
         <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
           <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
         </mat-select>
       </mat-form-field>
-
-      <div class="functional-filter">
-        <mat-checkbox [(ngModel)]="currentFilters.functionalOnly" (change)="onFilterChange()">
-          Solo funcionales
-        </mat-checkbox>
-      </div>
     </div>
   </div>
 

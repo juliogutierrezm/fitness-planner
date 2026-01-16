@@ -32,7 +32,7 @@ export interface Exercise {
   s3_key?: string;
 }
 
-export interface PlanItem {
+export interface PlanItem extends Partial<Exercise> {
   id: string;
   name: string;
   name_es?: string;
@@ -68,16 +68,22 @@ export interface Session {
 /* ---------- Plan completo ---------- */
 export interface WorkoutPlan {
   id: string;
+  planId?: string;
   name: string;
   date: string;
   sessions: Session[];
 
   generalNotes?: string;
   objective?: string;
+  userId?: string;
   companyId?: string;
   trainerId?: string;
   isTemplate?: boolean;
   templateName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /* ---------- AI Plan Generation ---------- */

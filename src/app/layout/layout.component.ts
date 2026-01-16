@@ -55,6 +55,16 @@ export class LayoutComponent implements OnInit {
     return this.user.email?.split('@')[0] || 'Usuario';
   }
 
+  /**
+   * Purpose: expose independent tenant flag for navigation visibility checks.
+   * Input: none. Output: boolean.
+   * Error handling: uses AuthService helper fallback for missing companyId.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get isIndependentTenant(): boolean {
+    return this.authService.isIndependentTenant();
+  }
+
   login() {
     this.authService.signInWithRedirect();
   }

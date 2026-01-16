@@ -1,7 +1,81 @@
-import { PlanItem, Session } from './models';
+import { Exercise, PlanItem, Session } from './models';
 
 const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
 const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
+const MEDIA_FIELDS = ['youtube_url', 'preview_url', 'thumbnail', 'gif_url'];
+const SESSION_FIELD_KEYS = new Set<string>([
+  'sets',
+  'reps',
+  'rest',
+  'weight',
+  'rpe',
+  'notes',
+  'selected',
+  'isGroup',
+  'children',
+  'isGroupHeader',
+  'isChild',
+  'groupId'
+]);
+
+function hasExerciseName(item: PlanItem): boolean {
+  const name = item?.name_es?.trim() || item?.name?.trim();
+  return Boolean(name);
+}
+
+function hasExerciseMedia(item: PlanItem): boolean {
+  return MEDIA_FIELDS.some(field => {
+    const value = (item as PlanItem & Record<string, unknown>)[field];
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    return Boolean(value);
+  });
+}
+
+/**
+ * Purpose: check whether a plan item is missing minimum exercise information.
+ * Input: PlanItem. Output: boolean.
+ * Error handling: returns false for group items and invalid inputs.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function isPlanItemMissingMinimumInfo(item: PlanItem | null | undefined): boolean {
+  if (!item || item.isGroup) return false;
+  const hasName = hasExerciseName(item);
+  const hasMedia = hasExerciseMedia(item);
+  return !hasName || !hasMedia;
+}
+
+/**
+ * Purpose: collect plan items that are missing minimum exercise info.
+ * Input: sessions array. Output: list of incomplete items.
+ * Error handling: returns empty list for invalid sessions.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function findIncompletePlanItems(sessions: Session[]): PlanItem[] {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  const incomplete: PlanItem[] = [];
+
+  const collect = (items: PlanItem[]) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (!item) continue;
+      if (item.isGroup && Array.isArray(item.children)) {
+        collect(item.children);
+        continue;
+      }
+      if (isPlanItemMissingMinimumInfo(item)) {
+        incomplete.push(item);
+      }
+    }
+  };
+
+  for (const session of safeSessions) {
+    collect(session?.items || []);
+  }
+
+  return incomplete;
+}
 
 /**
  * Purpose: determine gym mode based on the tenant companyId claim.
@@ -12,6 +86,17 @@ const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
 export function isGymMode(companyId?: string | null): boolean {
   const normalized = companyId || 'INDEPENDENT';
   return normalized !== 'INDEPENDENT';
+}
+
+/**
+ * Purpose: determine independent tenant mode based on the tenant companyId claim.
+ * Input: companyId string | null | undefined. Output: boolean.
+ * Error handling: treats missing companyId as INDEPENDENT fallback.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function isIndependentTenant(companyId?: string | null): boolean {
+  const normalized = companyId || 'INDEPENDENT';
+  return normalized === 'INDEPENDENT';
 }
 
 /**
@@ -88,6 +173,40 @@ export function getPlanItemDisplayName(item: PlanItem): string {
   return item?.name_es?.trim() || NAME_UNDEFINED_LABEL;
 }
 
+function isMeaningfulValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+function mergeExerciseWithSession(base: Exercise, item: PlanItem): PlanItem {
+  const merged: PlanItem & Record<string, unknown> = {
+    ...base,
+    id: base.id,
+    name: item?.name?.trim() || base.name || base.name_es || NAME_UNDEFINED_LABEL,
+    name_es: item?.name_es || base.name_es,
+    sets: item?.sets ?? 0,
+    reps: item?.reps ?? 0,
+    rest: item?.rest ?? 0,
+    isGroup: item?.isGroup ?? false
+  };
+
+  Object.entries(item || {}).forEach(([key, value]) => {
+    if (key === 'exerciseId') return;
+    if (SESSION_FIELD_KEYS.has(key)) {
+      if (value !== undefined) {
+        merged[key] = value;
+      }
+      return;
+    }
+    if (!isMeaningfulValue(value)) return;
+    merged[key] = value;
+  });
+
+  merged.id = base.id;
+  return merged;
+}
+
 /**
  * Purpose: normalize plan items for rendering by ensuring groups contain normalized children arrays.
  * Input: PlanItem array. Output: normalized PlanItem array.
@@ -114,6 +233,77 @@ export function normalizePlanSessionsForRender(sessions: Session[]): Session[] {
     ...session,
     items: normalizePlanItemsForRender(session.items || [])
   }));
+}
+
+/**
+ * Purpose: enrich plan items with ExerciseLibrary metadata using exerciseId or missing exercise info.
+ * Input: sessions array + exercise map. Output: sessions array with enriched items.
+ * Error handling: returns original sessions when map is empty or exercise is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+export function enrichPlanSessionsFromLibrary(
+  sessions: Session[],
+  exerciseMap: Map<string, Exercise>
+): Session[] {
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  const hasCandidates = safeSessions.some(session => hasEnrichmentCandidateInItems(session?.items || []));
+  if (!hasCandidates) return safeSessions;
+  if (!exerciseMap || exerciseMap.size === 0) {
+    console.warn('[PlanEnrichment] exercise map not ready; skipping enrichment');
+    return safeSessions;
+  }
+
+  return safeSessions.map(session => ({
+    ...session,
+    items: (session.items || []).map(item => enrichPlanItemFromLibrary(item, exerciseMap))
+  }));
+}
+
+/**
+ * Purpose: enrich a single plan item or group recursively with ExerciseLibrary data.
+ * Input: PlanItem (may include exerciseId or missing exercise info) and exercise map. Output: PlanItem.
+ * Error handling: returns original item when base exercise is missing.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exercise>): PlanItem {
+  if (item?.isGroup && Array.isArray(item.children)) {
+    return {
+      ...item,
+      children: item.children.map(child => enrichPlanItemFromLibrary(child, exerciseMap))
+    };
+  }
+
+  const exerciseId = (item as PlanItem & { exerciseId?: string })?.exerciseId || item?.id;
+  const shouldEnrich = Boolean((item as PlanItem & { exerciseId?: string })?.exerciseId)
+    || isPlanItemMissingMinimumInfo(item);
+  if (exerciseId && shouldEnrich) {
+    const base = exerciseMap.get(exerciseId);
+    if (!base) {
+      console.warn('[PlanEnrichment] exercise not found:', exerciseId);
+      return item;
+    }
+
+    return mergeExerciseWithSession(base, item);
+  }
+
+  return item;
+}
+
+/**
+ * Purpose: detect if any plan items need enrichment.
+ * Input: PlanItem array. Output: boolean.
+ * Error handling: treats invalid arrays as empty.
+ * Standards Check: SRP OK | DRY OK | Tests Pending.
+ */
+function hasEnrichmentCandidateInItems(items: PlanItem[]): boolean {
+  if (!Array.isArray(items)) return false;
+  for (const item of items) {
+    if (!item) continue;
+    if ((item as PlanItem & { exerciseId?: string })?.exerciseId) return true;
+    if (item?.isGroup && hasEnrichmentCandidateInItems(item.children || [])) return true;
+    if (isPlanItemMissingMinimumInfo(item)) return true;
+  }
+  return false;
 }
 
 /**

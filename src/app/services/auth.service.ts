@@ -5,6 +5,7 @@ import { map, catchError, tap } from 'rxjs/operators';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signOut, getCurrentUser, signInWithRedirect } from 'aws-amplify/auth';
 import { awsExports } from '../../aws-exports';
+import { isIndependentTenant } from '../shared/shared-utils';
 
 // Configure Amplify
 Amplify.configure(awsExports);
@@ -155,6 +156,16 @@ export class AuthService {
 
   isClient(): boolean {
     return this.getCurrentUserRole() === UserRole.CLIENT;
+  }
+
+  /**
+   * Purpose: expose independent tenant detection for UI and guards.
+   * Input: none. Output: boolean.
+   * Error handling: treats missing companyId as INDEPENDENT fallback.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  isIndependentTenant(): boolean {
+    return isIndependentTenant(this.getCurrentCompanyId());
   }
 
   canAccessUserData(targetUserId: string): boolean {

@@ -110,25 +110,31 @@ export class AuthInterceptor implements HttpInterceptor {
 fitness-planner/
 ├── .editorconfig
 ├── .gitignore
+├── AGENT_RULES.md
 ├── angular.json
+├── APPEARANCE_SETTINGS_DOCS.md
 ├── cognito-setup.yaml
 ├── cognito-ui.css
+├── DEVELOPER..md
 ├── DOCUMENTATION.md
-├── exercise-video-flow.json
 ├── package-lock.json
 ├── package.json
 ├── proxy.conf.json
 ├── README.md
-├── scripts/
-│   └── smoke-api.mjs
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.spec.json
 ├── public/
 │   └── favicon.ico
+├── scripts/
+│   └── smoke-api.mjs
 ├── src/
 │   ├── aws-exports.ts
 │   ├── index.html
 │   ├── main.server.ts
 │   ├── main.ts
 │   ├── server.ts
+│   ├── stepFunctionExample.json
 │   ├── styles.scss
 │   ├── app/
 │   │   ├── .auth.json
@@ -143,7 +149,7 @@ fitness-planner/
 │   │   ├── exercise-api.service.ts
 │   │   ├── user-api.service.ts
 │   │   ├── assets/
-│   │   │   └── tempLogo.png
+│   │   │   ├── tempLogo.png
 │   │   │   └── TrainGrid.png
 │   │   ├── auth/
 │   │   │   ├── auth.guard.spec.ts
@@ -153,6 +159,52 @@ fitness-planner/
 │   │   │   ├── auth.service.spec.ts
 │   │   │   ├── auth.service.ts
 │   │   │   └── test-utils.ts
+│   │   ├── client/
+│   │   │   ├── client.routes.ts
+│   │   │   ├── layout/
+│   │   │   │   ├── client-layout.component.html
+│   │   │   │   ├── client-layout.component.scss
+│   │   │   │   ├── client-layout.component.spec.ts
+│   │   │   │   └── client-layout.component.ts
+│   │   │   ├── pages/
+│   │   │   │   ├── exercise-detail/
+│   │   │   │   │   ├── client-exercise-detail.component.html
+│   │   │   │   │   ├── client-exercise-detail.component.scss
+│   │   │   │   │   ├── client-exercise-detail.component.spec.ts
+│   │   │   │   │   └── client-exercise-detail.component.ts
+│   │   │   │   ├── exercise-video/
+│   │   │   │   │   ├── client-exercise-video.component.html
+│   │   │   │   │   ├── client-exercise-video.component.scss
+│   │   │   │   │   ├── client-exercise-video.component.spec.ts
+│   │   │   │   │   └── client-exercise-video.component.ts
+│   │   │   │   ├── plan-detail/
+│   │   │   │   │   ├── client-plan-detail.component.html
+│   │   │   │   │   ├── client-plan-detail.component.scss
+│   │   │   │   │   ├── client-plan-detail.component.spec.ts
+│   │   │   │   │   └── client-plan-detail.component.ts
+│   │   │   │   ├── plans/
+│   │   │   │   │   ├── client-plans.component.html
+│   │   │   │   │   ├── client-plans.component.scss
+│   │   │   │   │   ├── client-plans.component.spec.ts
+│   │   │   │   │   └── client-plans.component.ts
+│   │   │   │   ├── profile/
+│   │   │   │   │   ├── client-profile.component.html
+│   │   │   │   │   ├── client-profile.component.scss
+│   │   │   │   │   ├── client-profile.component.spec.ts
+│   │   │   │   │   └── client-profile.component.ts
+│   │   │   │   └── session-exercises/
+│   │   │   │       ├── client-session-exercises.component.html
+│   │   │   │       ├── client-session-exercises.component.scss
+│   │   │   │       ├── client-session-exercises.component.spec.ts
+│   │   │   │       └── client-session-exercises.component.ts
+│   │   │   ├── services/
+│   │   │   │   ├── client-data.service.ts
+│   │   │   │   ├── client-plans.service.spec.ts
+│   │   │   │   └── getClientDataResponse.json
+│   │   │   ├── styles/
+│   │   │   │   └── _liquid.scss
+│   │   │   └── utils/
+│   │   │       └── session-exercise.utils.ts
 │   │   ├── components/
 │   │   │   ├── callback/
 │   │   │   │   ├── callback.component.html
@@ -167,18 +219,38 @@ fitness-planner/
 │   │   │   │   ├── login.component.scss
 │   │   │   │   └── login.component.ts
 │   │   │   ├── planner/
-│   │   │   │   ├── ai-prompt-dialog.component.html
-│   │   │   │   ├── ai-prompt-dialog.component.scss
-│   │   │   │   ├── ai-prompt-dialog.component.ts
-│   │   │   │   ├── exercise-preview-dialog.component.ts
-│   │   │   │   ├── plan-preview-dialog.component.ts
+│   │   │   │   ├── ai/
+│   │   │   │   │   ├── ai-generation-dialog.component.ts
+│   │   │   │   │   ├── ai-parametric-dialog.component.html
+│   │   │   │   │   ├── ai-parametric-dialog.component.scss
+│   │   │   │   │   ├── ai-parametric-dialog.component.ts
+│   │   │   │   │   ├── ai-prompt-dialog.component.html
+│   │   │   │   │   ├── ai-prompt-dialog.component.scss
+│   │   │   │   │   └── ai-prompt-dialog.component.ts
+│   │   │   │   ├── dialogs/
+│   │   │   │   │   ├── exercise-preview-dialog.component.ts
+│   │   │   │   │   ├── plan-preview-dialog.component.ts
+│   │   │   │   │   ├── previous-plans-dialog.component.html
+│   │   │   │   │   ├── previous-plans-dialog.component.scss
+│   │   │   │   │   └── previous-plans-dialog.component.ts
+│   │   │   │   ├── models/
+│   │   │   │   │   ├── planner-column.model.ts
+│   │   │   │   │   ├── planner-exercise.model.ts
+│   │   │   │   │   ├── planner-plan.model.ts
+│   │   │   │   │   └── planner-session.model.ts
 │   │   │   │   ├── planner.component.html
 │   │   │   │   ├── planner.component.scss
 │   │   │   │   ├── planner.component.spec.ts
 │   │   │   │   ├── planner.component.ts
-│   │   │   │   ├── previous-plans-dialog.component.html
-│   │   │   │   ├── previous-plans-dialog.component.scss
-│   │   │   │   └── previous-plans-dialog.component.ts
+│   │   │   │   └── services/
+│   │   │   │       ├── planner-drag-drop.service.spec.ts
+│   │   │   │       ├── planner-drag-drop.service.ts
+│   │   │   │       ├── planner-exercise-filter.service.spec.ts
+│   │   │   │       ├── planner-exercise-filter.service.ts
+│   │   │   │       ├── planner-form.service.spec.ts
+│   │   │   │       ├── planner-form.service.ts
+│   │   │   │       ├── planner-state.service.spec.ts
+│   │   │   │       └── planner-state.service.ts
 │   │   │   ├── test/
 │   │   │   │   ├── test.component.html
 │   │   │   │   ├── test.component.scss
@@ -203,6 +275,10 @@ fitness-planner/
 │   │   │   ├── layout.component.scss
 │   │   │   └── layout.component.ts
 │   │   ├── pages/
+│   │   │   ├── clients/
+│   │   │   │   ├── clients.component.html
+│   │   │   │   ├── clients.component.scss
+│   │   │   │   └── clients.component.ts
 │   │   │   ├── dashboard/
 │   │   │   │   ├── dashboard.component.html
 │   │   │   │   ├── dashboard.component.scss
@@ -251,6 +327,10 @@ fitness-planner/
 │   │   │   │   ├── templates.component.scss
 │   │   │   │   ├── templates.component.spec.ts
 │   │   │   │   └── templates.component.ts
+│   │   │   ├── trainers/
+│   │   │   │   ├── trainers.component.html
+│   │   │   │   ├── trainers.component.scss
+│   │   │   │   └── trainers.component.ts
 │   │   │   ├── user-detail/
 │   │   │   │   ├── user-detail.component.html
 │   │   │   │   ├── user-detail.component.scss
@@ -264,17 +344,21 @@ fitness-planner/
 │   │   │       ├── users.component.scss
 │   │   │       └── users.component.ts
 │   │   ├── services/
-│   │       ├── auth.service.ts
-│   │       └── theme.service.ts
-│   │   └── shared/
-│   │       ├── feedback-utils.ts
-│   │       ├── models.ts
-│   │       ├── shared-utils.ts
-│   │       └── user-display-name.pipe.ts
-│   └── environments/
-│       ├── environment.prod.ts
-│       ├── environment.test.ts
-│       └── environment.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── template-assignment.service.ts
+│   │   │   └── theme.service.ts
+│   │   ├── shared/
+│   │   │   ├── ai-generation-timeline.component.html
+│   │   │   ├── ai-generation-timeline.component.scss
+│   │   │   ├── ai-generation-timeline.component.ts
+│   │   │   ├── feedback-utils.ts
+│   │   │   ├── models.ts
+│   │   │   ├── shared-utils.ts
+│   │   │   └── user-display-name.pipe.ts
+│   │   └── environments/
+│   │       ├── environment.prod.ts
+│   │       ├── environment.test.ts
+│   │       └── environment.ts
 └── tsconfig.json
 ```
 
@@ -660,19 +744,17 @@ export class AiGenerationDialogComponent {
 
 ## Cambios recientes (ultimos commits)
 
-### Ultimas actualizaciones implementadas:
-- **Panel de apariencia y branding**: Configuracion visual para admin con preview, colores, tipografia y carga de logo con URL pre-firmada
-- **Separacion de clientes y entrenadores**: Nuevas vistas dedicadas con logica por rol y sin selector de rol en formularios
-- **Metricas de entrenadores**: Conteo de clientes asignados y planes creados por entrenador en la vista
-- **Plantillas para clientes**: Asignacion de plantillas filtrada solo a clientes con busqueda en dialogo
-- **Asignación de usuarios a plantillas**: Implementación completa de funcionalidad para asignar usuarios a plantillas con soporte de diálogos
-- **Funcionalidad de guardado de plantillas**: Adición de capacidad para guardar plantillas con actualizaciones de UI
-- **Mejoras en visualización de planes**: Renderizado mejorado y mejor gestión de sesiones de entrenamiento
-- **Mejoras en generación de planes con IA**: Optimizaciones en formularios IA y gestión de usuarios
-- **Diálogo parametric de IA**: Implementación completa para planes de entrenamiento personalizados
-- **Layout de superseries**: Mejoras en el layout visual y adición de flags de agrupamiento en modelos
-- **Sidebar de ejercicios**: Mejoras en la sidebar y vista de planes con detalles adicionales
-- **Filtros y UI de gestión de ejercicios**: Mejoras en filtros y interfaz de usuario para gestión de ejercicios
+### Ultimas actualizaciones implementadas (últimos 10 commits):
+- **c7c1250**: refactor planner component
+- **b0f5974**: refactor planner component
+- **a2efa95**: Merge pull request #8 from juliogutierrezm/feat/client-app-view
+- **98a61a5**: fixed trainers view for trainers-admin
+- **749dacc**: fixed progressions and admin-trainer permissions
+- **4ab2c63**: fixed experiencie feature
+- **cd9ba60**: added all features
+- **b6b4420**: fixed progressions
+- **e9d001d**: fixed progressions
+- **333124b**: added progressions
 
 ## Mejoras Pendientes
 

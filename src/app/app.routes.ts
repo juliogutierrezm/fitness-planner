@@ -17,12 +17,6 @@ export const routes: Routes = [
     path: 'unauthorized',
     loadComponent: () => import('./components/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
-  {
-    path: 'client',
-    loadChildren: () => import('./client/client.routes').then(m => m.CLIENT_ROUTES),
-    canActivate: [AuthGuard],
-    data: { roles: [UserRole.CLIENT] }
-  },
   
   // Main application routes
   {

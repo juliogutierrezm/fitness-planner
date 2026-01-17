@@ -73,7 +73,7 @@ export class CallbackComponent implements OnInit {
   private resolvePostLoginRoute(): string {
     const role = this.authService.getCurrentUserRole();
     if (role === UserRole.CLIENT) {
-      return '/client/plans';
+      return '/unauthorized';
     }
     return '/dashboard';
   }

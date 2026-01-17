@@ -1,8 +1,8 @@
 import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
-import { AiStep } from '../../shared/models';
+import { AiGenerationTimelineComponent } from '../../../shared/ai-generation-timeline.component';
+import { AiStep } from '../../../shared/models';
 
 @Component({
   selector: 'app-ai-generation-dialog',

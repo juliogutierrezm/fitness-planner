@@ -15,8 +15,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AiPlanRequest } from '../../shared/models';
-import { ExerciseApiService } from '../../exercise-api.service';
+import { AiPlanRequest } from '../../../shared/models';
+import { ExerciseApiService } from '../../../exercise-api.service';
 import { finalize, switchMap, catchError, filter, take, scan } from 'rxjs/operators';
 import { timer, of, Subscription, EMPTY } from 'rxjs';
 
@@ -147,9 +147,9 @@ export class AiParametricDialogComponent implements OnInit {
       trainingGoal: ['Hipertrofia', Validators.required],
 
       // Availability
-      totalSessions: [4, [Validators.required, Validators.min(1), Validators.max(8)]],
+      totalSessions: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
       sessionDuration: [60, [Validators.required, Validators.min(30), Validators.max(180)]],
-      expectedExercisesPerSession: [8, [Validators.min(4), Validators.max(20)]],
+      expectedExercisesPerSession: [8, [Validators.min(4), Validators.max(15)]],
 
       // Preferences
       availableEquipment: [[]],
@@ -184,7 +184,7 @@ export class AiParametricDialogComponent implements OnInit {
         : []
     }));
 
-    const totalSessions = this.form.get('totalSessions')?.value || 4;
+    const totalSessions = this.form.get('totalSessions')?.value || 1;
 
     while (sessionBlueprintArray.length > 0) {
       sessionBlueprintArray.removeAt(0);

@@ -1,9 +1,10 @@
 <div class="user-detail">
   <div class="header-simple">
-    <button mat-button routerLink="/users" class="back">
-      <mat-icon>arrow_back</mat-icon>
-      Volver
-    </button>
+    <div class="actions-left">
+      <button mat-mini-fab  routerLink="/users"  matTooltip="Volver a la lista de usuarios">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    </div>
   </div>
   <mat-card class="header-card">
     <mat-card-header>
@@ -20,7 +21,7 @@
       <h3></h3>
       <div class="plans-actions" *ngIf="userId as uid">
         <a
-          mat-raised-button
+          mat-fab extended
           color="primary"
           [routerLink]="['/planner']"
           [queryParams]="{ userId: uid }"
@@ -28,7 +29,7 @@
           <mat-icon>add</mat-icon>
           Crear plan
         </a>
-        <button mat-stroked-button color="primary" (click)="openTemplateDialog()">
+        <button mat-fab extended color="primary" (click)="openTemplateDialog()">
           <mat-icon>bookmark_add</mat-icon>
           Usar plantilla
         </button>
@@ -87,10 +88,10 @@
               </div>
             </div>
             <div class="right">
-              <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
+              <button mat-mini-fab color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
+              <button mat-mini-fab color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>

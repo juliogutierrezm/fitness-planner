@@ -84,8 +84,15 @@
             </mat-radio-button>
           </mat-radio-group>
         </div>
+      </div>
 
-        <div class="form-row">
+      <!-- Session Configuration Section -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon>tune</mat-icon>
+          Configuracion del plan de entrenamiento
+        </h3>
+        <div class="form-row session-config-row">
           <mat-form-field appearance="outline" class="form-field">
             <mat-label>Objetivo Principal</mat-label>
             <mat-select formControlName="trainingGoal">
@@ -95,37 +102,21 @@
             </mat-select>
             <mat-hint>Que quieres lograr con tu entrenamiento?</mat-hint>
           </mat-form-field>
-        </div>
-      </div>
-
-      <!-- Session Configuration Section -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>tune</mat-icon>
-          Configuracion de Sesiones
-        </h3>
-
-        <div class="form-row session-config-row">
           <mat-form-field appearance="outline" class="form-field compact-field">
             <mat-label>Duracion por sesion (minutos)</mat-label>
             <input matInput type="number" formControlName="sessionDuration" min="30" max="180" step="15">
             <mat-hint>Tiempo disponible por sesion (30-180 min)</mat-hint>
           </mat-form-field>
-
           <mat-form-field appearance="outline" class="form-field compact-field">
             <mat-label>Ejercicios esperados por sesion</mat-label>
-            <input matInput type="number" formControlName="expectedExercisesPerSession" min="4" max="20">
-            <mat-hint>4-20 ejercicios por sesion</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="form-field compact-field">
-            <mat-label>Total de sesiones</mat-label>
-            <input matInput type="number" formControlName="totalSessions" min="1" max="8" step="1">
-            <mat-hint>Numero de sesiones en el plan (1-8)</mat-hint>
+            <input matInput type="number" formControlName="expectedExercisesPerSession" min="4" max="15">
+            <mat-hint>4-15 ejercicios por sesion</mat-hint>
           </mat-form-field>
         </div>
-
-        <div class="form-row session-config-row">
+      </div>
+      <!-- Session Blueprint Section -->
+      <div class="form-section">
+        <div class="form-row">
           <mat-form-field appearance="outline" class="form-field equipment-field compact-field">
             <mat-label>Equipo disponible</mat-label>
             <mat-select formControlName="availableEquipment" multiple>
@@ -135,31 +126,12 @@
             </mat-select>
             <mat-hint>Selecciona el equipo disponible</mat-hint>
           </mat-form-field>
-
-          <div class="session-preferences">
-            <div class="preference-item">
-              <mat-checkbox formControlName="includeSupersets" class="supersets-checkbox">
-                Incluir superseries
-              </mat-checkbox>
-            </div>
-            <div class="preference-item">
-              <mat-checkbox formControlName="includeMobility" class="mobility-checkbox">
-                Incluir ejercicios de movilidad
-              </mat-checkbox>
-            </div>
-          </div>
+          <mat-form-field appearance="outline" class="form-field compact-field">
+            <mat-label>Total de sesiones</mat-label>
+            <input matInput type="number" formControlName="totalSessions" min="1" max="7" step="1">
+            <mat-hint>Número de sesiones en el plan (1-7)</mat-hint>
+          </mat-form-field>
         </div>
-      </div>
-
-      <!-- Session Blueprint Section -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>view_list</mat-icon>
-          Estructura de Sesiones
-        </h3>
-
-        <p class="subsection-hint">Asigna grupos musculares a cada sesion de entrenamiento. El cardio se puede seleccionar como un grupo muscular adicional.</p>
-
         <div class="custom-structure-section">
           <div class="custom-days-container">
             <div *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index" class="custom-day-item">
@@ -195,12 +167,13 @@
       </div>
 
       <!-- Custom Notes Section -->
+       
       <div class="form-section">
         <h3 class="section-title">
           <mat-icon>notes</mat-icon>
           Notas Adicionales
         </h3>
-
+       <div class="form-row">
         <mat-form-field appearance="outline" class="notes-field">
           <mat-label>Preferencias específicas (opcional)</mat-label>
           <textarea
@@ -211,18 +184,21 @@
             placeholder="Ej: Enfoque en fuerza máxima, evitar ejercicios de alto impacto, preferencia por ejercicios funcionales..."></textarea>
           <mat-hint>{{ (form.get('customNotes')?.value || '').length }}/150 caracteres</mat-hint>
         </mat-form-field>
+        <mat-checkbox formControlName="includeSupersets" class="supersets-checkbox">
+          Incluir superseries
+        </mat-checkbox>
       </div>
-
+      </div>
     </form>
   </div>
 
   <div class="parametric-dialog-actions">
-    <button mat-stroked-button (click)="close()" class="cancel-btn">
+    <button mat-fab extended (click)="close()" class="cancel-btn">
       <mat-icon>close</mat-icon>
       Cancelar
     </button>
     <button
-      mat-raised-button
+      mat-fab extended
       color="primary"
       [disabled]="!isFormValid()"
       (click)="confirm()"

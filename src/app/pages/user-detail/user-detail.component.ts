@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -50,10 +50,10 @@ import { buildPlanOrdinalMap, getPlanKey, getTemplateDisplayName, sortPlansByCre
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatDialogModule,
-    MatSnackBarModule,
-    WorkoutPlanViewComponent,
-    UserDisplayNamePipe
-  ],
+  MatSnackBarModule,
+  WorkoutPlanViewComponent,
+  UserDisplayNamePipe
+],
   templateUrl: './user-detail.component.html',
   styleUrls: ['./user-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -83,7 +83,7 @@ export class UserDetailComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private templateAssignment: TemplateAssignmentService
+    private templateAssignment: TemplateAssignmentService,
   ) {}
 
   ngOnInit() {
@@ -188,7 +188,7 @@ export class UserDetailComponent implements OnInit {
         const templatesOnly = (list || []).filter((plan: any) => plan?.isTemplate === true);
         this.templates = templatesOnly.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error al cargar plantillas:', error);
         this.templates = [];
         this.snackBar.open('No se pudieron cargar las plantillas.', 'Cerrar', { duration: 3000 });

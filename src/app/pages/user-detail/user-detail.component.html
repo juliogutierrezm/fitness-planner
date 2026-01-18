@@ -14,6 +14,17 @@
       </mat-card-title>
       <mat-card-subtitle>Gestión y seguimiento de planes personalizados</mat-card-subtitle>
     </mat-card-header>
+    <mat-card-actions class="body-metrics-action" *ngIf="userId">
+      <button
+        mat-button
+        color="primary"
+        [routerLink]="['/clients', userId, 'body-metrics']"
+        [state]="{ client: user }"
+      >
+        <mat-icon>monitor_weight</mat-icon>
+        Ver composición corporal
+      </button>
+    </mat-card-actions>
   </mat-card>
 
   <mat-card class="plans-card">
@@ -133,6 +144,7 @@
     <button mat-button mat-dialog-close>Cerrar</button>
   </mat-dialog-actions>
 </ng-template>
+
 
 
 

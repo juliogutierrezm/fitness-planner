@@ -10,7 +10,7 @@
   </mat-card>
 
   <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
-    <button mat-fab extended color="primary" (click)="showCreateForm = true">
+    <button mat-fab extended color="primary" (click)="openCreateForm()">
       <mat-icon>add</mat-icon>
       Crear nuevo {{ isTrainerView ? 'entrenador' : 'cliente' }}
     </button>
@@ -121,17 +121,28 @@
           </div>
         </div>
         <div class="row-actions">
-          <a *ngIf="isClientView" matTooltip="Ver planes"  mat-fab [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
+          <a *ngIf="isClientView" matTooltip="Ver planes" mat-mini-fab [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
             <mat-icon>library_books</mat-icon>
+          </a>
+          <a
+            *ngIf="u.role === 'client'"
+            matTooltip="Ver composición corporal"
+            mat-mini-fab
+            color="accent"
+            [routerLink]="['/clients', u.id, 'body-metrics']"
+            [state]="{ client: u }"
+            aria-label="Ver composición corporal"
+          >
+            <mat-icon>accessibility_new</mat-icon>
           </a>
           
           <button *ngIf="isClientView && isAdmin && !isIndependentTenant"  mat-fab (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
             <mat-icon>person_add</mat-icon>
           </button>
-          <button  mat-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
+          <button   mat-mini-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
             <mat-icon>edit</mat-icon>
           </button>
-          <button matTooltip="Eliminar usuario" mat-fab color="warn" (click)="remove(u)" aria-label="Eliminar">
+          <button matTooltip="Eliminar usuario"  mat-mini-fab color="warn" (click)="remove(u)" aria-label="Eliminar">
             <mat-icon>delete</mat-icon>
           </button>
         </div>
@@ -224,3 +235,8 @@
     </ng-template>
   </ng-container>
 </div>
+
+
+
+
+

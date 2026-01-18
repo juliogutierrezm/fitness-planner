@@ -96,6 +96,12 @@ export const routes: Routes = [
         data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
+        path: 'clients/:id/body-metrics',
+        loadComponent: () => import('./pages/client-body-metrics/client-body-metrics.component').then(m => m.ClientBodyMetricsComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
         path: 'settings/appearance',
         loadComponent: () => import('./pages/settings/appearance-settings.component').then(m => m.AppearanceSettingsComponent),
         canActivate: [AuthGuard],

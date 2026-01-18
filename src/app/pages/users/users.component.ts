@@ -14,6 +14,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
 import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
@@ -47,6 +48,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatDialogModule,
     MatProgressSpinnerModule,
     MatListModule,
+    MatDividerModule,
     RouterModule,
     MatTooltipModule
   ],
@@ -144,6 +146,18 @@ export class UsersComponent implements OnInit, OnDestroy {
    */
   get isTrainerView(): boolean {
     return this.contextRole === 'trainer';
+  }
+
+  /**
+   * Purpose: open the create form and close edit views.
+   * Input: none. Output: toggles view state.
+   * Error handling: not applicable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openCreateForm(): void {
+    this.showCreateForm = true;
+    this.editingId = null;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -427,6 +441,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   startEdit(u: AppUser) {
     if (!u) return;
+    this.showCreateForm = false;
     this.editingId = u.id || null;
     this.editForm.reset({
       email: u.email || '',
@@ -451,9 +466,10 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   saveEdit(u: AppUser) {
     if (!this.editingId || !u?.id || this.editForm.invalid || this.isSaving) return;
+    const userId = u.id;
     const editFormValue = this.editForm.value;
     const payload: AppUser = {
-      id: u.id,
+      id: userId,
       email: u.email!, // Keep original email, don't allow changes
       givenName: editFormValue.givenName || '',
       familyName: editFormValue.familyName || '',
@@ -473,8 +489,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       })
     ).subscribe(res => {
       if (res !== null) {
-        this.users = this.users.map(x => x.id === u.id ? { ...x, ...payload } : x);
-        this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, ...payload } : x);
+        this.users = this.users.map(x => x.id === userId ? { ...x, ...payload } : x);
+        this.allUsers = this.allUsers.map(x => x.id === userId ? { ...x, ...payload } : x);
         this.editingId = null;
         this.cdr.markForCheck();
         this.snack.open('Usuario actualizado', 'Cerrar', { duration: 1800 });

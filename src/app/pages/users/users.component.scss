@@ -187,6 +187,10 @@
   grid-column: 1 / -1;
 }
 
+.edit-grid mat-divider {
+  grid-column: 1 / -1;
+}
+
 .loading-container {
   display: flex;
   justify-content: center;

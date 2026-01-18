@@ -636,108 +636,12 @@
   }
 }
 
-/* ── tabla ── */
-.session-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-
-  th,
-  td {
-    text-align: left;
-    padding: 0.5rem 0.25rem;
-    border-bottom: 1px solid #ddd;
-    vertical-align: middle;
-  }
-
-  th {
-    font-weight: bold;
-    vertical-align: middle;
-    padding: 0.75rem 0.25rem;
-  }
-
-  th[matColumnDef="select"],
-  td[matColumnDef="select"] {
-    width: 60px;
-    text-align: center;
-    padding: 0.5rem 0.125rem;
-  }
-
-  th[matColumnDef="name"],
-  td[matColumnDef="name"] {
-    width: 35%;
-    min-width: 150px;
-  }
-
-  th[matColumnDef="equipment"],
-  td[matColumnDef="equipment"] {
-    width: 12%;
-    min-width: 80px;
-  }
-
-  th[matColumnDef="sets"],
-  td[matColumnDef="sets"] {
-    width: 7%;
-    min-width: 60px;
-    text-align: center;
-  }
-
-  th[matColumnDef="reps"],
-  td[matColumnDef="reps"] {
-    width: 7%;
-    min-width: 60px;
-    text-align: center;
-  }
-
-  th[matColumnDef="rest"],
-  td[matColumnDef="rest"] {
-    width: 7%;
-    min-width: 60px;
-    text-align: center;
-  }
-
-  th[matColumnDef="weight"],
-  td[matColumnDef="weight"] {
-    width: 7%;
-    min-width: 60px;
-    text-align: center;
-  }
-
-  th[matColumnDef="actions"],
-  td[matColumnDef="actions"] {
-    width: 4%;
-    text-align: center;
-    padding: 0.5rem 0.125rem;
-  }
-
-  th[matColumnDef="superserieDelete"],
-  td[matColumnDef="superserieDelete"] {
-    width: 4%;
-    text-align: center;
-    padding: 0.5rem 0.125rem;
-  }
-
-  .name-cell {
-    min-width: 150px;
-    max-width: 200px;
-  }
-
-  .exercise-name-text {
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: move;
-  }
-}
-
-/* ── arrastre ── */
+/* ── drag & drop ── */
 .name-cursor {
   cursor: move;
 }
 
-.cdk-drop-list-dragging .session-table {
+.cdk-drop-list-dragging .planner-table {
   background: #e3f2fd;
   border: 2px dashed #1976d2;
 }
@@ -748,7 +652,7 @@
   border: 1px dashed #1976d2;
 }
 
-mat-row.cdk-drag {
+.planner-grid.cdk-drag {
   cursor: move;
 }
 
@@ -756,21 +660,77 @@ button[mat-icon-button] {
   margin-left: 5px;
 }
 
-/* Shared column width contract for superserie header alignment */
-$exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100px 60px;
+/* Unified grid column definition for all planner rows */
+$planner-grid-columns: 60px minmax(220px, 1fr) 120px 70px 70px 70px 70px 100px;
+$planner-row-height: 48px;
+$planner-control-size: 28px;
 
-/* ── superserie block ── */
-.superserie-block-row {
-  background: transparent !important;
-  border: none !important;
+/* Base grid layout for all planner rows */
+.planner-grid {
+  display: grid;
+  grid-template-columns: $planner-grid-columns;
+  gap: 0;
+  align-items: center;
 }
 
-.superserie-block-cell {
-  padding: 0 !important;
-  border: none !important;
+.planner-row {
+  height: $planner-row-height;
+  min-height: $planner-row-height;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
-.superserie-block {
+.planner-cell {
+  padding: 0 0.25rem;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  min-width: 0;
+}
+
+.planner-header-cell {
+  @extend .planner-cell;
+  font-weight: 600;
+}
+
+/* Specific column alignments */
+.control-cell {
+  text-align: center;
+  padding: 0 0.125rem;
+  justify-content: center;
+}
+
+.name-cell {
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.exercise-name-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: move;
+}
+
+.actions-cell {
+  text-align: center;
+  padding: 0 0.125rem;
+  justify-content: center;
+}
+
+.sets-cell,
+.reps-cell,
+.rest-cell,
+.weight-cell {
+  text-align: center;
+  justify-content: center;
+}
+
+/* ── superserie wrapper ── */
+.superserie-wrapper {
   margin: 8px 0;
   border: 2px dashed var(--primary-400);
   border-radius: var(--radius-md);
@@ -779,17 +739,10 @@ $exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100
 }
 
 .superserie-header {
-  display: grid;
-  grid-template-columns: $exercise-column-contract;
-  align-items: center;
-  padding: 12px 16px;
   background: rgba(59, 130, 246, 0.08);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
-  gap: 12px;
 }
 
 .superserie-label {
-  grid-column: 2;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -798,62 +751,16 @@ $exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100
   font-size: 14px;
 }
 
-.superserie-actions {
-  grid-column: 8 / -1;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
+.superserie-child-row {
+  background: rgba(59, 130, 246, 0.02);
+  border-left: 4px solid rgba(59, 130, 246, 0.3);
 }
 
-.superserie-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-
-  .mat-cell {
-    border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-    padding: 8px 12px;
-  }
-
-  .superserie-child-row {
-    background: rgba(59, 130, 246, 0.02);
-    border-left: 4px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .superserie-child-row:last-child .mat-cell {
-    border-bottom: none;
-    width: 0.5px;
-  }
-
-  .select-cell {
-    width: 0px;
-    text-align: center;
-    padding: 4px 4px;
-  }
-
-  .name-cell {
-    min-width: 150px;
-    max-width: 200px;
-  }
-
-  .sets-input {
-    width: 50px;
-    text-align: center;
-    border: 1px solid #d1d5db;
-    border-radius: var(--radius-sm);
-    padding: 4px 6px;
-    font-size: 14px;
-    line-height: 1.2;
-    transition: border-color 0.2s ease;
-  }
-
-  .sets-input:focus {
-    outline: none;
-    border-color: var(--primary-500);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-  }
+.superserie-child-indicator {
+  color: var(--ink-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Input styling for table - matches regular row inputs for consistency */
@@ -862,9 +769,11 @@ $exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100
   text-align: center;
   border: 1px solid #d1d5db;
   border-radius: var(--radius-sm);
-  padding: 4px 6px;
+  height: $planner-control-size;
+  line-height: $planner-control-size;
+  padding: 0 6px;
+  box-sizing: border-box;
   font-size: 14px;
-  line-height: 1.2;
   transition: border-color 0.2s ease;
 }
 
@@ -877,6 +786,34 @@ $exercise-column-contract: 60px minmax(150px, 1fr) 120px 70px 70px 70px 70px 100
 /* Mat cell input constraints */
 .mat-cell input[type="text"] {
   max-width: 100px;
+}
+
+.planner-table {
+  .mat-mdc-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: $planner-control-size;
+    height: $planner-control-size;
+    margin: 0;
+  }
+
+  .mat-mdc-checkbox .mdc-form-field {
+    margin: 0;
+  }
+
+  .mat-mdc-checkbox .mdc-checkbox {
+    width: $planner-control-size;
+    height: $planner-control-size;
+  }
+
+  button[mat-icon-button] {
+    width: $planner-control-size;
+    height: $planner-control-size;
+    min-width: $planner-control-size;
+    padding: 0;
+    line-height: $planner-control-size;
+  }
 }
 
 /* Planes anteriores en sidebar */

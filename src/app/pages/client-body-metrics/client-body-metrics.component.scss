@@ -17,6 +17,7 @@
         font-size: 30px;
         width: 30px;
         height: 30px;
+        color: var(--primary-color, #1976d2);
       }
     }
 
@@ -51,7 +52,36 @@
   display: flex;
   align-items: center;
   gap: 16px;
+
+  button[mat-mini-fab] {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    line-height: 32px;
+        background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+  }
+  .trash-icon [mat-mini-fab] {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    line-height: 32px;
+        background: linear-gradient(
+      135deg,
+      #f97316,
+      #e11d48
+    );
+  }
+    mat-icon {
+    color: var(--primary-color, #e4e6eb);
+  }
 }
+
 
 .identity {
   display: flex;
@@ -181,14 +211,23 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 18px;
+  button {
+    padding: 0;
+    line-height: 32px;
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+    min-width: 190px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #e4e6eb;
+    font-weight: 600
+  }
 }
 
-.form-actions button {
-  min-width: 190px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
 
 @media (max-width: 768px) {
   .hero {

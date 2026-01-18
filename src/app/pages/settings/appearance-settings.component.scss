@@ -115,6 +115,14 @@
           mat-icon {
             margin-right: 6px;
           }
+          
+          background: linear-gradient(
+            135deg,
+            var(--accent-500),
+            var(--primary-color, #1976d2)
+          );
+          color: #e4e6eb;
+          font-weight: 600
         }
 
         .upload-hint {
@@ -480,13 +488,21 @@
     justify-content: flex-end;
     flex-wrap: wrap;
 
-    button {
-      min-width: 180px;
-
+    button {   
       .button-spinner {
         display: inline-block;
         margin-right: 8px;
+        color: #e4e6eb;
       }
+
+      background: linear-gradient(
+        135deg,
+        var(--accent-500),
+        var(--primary-color, #1976d2)
+      );
+      color: #e4e6eb;
+      font-weight: 600
     }
+    
   }
 }

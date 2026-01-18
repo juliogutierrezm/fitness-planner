@@ -109,11 +109,20 @@
 
 /* High-contrast toolbar actions */
 .login-btn {
-  background: #10b981; /* emerald-500 */
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
   color: #ffffff !important;
 }
 
 .logout-btn {
-  background: var(--warn-500);
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
+  color: #ffffff !important;
   color: #ffffff !important;
 }

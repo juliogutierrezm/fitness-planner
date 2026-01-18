@@ -1,11 +1,11 @@
 <div class="dialog-container">
   <div class="dialog-header">
-    <mat-icon class="icon">{{ data.icon || 'help_outline' }}</mat-icon>
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 14 14"><path fill="#dc2626" fill-rule="evenodd" d="M1.44.44A1.5 1.5 0 0 1 2.5 0h10A1.5 1.5 0 0 1 14 1.5v10a1.5 1.5 0 0 1-1.5 1.5H4.562l-3.94.985a.5.5 0 0 1-.596-.643L1 10.419V1.5c0-.398.158-.78.44-1.06m6.753 2.355a.625.625 0 1 0-1.25 0v3.659a.625.625 0 1 0 1.25 0zM6.571 9.581a.998.998 0 1 1 1.995 0a.998.998 0 0 1-1.995 0" clip-rule="evenodd"/></svg>
     <h2>{{ data.title || 'Confirmar acción' }}</h2>
   </div>
   <p class="message">{{ data.message || '¿Estás seguro de continuar?' }}</p>
   <div class="actions">
-    <button mat-flat-button color="primary" (click)="close(false)">{{ data.cancelLabel || 'Cancelar' }}</button>
-    <button mat-flat-button color="warn" (click)="close(true)">{{ data.confirmLabel || 'Eliminar' }}</button>
+    <button class="cancel-button" mat-fab extended color="primary" (click)="close(false)">{{ data.cancelLabel || 'Cancelar' }}</button>
+    <button class="delete-button" mat-fab extended color="warn" (click)="close(true)">{{ data.confirmLabel || 'Eliminar' }}</button>
   </div>
 </div>

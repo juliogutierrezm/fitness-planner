@@ -68,7 +68,7 @@
           <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Lesiones o limitaciones</mat-label>
-            <textarea matInput formControlName="injuries" rows="3" placeholder="Describe cualquier lesi¢n, limitaci¢n f¡sica o condici¢n m‚dica relevante"></textarea>
+            <textarea matInput formControlName="injuries" rows="3" placeholder="Describe cualquier lesión, limitación física o condición médica relevante"></textarea>
           </mat-form-field>
         </div>
         <mat-form-field appearance="outline" class="full-width">
@@ -121,10 +121,10 @@
           </div>
         </div>
         <div class="row-actions">
-          <a *ngIf="isClientView" matTooltip="Ver planes" mat-mini-fab [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
+          <button *ngIf="isClientView" matTooltip="Ver planes" mat-mini-fab [routerLink]="['/users', u.id]" [state]="{ user: u }" aria-label="Abrir detalle">
             <mat-icon>library_books</mat-icon>
-          </a>
-          <a
+          </button>
+          <button
             *ngIf="u.role === 'client'"
             matTooltip="Ver composición corporal"
             mat-mini-fab
@@ -134,17 +134,19 @@
             aria-label="Ver composición corporal"
           >
             <mat-icon>accessibility_new</mat-icon>
-          </a>
+          </button>
           
-          <button *ngIf="isClientView && isAdmin && !isIndependentTenant"  mat-fab (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
-            <mat-icon>person_add</mat-icon>
+          <button *ngIf="isClientView && isAdmin && !isIndependentTenant"  mat-mini-fab (click)="assignTrainer(u)" aria-label="Asignar entrenador" matTooltip="Asignar entrenador">
+            <mat-icon>sports</mat-icon>
           </button>
           <button   mat-mini-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
             <mat-icon>edit</mat-icon>
           </button>
+          <div class="trash-icon">
           <button matTooltip="Eliminar usuario"  mat-mini-fab color="warn" (click)="remove(u)" aria-label="Eliminar">
             <mat-icon>delete</mat-icon>
           </button>
+          </div>
         </div>
       </ng-container>
 

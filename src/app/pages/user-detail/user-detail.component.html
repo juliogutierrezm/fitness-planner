@@ -14,24 +14,13 @@
       </mat-card-title>
       <mat-card-subtitle>Gestión y seguimiento de planes personalizados</mat-card-subtitle>
     </mat-card-header>
-    <mat-card-actions class="body-metrics-action" *ngIf="userId">
-      <button
-        mat-button
-        color="primary"
-        [routerLink]="['/clients', userId, 'body-metrics']"
-        [state]="{ client: user }"
-      >
-        <mat-icon>monitor_weight</mat-icon>
-        Ver composición corporal
-      </button>
-    </mat-card-actions>
   </mat-card>
 
   <mat-card class="plans-card">
     <div class="plans-header">
       <h3></h3>
       <div class="plans-actions" *ngIf="userId as uid">
-        <a
+        <button
           mat-fab extended
           color="primary"
           [routerLink]="['/planner']"
@@ -39,7 +28,7 @@
         >
           <mat-icon>add</mat-icon>
           Crear plan
-        </a>
+        </button>
         <button mat-fab extended color="primary" (click)="openTemplateDialog()">
           <mat-icon>bookmark_add</mat-icon>
           Usar plantilla
@@ -102,9 +91,11 @@
               <button mat-mini-fab color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
                 <mat-icon>edit</mat-icon>
               </button>
+            <div class="trash-icon">
               <button mat-mini-fab color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
                 <mat-icon>delete</mat-icon>
               </button>
+            </div>
             </div>
           </div>
         </mat-expansion-panel-header>

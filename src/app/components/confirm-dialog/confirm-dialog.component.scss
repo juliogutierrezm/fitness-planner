@@ -7,10 +7,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: center;
+  margin-bottom: 2rem;
 }
 
 .dialog-header h2 {
   margin: 0;
+  color: #505050; ;
 }
 
 .icon {
@@ -24,5 +27,23 @@
 .actions {
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: center;
+  margin-top: 2rem;
+  .delete-button {
+    background: linear-gradient(
+      135deg,
+      #f97316,
+      #e11d48
+    );
+    color: #e4e6eb;
+  }
+  .cancel-button {
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+    color: #e4e6eb;
+  }
+
 }

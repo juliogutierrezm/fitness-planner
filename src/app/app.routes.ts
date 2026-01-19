@@ -17,12 +17,6 @@ export const routes: Routes = [
     path: 'unauthorized',
     loadComponent: () => import('./components/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
-  {
-    path: 'client',
-    loadChildren: () => import('./client/client.routes').then(m => m.CLIENT_ROUTES),
-    canActivate: [AuthGuard],
-    data: { roles: [UserRole.CLIENT] }
-  },
   
   // Main application routes
   {
@@ -98,6 +92,12 @@ export const routes: Routes = [
       {
         path: 'users/:id',
         loadComponent: () => import('./pages/user-detail/user-detail.component').then(m => m.UserDetailComponent),
+        canActivate: [AuthGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
+        path: 'clients/:id/body-metrics',
+        loadComponent: () => import('./pages/client-body-metrics/client-body-metrics.component').then(m => m.ClientBodyMetricsComponent),
         canActivate: [AuthGuard],
         data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },

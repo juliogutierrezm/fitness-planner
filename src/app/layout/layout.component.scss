@@ -1,20 +1,63 @@
-.shell-container {
+:host {
+  --sidebar-rail-width: 64px;
+  --sidebar-expanded-width: 240px;
+  --sidebar-item-padding-y: 10px;
+  --sidebar-item-padding-x: 16px;
+  --sidebar-icon-gap: 12px;
+  --sidebar-transition: 0.25s ease;
+  --toolbar-height: 64px;
+}
+
+.shell {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .app-toolbar {
   background: var(--surface-200);
   color: #ffffff;
   box-shadow: var(--shadow-2);
+  position: relative;
+  z-index: 1000;
+  width: 100%;
+  min-height: var(--toolbar-height);
+  height: var(--toolbar-height);
   .mat-icon { color: #ffffff; }
   .title { color: #ffffff; }
 }
 
 .sidenav {
-  width: 280px;
-  /* Match navbar color and remove any rounding */
-  background: var(--surface-200);
+  width: var(--sidebar-rail-width);
+  background: transparent;
   color: #e5e7eb;
+  overflow: visible;
+  z-index: 100!important;
+}
+
+.sidenav-rail {
+  width: var(--sidebar-rail-width);
+  height: calc(100vh - var(--toolbar-height));
+  background: var(--surface-200);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  transition: width var(--sidebar-transition);
+  will-change: width;
+  position: fixed;
+  left: 0;
+  top: var(--toolbar-height);
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.sidenav-rail:hover {
+  width: var(--sidebar-expanded-width);
 }
 
 /* Ensure the Angular Material drawer has sharp corners */
@@ -29,9 +72,44 @@
   border-radius: 0 !important;
 }
 
+:host ::ng-deep .mat-drawer-container,
+:host ::ng-deep .mat-sidenav-container {
+  overflow: visible !important;
+  z-index: 0;
+}
+
+:host ::ng-deep .mat-drawer,
+:host ::ng-deep .mat-sidenav {
+  overflow: visible;
+  z-index: 1000 !important;
+}
+
+:host ::ng-deep .mat-drawer.mat-drawer-side,
+:host ::ng-deep .mat-sidenav.mat-drawer-side {
+  z-index: 1000 !important;
+}
+
+:host ::ng-deep .sidenav .mat-drawer-inner-container {
+  position: relative;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+:host ::ng-deep .mat-drawer-content,
+:host ::ng-deep .mat-sidenav-content {
+  position: relative;
+  z-index: 0 !important;
+  overflow-x: visible !important;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  :host {
+    --toolbar-height: 56px;
+  }
+}
+
 /* Sidebar nav items without rounded corners for consistency */
-
-
 
 .shell-content {
   padding: 1rem;
@@ -41,7 +119,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 1rem;
 }
 
 .app-logo {
@@ -61,24 +138,69 @@
 }
 
 .sidebar-item {
-  padding: 12px;
+  padding: 12px 0;
+  width: 100%;
   .nav-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    justify-content: center;
+    width: 100%;
+    padding: var(--sidebar-item-padding-y) 0;
     color: #e5e7eb;
     text-decoration: none;
-    border-radius: 0; /* keep sharp to match sidebar */
-    transition: background-color .15s ease, color .15s ease;
+    position: relative;
+    border-radius: 0;
+    transition: background-color .15s ease, color .15s ease, padding var(--sidebar-transition);
   }
   .nav-link:hover {
     background: var(--surface-300);
   }
+  .nav-link mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    margin-right: 0;
+    transition: margin-right var(--sidebar-transition), color .15s ease;
+  }
+  .nav-link span {
+    display: inline-block;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
+  }
   .nav-link.active {
     background: var(--primary-600);
     color: #ffffff;
+    font-weight: 600;
   }
+  .nav-link.active mat-icon {
+    color: #ffffff;
+  }
+  .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    background: var(--accent-500);
+  }
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link {
+  justify-content: flex-start;
+  padding: var(--sidebar-item-padding-y) var(--sidebar-item-padding-x);
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link mat-icon {
+  margin-right: var(--sidebar-icon-gap);
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link span {
+  opacity: 1;
+  max-width: 200px;
 }
 
 .auth-buttons {
@@ -109,11 +231,20 @@
 
 /* High-contrast toolbar actions */
 .login-btn {
-  background: #10b981; /* emerald-500 */
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
   color: #ffffff !important;
 }
 
 .logout-btn {
-  background: var(--warn-500);
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
+  color: #ffffff !important;
   color: #ffffff !important;
 }

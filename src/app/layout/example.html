@@ -1,0 +1,253 @@
+lo que yo quiero es este comportamiento .sidebar {
+  margin-top: 8rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 60px;
+  background-color: #fff;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
+  z-index: 1100;
+  overflow: hidden;
+}
+
+.sidebar:hover {
+  width: 200px;
+}
+
+.sidebar .nav-item {
+  width: 100%;
+}
+
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #333;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar .nav-link svg {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  transition: margin-right 0.3s ease, stroke 0.2s ease;
+}
+
+.sidebar:hover .nav-link svg {
+  margin-right: 12px;
+}
+
+.sidebar .nav-link span {
+  display: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar:hover .nav-link span {
+  display: inline;
+  opacity: 1;
+}
+
+.sidebar .nav-link.active span {
+  display: none;
+  font-weight: 600;
+}
+
+.sidebar:hover .nav-link.active span {
+  display: inline;
+  opacity: 1;
+}
+
+.sidebar .nav-item:hover .nav-link {
+  background-color: #f1f5f9;
+  color:  #6abdcc;;
+}
+
+.sidebar .nav-link.active {
+  background-color: #dbeafe;
+  color:  #6abdcc;;
+  position: relative;
+  font-weight: 600;
+}
+
+.sidebar .nav-link.active svg {
+  stroke:  #6abdcc;;
+  margin-right: 12px;
+}
+
+.sidebar .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background-color:  #6abdcc;;
+}
+
+.main-content {
+  margin-left: 70px;
+  position: relative;
+  z-index: 1;
+}<!-- Sidebar Flotante -->
+<nav class="sidebar">
+  <!-- Lista de Íconos -->
+  <ul class="navbar-nav flex-column">
+    <li class="nav-item">
+      <a class="nav-link" [routerLink]="['/home']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home">
+          <path d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3m10-11v11a1 1 0 01-1 1h-3M9 21v-6a1 1 0 011-1h4a1 1 0 011 1v6"></path>
+        </svg>
+        <span>{{'START' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.sales">
+      <a class="nav-link" [routerLink]="['/orders']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-shopping-cart">
+          <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"></path>
+        </svg>
+        <span>{{'ORDERS' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.cashRegisters">
+      <a class="nav-link" [routerLink]="['/cashRegisters']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-credit-card">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+        <span>{{'REGISTERS' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.products">
+      <a class="nav-link" [routerLink]="['/products']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-package">
+          <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <span>{{'PRODUCTS' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.categories">
+      <a class="nav-link" [routerLink]="['/categories']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-layers"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        <span>{{'CATEGORIES' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="hasAccess">
+      <a class="nav-link" [routerLink]="['/calendar']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>{{'AGENDA' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.clients">
+      <a class="nav-link" [routerLink]="['/clients']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path>
+        </svg>
+        <span>{{'CLIENTS' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="themingService.shopTheming[0].shopSubscription.shopValidateClientAccess">
+      <a class="nav-link" [routerLink]="['/validate/client']" routerLinkActive="active">
+        <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M12.1992 12C14.9606 12 17.1992 9.76142 17.1992 7C17.1992 4.23858 14.9606 2 12.1992 2C9.43779 2 7.19922 4.23858 7.19922 7C7.19922 9.76142 9.43779 12 12.1992 12Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M3 22C3.57038 20.0332 4.74795 18.2971 6.36438 17.0399C7.98081 15.7827 9.95335 15.0687 12 15" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18.3795 20.8199C20.2793 20.8199 21.8195 19.2798 21.8195 17.3799C21.8195 15.4801 20.2793 13.9399 18.3795 13.9399C16.4796 13.9399 14.9395 15.4801 14.9395 17.3799C14.9395 19.2798 16.4796 20.8199 18.3795 20.8199Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M22.9406 21.9401L20.8105 19.8101" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+        <span>{{'VALIDATE_CLIENT' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.coupons">
+      <a class="nav-link" [routerLink]="['/coupons']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-percent">
+          <line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle>
+        </svg>
+        <span>{{'COUPONS' | translate}}</span>
+      </a>
+    </li>
+    <li class="nav-item" *ngIf="permissions.giftCards">
+      <a class="nav-link" [routerLink]="['/giftCardTypes']" routerLinkActive="active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-gift">
+          <polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"></path>
+        </svg>
+        <span>{{'GIFT_CARDS' | translate}}</span>
+      </a>
+    </li>
+  </ul>
+</nav> import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { ThemingService } from 'src/app/theming.service';
+import { TranslateService } from '@ngx-translate/core';
+
+import { AuthService } from 'src/app/auth.service';
+declare var $: any;
+
+@Component({
+  selector: 'app-side-bar',
+  templateUrl: './side-bar.component.html',
+  styleUrls: ['./side-bar.component.scss'],
+})
+export class SideBarComponent implements OnInit {
+  permissions: any = {};
+  hasAccess!: boolean;
+  isSidebarExpanded = false;
+  shopLogos: { white: string; large: string; small: string } = {
+    white: '',
+    large: '',
+    small: ''
+  };
+  isLoading: boolean = true;
+  shopName: string = '';
+
+  constructor(
+    private router: Router,
+    public themingService: ThemingService,
+    private authService: AuthService,
+    private translate: TranslateService
+  ) {
+    translate.setDefaultLang('es');
+    translate.use('es');
+  }
+
+  ngOnInit(): void {
+    this.authService.getUserPermissions().then((permissions) => {
+      this.permissions = permissions;
+      if ((this.themingService.shopId === 4 || this.themingService.shopId === 9 || this.themingService.shopId === 15 || this.themingService.shopId === 22 || this.themingService.shopId === 128) && this.permissions.calendar === true) {
+        this.hasAccess = true;
+      }else {
+        this.hasAccess = false;
+      }
+    }).catch((error) => {
+      console.error('Error al obtener permisos del usuario:', error);
+    });
+    this.getShopTheming();
+  }
+  toggleSidebar() {
+    this.isSidebarExpanded = !this.isSidebarExpanded;
+  }
+  getShopTheming() {
+    //this.themingService.getThemingService().then(() => {
+      const theming = this.themingService.shopTheming[0];
+      if (theming) {
+        this.shopLogos.white = theming.shopLogoWhite;
+        this.shopLogos.large = theming.shopLogoLarge;
+        this.shopLogos.small = theming.shopLogoSmall;
+        this.shopName = theming.shopName;
+      }
+    // }).catch((error) => {
+    //   console.error('Error al obtener el servicio de theming:', error);
+    // }).finally(() => {
+    //   this.isLoading = false; // Los datos han sido cargados
+    // });
+  }
+
+  onSignOut() {
+    this.authService.onSignOut().then(() => {
+      this.router.navigate(['/login']);
+    });
+  }
+
+  openModal() {
+    $('#settingsModal').modal('show');
+  }
+}

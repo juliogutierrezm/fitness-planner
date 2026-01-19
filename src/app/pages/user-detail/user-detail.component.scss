@@ -14,11 +14,12 @@
       margin: 0;
       color: var(--primary-color, #1976d2);
 
-      mat-icon {
-        font-size: 30px;
-        width: 30px;
-        height: 30px;
-      }
+    }
+    mat-icon {
+      font-size: 30px;
+      width: 30px;
+      height: 30px;
+      color: var(--primary-color, #1976d2) !important;
     }
 
     mat-card-subtitle {
@@ -27,6 +28,34 @@
     }
   }
 }
+
+button[mat-mini-fab] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  line-height: 32px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-500),
+    var(--primary-color, #1976d2)
+  );
+}
+.trash-icon [mat-mini-fab] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  line-height: 32px;
+      background: linear-gradient(
+    135deg,
+    #f97316,
+    #e11d48
+  );
+}
+    mat-icon {
+    color: var(--primary-color, #e4e6eb);
+  }
 
 .user-detail {
   max-width: 1200px;
@@ -40,6 +69,15 @@
   display: grid;
   gap: 12px;
   padding: 16px;
+}
+
+.body-metrics-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.body-metrics-action button {
+  font-weight: 600;
 }
 
 .back {
@@ -70,6 +108,15 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+    button {
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+    color: #e4e6eb;
+    font-weight: 600
+  }
 }
 .plans-actions {
   display: inline-flex;

@@ -1,70 +1,69 @@
-<mat-sidenav-container class="shell-container">
-  <mat-sidenav mode="side" [(opened)]="sidebarOpen" class="sidenav">
-    <mat-nav-list class="sidebar-item">
-      <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
-        <mat-icon>dashboard</mat-icon>
-        <span>Dashboard</span>
-      </a>
-      <a class="nav-link" routerLink="/exercise-manager" routerLinkActive="active">
-        <mat-icon>fitness_center</mat-icon>
-        <span>Ejercicios</span>
-      </a>
-      <a class="nav-link" routerLink="/templates" routerLinkActive="active">
-        <mat-icon>view_list</mat-icon>
-        <span>Plantillas</span>
-      </a>
-      <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin' && !isIndependentTenant">
-        <mat-icon>sports</mat-icon>
-        <span>Entrenadores</span>
-      </a>
-      <a class="nav-link" routerLink="/clients" routerLinkActive="active">
-        <mat-icon>group</mat-icon>
-        <span>Clientes</span>
-      </a>
-      <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
-        <mat-icon>analytics</mat-icon>
-        <span>Diagnostics</span>
-      </a>
-
-      <!-- Settings Section for Admin only -->
-      <mat-divider *ngIf="user?.role === 'admin'" style="margin: 8px 0;"></mat-divider>
-      <a class="nav-link" routerLink="/settings/appearance" routerLinkActive="active" *ngIf="user?.role === 'admin'">
-        <mat-icon>palette</mat-icon>
-        <span>Apariencia</span>
-      </a>
-    </mat-nav-list>
-  </mat-sidenav>
-
-  <mat-sidenav-content>
-    <mat-toolbar class="app-toolbar">
-      <button mat-icon-button (click)="sidebarOpen = !sidebarOpen">
-        <mat-icon>menu</mat-icon>
-      </button>
-      <div class="brand-container">
-        <img src="/assets/TrainGrid.png" alt="TrainGrid Logo" class="app-logo">
-        <span class="app-name">TrainGrid</span>
-      </div>
-      
-      <span class="spacer"></span>
-      
-      <div class="auth-buttons">
-        <div *ngIf="isLoggedIn && user" class="user-badge">
-          <mat-icon>account_circle</mat-icon>
-          <span>{{ displayName }}</span>
-          <button mat-flat-button class="logout-btn" (click)="logout()">
-            <mat-icon>logout</mat-icon>
-            Cerrar sesión
-          </button>
-        </div>
-        <button *ngIf="!isLoggedIn" mat-flat-button class="login-btn" (click)="login()">
-          <mat-icon>login</mat-icon>
-          Iniciar sesión
+<div class="shell">
+  <mat-toolbar class="app-toolbar">
+    <div class="brand-container">
+      <img src="/assets/TrainGrid.png" alt="TrainGrid Logo" class="app-logo">
+      <span class="app-name">TrainGrid</span>
+    </div>
+    
+    <span class="spacer"></span>
+    
+    <div class="auth-buttons">
+      <div *ngIf="isLoggedIn && user" class="user-badge">
+        <mat-icon>account_circle</mat-icon>
+        <span>{{ displayName }}</span>
+        <button mat-mini-fab class="logout-btn" (click)="logout()">
+          <mat-icon>logout</mat-icon>
         </button>
       </div>
-    </mat-toolbar>
+      <button *ngIf="!isLoggedIn" mat-mini-fab class="login-btn" (click)="login()">
+        <mat-icon>login</mat-icon>
+      </button>
+    </div>
+  </mat-toolbar>
 
-    <main class="shell-content">
-      <router-outlet></router-outlet>
-    </main>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+  <mat-sidenav-container class="shell-container">
+    <mat-sidenav mode="side" [opened]="true" class="sidenav">
+      <div class="sidenav-rail">
+        <mat-nav-list class="sidebar-item">
+          <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">
+            <mat-icon>dashboard</mat-icon>
+            <span>Dashboard</span>
+          </a>
+          <a class="nav-link" routerLink="/exercise-manager" routerLinkActive="active">
+            <mat-icon>fitness_center</mat-icon>
+            <span>Ejercicios</span>
+          </a>
+          <a class="nav-link" routerLink="/templates" routerLinkActive="active">
+            <mat-icon>view_list</mat-icon>
+            <span>Plantillas</span>
+          </a>
+          <a class="nav-link" routerLink="/trainers" routerLinkActive="active" *ngIf="user?.role === 'admin' && !isIndependentTenant">
+            <mat-icon>sports</mat-icon>
+            <span>Entrenadores</span>
+          </a>
+          <a class="nav-link" routerLink="/clients" routerLinkActive="active">
+            <mat-icon>group</mat-icon>
+            <span>Clientes</span>
+          </a>
+          <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
+            <mat-icon>analytics</mat-icon>
+            <span>Diagnostics</span>
+          </a>
+
+          <!-- Settings Section for Admin only -->
+          <mat-divider *ngIf="user?.role === 'admin'" style="margin: 8px 0;"></mat-divider>
+          <a class="nav-link" routerLink="/settings/appearance" routerLinkActive="active" *ngIf="user?.role === 'admin'">
+            <mat-icon>palette</mat-icon>
+            <span>Apariencia</span>
+          </a>
+        </mat-nav-list>
+      </div>
+    </mat-sidenav>
+
+    <mat-sidenav-content>
+      <main class="shell-content">
+        <router-outlet></router-outlet>
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

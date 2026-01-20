@@ -147,6 +147,8 @@ fitness-planner/
 │   │   ├── app.routes.server.ts
 │   │   ├── app.routes.ts
 │   │   ├── exercise-api.service.ts
+│   │   ├── models/
+│   │   │   └── body-metrics.model.ts
 │   │   ├── user-api.service.ts
 │   │   ├── assets/
 │   │   │   ├── tempLogo.png
@@ -159,52 +161,6 @@ fitness-planner/
 │   │   │   ├── auth.service.spec.ts
 │   │   │   ├── auth.service.ts
 │   │   │   └── test-utils.ts
-│   │   ├── client/
-│   │   │   ├── client.routes.ts
-│   │   │   ├── layout/
-│   │   │   │   ├── client-layout.component.html
-│   │   │   │   ├── client-layout.component.scss
-│   │   │   │   ├── client-layout.component.spec.ts
-│   │   │   │   └── client-layout.component.ts
-│   │   │   ├── pages/
-│   │   │   │   ├── exercise-detail/
-│   │   │   │   │   ├── client-exercise-detail.component.html
-│   │   │   │   │   ├── client-exercise-detail.component.scss
-│   │   │   │   │   ├── client-exercise-detail.component.spec.ts
-│   │   │   │   │   └── client-exercise-detail.component.ts
-│   │   │   │   ├── exercise-video/
-│   │   │   │   │   ├── client-exercise-video.component.html
-│   │   │   │   │   ├── client-exercise-video.component.scss
-│   │   │   │   │   ├── client-exercise-video.component.spec.ts
-│   │   │   │   │   └── client-exercise-video.component.ts
-│   │   │   │   ├── plan-detail/
-│   │   │   │   │   ├── client-plan-detail.component.html
-│   │   │   │   │   ├── client-plan-detail.component.scss
-│   │   │   │   │   ├── client-plan-detail.component.spec.ts
-│   │   │   │   │   └── client-plan-detail.component.ts
-│   │   │   │   ├── plans/
-│   │   │   │   │   ├── client-plans.component.html
-│   │   │   │   │   ├── client-plans.component.scss
-│   │   │   │   │   ├── client-plans.component.spec.ts
-│   │   │   │   │   └── client-plans.component.ts
-│   │   │   │   ├── profile/
-│   │   │   │   │   ├── client-profile.component.html
-│   │   │   │   │   ├── client-profile.component.scss
-│   │   │   │   │   ├── client-profile.component.spec.ts
-│   │   │   │   │   └── client-profile.component.ts
-│   │   │   │   └── session-exercises/
-│   │   │   │       ├── client-session-exercises.component.html
-│   │   │   │       ├── client-session-exercises.component.scss
-│   │   │   │       ├── client-session-exercises.component.spec.ts
-│   │   │   │       └── client-session-exercises.component.ts
-│   │   │   ├── services/
-│   │   │   │   ├── client-data.service.ts
-│   │   │   │   ├── client-plans.service.spec.ts
-│   │   │   │   └── getClientDataResponse.json
-│   │   │   ├── styles/
-│   │   │   │   └── _liquid.scss
-│   │   │   └── utils/
-│   │   │       └── session-exercise.utils.ts
 │   │   ├── components/
 │   │   │   ├── callback/
 │   │   │   │   ├── callback.component.html
@@ -275,6 +231,10 @@ fitness-planner/
 │   │   │   ├── layout.component.scss
 │   │   │   └── layout.component.ts
 │   │   ├── pages/
+│   │   │   ├── client-body-metrics/
+│   │   │   │   ├── client-body-metrics.component.html
+│   │   │   │   ├── client-body-metrics.component.scss
+│   │   │   │   └── client-body-metrics.component.ts
 │   │   │   ├── clients/
 │   │   │   │   ├── clients.component.html
 │   │   │   │   ├── clients.component.scss
@@ -345,6 +305,8 @@ fitness-planner/
 │   │   │       └── users.component.ts
 │   │   ├── services/
 │   │   │   ├── auth.service.ts
+│   │   │   ├── client-body-metrics.service.ts
+│   │   │   ├── client-body-metrics.service.spec.ts
 │   │   │   ├── template-assignment.service.ts
 │   │   │   └── theme.service.ts
 │   │   ├── shared/
@@ -449,12 +411,14 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
 - **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
+- **Métricas corporales de clientes**: Seguimiento histórico de composición corporal (peso, grasa corporal, masa muscular, IMC, metabolismo basal, edad metabólica) con gráficos y gestión de mediciones
+- **Interfaz unificada de usuario**: Arquitectura simplificada donde todos los roles acceden a través de la aplicación principal sin interfaces separadas
 
 ## Modulos de usuarios por rol
-- **Clientes**: Vista dedicada para usuarios con role = client, con asignacion/cambio de entrenador (solo admin).
+- **Clientes**: Gestión de usuarios con role = client, con asignación/cambio de entrenador (solo admin). Los clientes acceden a través de la aplicación principal según sus permisos.
 - **Entrenadores**: Vista dedicada para usuarios con role = trainer, con conteo de clientes asignados y planes creados.
 - **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
-- **Plantillas**: La asignacion de plantillas filtra solo clientes.
+- **Plantillas**: La asignación de plantillas filtra solo clientes.
 
 ## Ejemplos de uso
 ### Iniciar sesión con OAuth 2.0 + PKCE
@@ -745,16 +709,16 @@ export class AiGenerationDialogComponent {
 ## Cambios recientes (ultimos commits)
 
 ### Ultimas actualizaciones implementadas (últimos 10 commits):
+- **99ad3a5**: changed layout setup
+- **c0049c8**: changed stylesX
+- **105c3e5**: finaly fixed planner supersets viewX
+- **f48fceb**: added body metrics feature
+- **112027c**: remove clientX
+- **b296446**: Merge pull request #10 from juliogutierrezm/feat/planner-refactorX
+- **b997ce3**: remove clientX
 - **c7c1250**: refactor planner component
-- **b0f5974**: refactor planner component
+- **b0f5974**: refactor planner componentX
 - **a2efa95**: Merge pull request #8 from juliogutierrezm/feat/client-app-view
-- **98a61a5**: fixed trainers view for trainers-admin
-- **749dacc**: fixed progressions and admin-trainer permissions
-- **4ab2c63**: fixed experiencie feature
-- **cd9ba60**: added all features
-- **b6b4420**: fixed progressions
-- **e9d001d**: fixed progressions
-- **333124b**: added progressions
 
 ## Mejoras Pendientes
 

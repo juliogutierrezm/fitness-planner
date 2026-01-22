@@ -21,6 +21,11 @@ export class PostLoginRedirectGuard implements CanActivate {
       return true;
     }
 
+    if (this.authService.isClientOnly()) {
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+
     if (!this.authService.hasPlannerGroups()) {
       this.router.navigate(['/onboarding']);
       return false;

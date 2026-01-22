@@ -1,7 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signOut, getCurrentUser, signInWithRedirect } from 'aws-amplify/auth';
 import { awsExports } from '../../aws-exports';
@@ -59,20 +59,28 @@ export class AuthService {
 
   async checkAuthState(forceRefresh: boolean = false): Promise<void> {
     if (this.initialized && !forceRefresh) return;
-      this.initialized = true;
+    this.initialized = true;
     try {
       if (!this.isBrowser) { return; }
-      const user = await getCurrentUser();
       const session = await fetchAuthSession({ forceRefresh });
-      
-      if (user && session.tokens) {
-        const userProfile = await this.buildUserProfile(user, session);
-        this.currentUserSubject.next(userProfile);
-        this.isAuthenticatedSubject.next(true);
-      } else {
+      const tokens = session?.tokens;
+
+      if (!tokens) {
         this.currentUserSubject.next(null);
         this.isAuthenticatedSubject.next(false);
+        return;
       }
+
+      let user: any | null = null;
+      try {
+        user = await getCurrentUser();
+      } catch (error) {
+        console.warn('Unable to load current user; falling back to token payload.', error);
+      }
+
+      const userProfile = await this.buildUserProfile(user, session);
+      this.currentUserSubject.next(userProfile);
+      this.isAuthenticatedSubject.next(true);
     } catch (error) {
       console.log('User not authenticated:', error);
       this.currentUserSubject.next(null);
@@ -80,7 +88,7 @@ export class AuthService {
     }
   }
 
-  private async buildUserProfile(user: any, session: any): Promise<UserProfile> {
+  private async buildUserProfile(user: any | null, session: any): Promise<UserProfile> {
     const idToken = session.tokens?.idToken;
     const accessToken = session.tokens?.accessToken;
     const idPayload = idToken?.payload || {};
@@ -93,14 +101,14 @@ export class AuthService {
     const groups = this.extractGroups(idPayload, accessPayload);
 
     // Prefer ID token for profile fields; fallback to access token
-    const email = idPayload.email || accessPayload.email || user.username;
+    const email = idPayload.email || accessPayload.email || user?.username || '';
     const givenName = idPayload.given_name || accessPayload.given_name;
     const familyName = idPayload.family_name || accessPayload.family_name;
     const companyId = idPayload['custom:companyId'] || accessPayload['custom:companyId'];
     const trainerIdsRaw = idPayload['custom:trainerIds'] || accessPayload['custom:trainerIds'];
 
     return {
-      id: user.userId,
+      id: user?.userId || idPayload.sub || accessPayload.sub || user?.username || '',
       email,
       givenName,
       familyName,
@@ -149,9 +157,19 @@ export class AuthService {
     return this.isAuthenticatedSubject.value;
   }
 
-  hasPlannerGroups(): boolean {
+  /**
+   * Purpose: check if current user is in a specific Cognito group.
+   * Input: groupName (string). Output: boolean.
+   * Error handling: returns false when user or groups are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private hasGroup(groupName: string): boolean {
     const groups = this.currentUserSubject.value?.groups ?? [];
-    return groups.includes('Admin') || groups.includes('Trainer');
+    return groups.includes(groupName);
+  }
+
+  hasPlannerGroups(): boolean {
+    return this.hasGroup('Admin') || this.hasGroup('Trainer');
   }
 
   getCurrentUserId(): string | null {
@@ -166,16 +184,42 @@ export class AuthService {
     return this.currentUserSubject.value?.companyId || null;
   }
 
+  /**
+   * Purpose: determine whether current user has only the Client group.
+   * Input: none. Output: boolean.
+   * Error handling: returns false when user or groups are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  isClientOnly(): boolean {
+    return this.hasGroup('Client') && !this.hasPlannerGroups();
+  }
+
+  /**
+   * Purpose: validate required roles using Cognito groups as source of truth.
+   * Input: roles (UserRole[]). Output: boolean.
+   * Error handling: returns false when roles are missing or user lacks groups.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  hasRequiredRoles(roles: UserRole[] = []): boolean {
+    if (!roles || roles.length === 0) return false;
+    return roles.some(role => {
+      if (role === UserRole.ADMIN) return this.hasGroup('Admin');
+      if (role === UserRole.TRAINER) return this.hasGroup('Trainer');
+      if (role === UserRole.CLIENT) return this.hasGroup('Client');
+      return false;
+    });
+  }
+
   isAdmin(): boolean {
-    return this.getCurrentUserRole() === UserRole.ADMIN;
+    return this.hasGroup('Admin');
   }
 
   isTrainer(): boolean {
-    return this.getCurrentUserRole() === UserRole.TRAINER;
+    return this.hasGroup('Trainer');
   }
 
   isClient(): boolean {
-    return this.getCurrentUserRole() === UserRole.CLIENT;
+    return this.hasGroup('Client');
   }
 
   /**

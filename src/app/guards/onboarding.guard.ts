@@ -25,6 +25,11 @@ export class OnboardingGuard implements CanActivate {
           return false;
         }
 
+        if (this.authService.isClientOnly()) {
+          this.router.navigate(['/unauthorized']);
+          return false;
+        }
+
         if (this.authService.hasPlannerGroups()) {
           this.router.navigate(['/dashboard']);
           return false;

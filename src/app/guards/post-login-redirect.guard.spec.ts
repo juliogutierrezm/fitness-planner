@@ -7,6 +7,7 @@ describe('PostLoginRedirectGuard', () => {
   let guard: PostLoginRedirectGuard;
   let authService: {
     hasPlannerGroups: jasmine.Spy;
+    isClientOnly: jasmine.Spy;
     isAuthenticatedSync: jasmine.Spy;
   };
   let router: jasmine.SpyObj<Router>;
@@ -14,6 +15,7 @@ describe('PostLoginRedirectGuard', () => {
   beforeEach(() => {
     authService = {
       hasPlannerGroups: jasmine.createSpy('hasPlannerGroups'),
+      isClientOnly: jasmine.createSpy('isClientOnly'),
       isAuthenticatedSync: jasmine.createSpy('isAuthenticatedSync')
     };
     router = jasmine.createSpyObj('Router', ['navigate']);
@@ -31,6 +33,7 @@ describe('PostLoginRedirectGuard', () => {
 
   it('allows navigation when already on onboarding', () => {
     authService.isAuthenticatedSync.and.returnValue(true);
+    authService.isClientOnly.and.returnValue(false);
     authService.hasPlannerGroups.and.returnValue(false);
 
     const result = guard.canActivate({ routeConfig: { path: 'onboarding' } } as any, { url: '/onboarding' } as any);
@@ -41,6 +44,7 @@ describe('PostLoginRedirectGuard', () => {
 
   it('redirects to onboarding when authenticated without planner groups', () => {
     authService.isAuthenticatedSync.and.returnValue(true);
+    authService.isClientOnly.and.returnValue(false);
     authService.hasPlannerGroups.and.returnValue(false);
 
     const result = guard.canActivate({} as any, { url: '/dashboard' } as any);
@@ -51,6 +55,7 @@ describe('PostLoginRedirectGuard', () => {
 
   it('allows navigation when authenticated with planner groups', () => {
     authService.isAuthenticatedSync.and.returnValue(true);
+    authService.isClientOnly.and.returnValue(false);
     authService.hasPlannerGroups.and.returnValue(true);
 
     const result = guard.canActivate({} as any, { url: '/dashboard' } as any);
@@ -61,11 +66,23 @@ describe('PostLoginRedirectGuard', () => {
 
   it('allows navigation when not authenticated', () => {
     authService.isAuthenticatedSync.and.returnValue(false);
+    authService.isClientOnly.and.returnValue(false);
     authService.hasPlannerGroups.and.returnValue(false);
 
     const result = guard.canActivate({} as any, { url: '/dashboard' } as any);
 
     expect(result).toBe(true);
     expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('redirects to unauthorized when user is client-only', () => {
+    authService.isAuthenticatedSync.and.returnValue(true);
+    authService.isClientOnly.and.returnValue(true);
+    authService.hasPlannerGroups.and.returnValue(false);
+
+    const result = guard.canActivate({} as any, { url: '/dashboard' } as any);
+
+    expect(result).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/unauthorized']);
   });
 });

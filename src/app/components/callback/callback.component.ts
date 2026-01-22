@@ -44,15 +44,26 @@ export class CallbackComponent implements OnInit {
         return;
       }
 
-      // Finalize redirect and refresh auth state
-      await this.authService.checkAuthState();
+      // Finalize redirect and refresh auth state (force refresh to avoid stale init)
+      await this.authService.checkAuthState(true);
 
       // Evaluate synchronously after state refresh to avoid initial false emission
-      if (this.authService.isAuthenticatedSync()) {
-        this.router.navigate(['/dashboard']);
-      } else {
+      if (!this.authService.isAuthenticatedSync()) {
         this.error = 'No se pudo completar la autenticación.';
+        return;
       }
+
+      if (this.authService.isClientOnly()) {
+        this.router.navigate(['/unauthorized']);
+        return;
+      }
+
+      if (!this.authService.hasPlannerGroups()) {
+        this.router.navigate(['/onboarding']);
+        return;
+      }
+
+      this.router.navigate(['/dashboard']);
     } catch (error) {
       console.error('Callback error:', error);
       this.error = 'Error procesando la autenticación. Por favor intenta de nuevo.';

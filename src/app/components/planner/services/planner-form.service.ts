@@ -16,7 +16,7 @@ export class PlannerFormService {
     return this.fb.group({
       userName: [''],
       templateName: [''],
-      sessionCount: [3],
+      sessionCount: [1],
       notes: [''],
       targetUserId: [''],
       objective: [''],

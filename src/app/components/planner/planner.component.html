@@ -17,6 +17,17 @@
     <button mat-mini-fab (click)="goBack()" matTooltip="Volver a la lista de planes">
       <mat-icon>arrow_back</mat-icon>
     </button>
+            <button
+          *ngIf="!isTemplateMode"
+          mat-fab extended
+          color="primary"
+          (click)="openSaveTemplateDialog()"
+          matTooltip="Guardar el plan actual como plantilla"
+          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
+        >
+          <mat-icon>style</mat-icon>
+          Guardar como plantilla
+        </button>
   </div>
     <mat-card class="header-card">
     <mat-card-header>
@@ -27,24 +38,13 @@
       <mat-card-subtitle>Puedes crear tus planes con IA</mat-card-subtitle>
       <div class="actions-right">
         <ng-container *ngIf="!isEditMode">
-        <button
-          *ngIf="!isTemplateMode"
-          mat-fab extended
-          color="primary"
-          (click)="openSaveTemplateDialog()"
-          matTooltip="Guardar el plan actual como plantilla"
-          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
-        >
-          <mat-icon>bookmark_add</mat-icon>
-          Guardar como plantilla
-        </button>
           <mat-progress-spinner
             *ngIf="isUserLoading"
             mode="indeterminate"
             diameter="24"
           ></mat-progress-spinner>
           <button class="ia-button"
-            *ngIf="!isUserLoading"
+            *ngIf="!isUserLoading && !isTemplateMode"
             mat-fab extended
             color="accent"
             (click)="openAIDialog()"
@@ -62,7 +62,7 @@
           [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
           [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading || (isTemplateMode && form.get('templateName')!.invalid)"
         >
-          <mat-icon>list_alt</mat-icon>
+          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'list_alt' : 'list_alt') }}</mat-icon>
           {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
         </button>
       </div>
@@ -121,14 +121,16 @@
           El nombre de la plantilla es obligatorio.
         </mat-error>
       </mat-form-field>
-
-
     </div>
   </form>
 
   <mat-expansion-panel class="progressions-panel">
     <mat-expansion-panel-header>
-      <mat-panel-title>Progresion semanal (guia)</mat-panel-title>
+      
+      <mat-panel-title class="progression-title">
+        <mat-icon>show_chart</mat-icon>
+          Progresion semanal (guia)
+      </mat-panel-title>
       <mat-panel-description>
         <mat-checkbox
           class="progressions-toggle"

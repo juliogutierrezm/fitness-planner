@@ -64,7 +64,7 @@
         </mat-form-field>
       </div>
       <div class="form-grid">
-        <div class="injury-section">
+        <div *ngIf="isClientView" class="injury-section">
           <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Lesiones o limitaciones</mat-label>
@@ -194,7 +194,7 @@
               La fecha de nacimiento es obligatoria
             </mat-error>
           </mat-form-field>
-          <div class="injury-section">
+          <div *ngIf="isClientView" class="injury-section">
             <mat-checkbox formControlName="noInjuries">Sin lesiones</mat-checkbox>
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Lesiones o limitaciones</mat-label>

@@ -5,8 +5,7 @@ import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService, UserRole } from '../../services/auth.service';
-import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-callback',
@@ -45,15 +44,26 @@ export class CallbackComponent implements OnInit {
         return;
       }
 
-      // Finalize redirect and refresh auth state
-      await this.authService.checkAuthState();
+      // Finalize redirect and refresh auth state (force refresh to avoid stale init)
+      await this.authService.checkAuthState(true);
 
       // Evaluate synchronously after state refresh to avoid initial false emission
-      if (this.authService.isAuthenticatedSync()) {
-        this.router.navigate([this.resolvePostLoginRoute()]);
-      } else {
+      if (!this.authService.isAuthenticatedSync()) {
         this.error = 'No se pudo completar la autenticación.';
+        return;
       }
+
+      if (this.authService.isClientOnly()) {
+        this.router.navigate(['/unauthorized']);
+        return;
+      }
+
+      if (!this.authService.hasPlannerGroups()) {
+        this.router.navigate(['/onboarding']);
+        return;
+      }
+
+      this.router.navigate(['/dashboard']);
     } catch (error) {
       console.error('Callback error:', error);
       this.error = 'Error procesando la autenticación. Por favor intenta de nuevo.';
@@ -64,17 +74,4 @@ export class CallbackComponent implements OnInit {
     this.authService.signInWithRedirect();
   }
 
-  /**
-   * Purpose: select a post-login route based on the current user role.
-   * Input: none. Output: route path string.
-   * Error handling: defaults to admin/trainer dashboard when role is unknown.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private resolvePostLoginRoute(): string {
-    const role = this.authService.getCurrentUserRole();
-    if (role === UserRole.CLIENT) {
-      return '/unauthorized';
-    }
-    return '/dashboard';
-  }
 }

@@ -19,7 +19,7 @@ La aplicación implementa un sistema de autenticación híbrido que combina las 
 - **Control de acceso basado en roles**: Sistema jerárquico con tres roles (Admin, Trainer, Client)
 - **Gestión de perfiles de usuario**: Atributos personalizados y metadatos de usuario
 - **Sesiones avanzadas**: Manejo automático de refresh tokens y estados de autenticación
-- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos y atributos personalizados
+- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos de Cognito
 
 ### Configuración de AWS Cognito
 
@@ -87,6 +87,36 @@ private generateCodeVerifier(length: number = 64): string {
 | **Trainer** | Gestión de sus clientes asignados, creación de planes, acceso al catálogo de ejercicios |
 | **Client** | Acceso a sus propios planes asignados y perfil personal |
 
+## User Initialization & Onboarding
+
+### userType (solo onboarding)
+- userType indica el contexto operativo del usuario y no es un rol.
+- Valores soportados: GYM_OWNER, INDEPENDENT_TRAINER.
+- Se usa solo en la UI de onboarding y en el body de POST /users/initialize.
+- No se persiste en el perfil ni se usa para permisos.
+
+### Estado de inicializacion (groups only)
+- Usuario inicializado para planner = pertenece a Admin o Trainer.
+- Fuente de verdad: grupos de Cognito (cognito:groups).
+
+### companyId (aislamiento de tenant)
+- companyId se asigna en backend durante /users/initialize.
+- INDEPENDENT_TRAINER -> INDEPENDENT
+- GYM_OWNER -> GYM#<uuid>
+
+### Rol vs estado
+- Role (admin/trainer/client) controla permisos de acceso y se deriva de grupos.
+- userType solo define contexto de negocio durante onboarding.
+
+### Por que el onboarding es post-login
+- El onboarding requiere un JWT valido para llamar POST /users/initialize.
+- Evita mostrar onboarding antes de autenticar al usuario.
+
+### Guards deciden
+- AuthGuard solo valida autenticacion.
+- OnboardingGuard permite /onboarding solo si el usuario autenticado no tiene grupos Admin/Trainer; si los tiene, redirige a /dashboard.
+- PostLoginRedirectGuard redirige a /onboarding cuando el usuario autenticado no tiene grupos Admin/Trainer.
+
 ### Integración con API Backend
 ```typescript
 // Interceptor automático de autenticación
@@ -147,6 +177,8 @@ fitness-planner/
 │   │   ├── app.routes.server.ts
 │   │   ├── app.routes.ts
 │   │   ├── exercise-api.service.ts
+│   │   ├── models/
+│   │   │   └── body-metrics.model.ts
 │   │   ├── user-api.service.ts
 │   │   ├── assets/
 │   │   │   ├── tempLogo.png
@@ -159,52 +191,6 @@ fitness-planner/
 │   │   │   ├── auth.service.spec.ts
 │   │   │   ├── auth.service.ts
 │   │   │   └── test-utils.ts
-│   │   ├── client/
-│   │   │   ├── client.routes.ts
-│   │   │   ├── layout/
-│   │   │   │   ├── client-layout.component.html
-│   │   │   │   ├── client-layout.component.scss
-│   │   │   │   ├── client-layout.component.spec.ts
-│   │   │   │   └── client-layout.component.ts
-│   │   │   ├── pages/
-│   │   │   │   ├── exercise-detail/
-│   │   │   │   │   ├── client-exercise-detail.component.html
-│   │   │   │   │   ├── client-exercise-detail.component.scss
-│   │   │   │   │   ├── client-exercise-detail.component.spec.ts
-│   │   │   │   │   └── client-exercise-detail.component.ts
-│   │   │   │   ├── exercise-video/
-│   │   │   │   │   ├── client-exercise-video.component.html
-│   │   │   │   │   ├── client-exercise-video.component.scss
-│   │   │   │   │   ├── client-exercise-video.component.spec.ts
-│   │   │   │   │   └── client-exercise-video.component.ts
-│   │   │   │   ├── plan-detail/
-│   │   │   │   │   ├── client-plan-detail.component.html
-│   │   │   │   │   ├── client-plan-detail.component.scss
-│   │   │   │   │   ├── client-plan-detail.component.spec.ts
-│   │   │   │   │   └── client-plan-detail.component.ts
-│   │   │   │   ├── plans/
-│   │   │   │   │   ├── client-plans.component.html
-│   │   │   │   │   ├── client-plans.component.scss
-│   │   │   │   │   ├── client-plans.component.spec.ts
-│   │   │   │   │   └── client-plans.component.ts
-│   │   │   │   ├── profile/
-│   │   │   │   │   ├── client-profile.component.html
-│   │   │   │   │   ├── client-profile.component.scss
-│   │   │   │   │   ├── client-profile.component.spec.ts
-│   │   │   │   │   └── client-profile.component.ts
-│   │   │   │   └── session-exercises/
-│   │   │   │       ├── client-session-exercises.component.html
-│   │   │   │       ├── client-session-exercises.component.scss
-│   │   │   │       ├── client-session-exercises.component.spec.ts
-│   │   │   │       └── client-session-exercises.component.ts
-│   │   │   ├── services/
-│   │   │   │   ├── client-data.service.ts
-│   │   │   │   ├── client-plans.service.spec.ts
-│   │   │   │   └── getClientDataResponse.json
-│   │   │   ├── styles/
-│   │   │   │   └── _liquid.scss
-│   │   │   └── utils/
-│   │   │       └── session-exercise.utils.ts
 │   │   ├── components/
 │   │   │   ├── callback/
 │   │   │   │   ├── callback.component.html
@@ -275,6 +261,10 @@ fitness-planner/
 │   │   │   ├── layout.component.scss
 │   │   │   └── layout.component.ts
 │   │   ├── pages/
+│   │   │   ├── client-body-metrics/
+│   │   │   │   ├── client-body-metrics.component.html
+│   │   │   │   ├── client-body-metrics.component.scss
+│   │   │   │   └── client-body-metrics.component.ts
 │   │   │   ├── clients/
 │   │   │   │   ├── clients.component.html
 │   │   │   │   ├── clients.component.scss
@@ -345,6 +335,8 @@ fitness-planner/
 │   │   │       └── users.component.ts
 │   │   ├── services/
 │   │   │   ├── auth.service.ts
+│   │   │   ├── client-body-metrics.service.ts
+│   │   │   ├── client-body-metrics.service.spec.ts
 │   │   │   ├── template-assignment.service.ts
 │   │   │   └── theme.service.ts
 │   │   ├── shared/
@@ -449,12 +441,18 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
 - **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
+- **Métricas corporales de clientes**: Seguimiento histórico de composición corporal (peso, grasa corporal, masa muscular, IMC, metabolismo basal, edad metabólica) con gráficos y gestión de mediciones
+- **Interfaz unificada de usuario**: Arquitectura simplificada donde todos los roles acceden a través de la aplicación principal sin interfaces separadas
 
 ## Modulos de usuarios por rol
-- **Clientes**: Vista dedicada para usuarios con role = client, con asignacion/cambio de entrenador (solo admin).
+- **Clientes**: Gestión de usuarios con role = client, con asignación/cambio de entrenador (solo admin). Los clientes acceden a través de la aplicación principal según sus permisos.
 - **Entrenadores**: Vista dedicada para usuarios con role = trainer, con conteo de clientes asignados y planes creados.
 - **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
-- **Plantillas**: La asignacion de plantillas filtra solo clientes.
+- **Plantillas**: La asignación de plantillas filtra solo clientes.
+
+## Estado actual del desarrollo
+
+
 
 ## Ejemplos de uso
 ### Iniciar sesión con OAuth 2.0 + PKCE
@@ -745,16 +743,16 @@ export class AiGenerationDialogComponent {
 ## Cambios recientes (ultimos commits)
 
 ### Ultimas actualizaciones implementadas (últimos 10 commits):
+- **99ad3a5**: changed layout setup
+- **c0049c8**: changed stylesX
+- **105c3e5**: finaly fixed planner supersets viewX
+- **f48fceb**: added body metrics feature
+- **112027c**: remove clientX
+- **b296446**: Merge pull request #10 from juliogutierrezm/feat/planner-refactorX
+- **b997ce3**: remove clientX
 - **c7c1250**: refactor planner component
-- **b0f5974**: refactor planner component
+- **b0f5974**: refactor planner componentX
 - **a2efa95**: Merge pull request #8 from juliogutierrezm/feat/client-app-view
-- **98a61a5**: fixed trainers view for trainers-admin
-- **749dacc**: fixed progressions and admin-trainer permissions
-- **4ab2c63**: fixed experiencie feature
-- **cd9ba60**: added all features
-- **b6b4420**: fixed progressions
-- **e9d001d**: fixed progressions
-- **333124b**: added progressions
 
 ## Mejoras Pendientes
 
@@ -768,3 +766,50 @@ export class AiGenerationDialogComponent {
 - **Virtualización de listas**: Aplicar virtualización a listas largas de ejercicios
 - **Lazy loading**: Implementar carga diferida para módulos no críticos
 - **Optimización de API**: Mejorar eficiencia de llamadas a servicios backend
+
+## Entrenador asignado vs entrenador actual (decisión de arquitectura)
+
+El sistema distingue explícitamente entre dos conceptos relacionados con entrenadores y clientes, los cuales cumplen propósitos distintos y no deben confundirse.
+
+### Entrenador asignado (administrativo)
+
+- Representa una asignación organizativa dentro del gimnasio.
+- Se almacena de forma explícita en el perfil del usuario:
+  - `USERS.trainerId`
+- Es gestionado únicamente por el administrador / gym owner.
+- Se utiliza para:
+  - Vistas administrativas
+  - Organización interna del gimnasio
+  - Conteo de clientes por entrenador
+  - Reporting y métricas de gestión
+- No representa actividad reciente ni autoría de planes.
+
+### Entrenador actual (operativo)
+
+- Representa al entrenador que más recientemente creó un plan para el cliente.
+- **No se almacena como estado fijo**.
+- Se deriva dinámicamente a partir del último plan de entrenamiento:
+  - `WorkoutPlans` ordenados por fecha descendente.
+- Se utiliza para:
+  - Experiencia de usuario del cliente
+  - Personalización de la interfaz
+  - Contexto operativo en vistas de entrenador y cliente
+- Un cliente puede tener planes creados por múltiples entrenadores a lo largo del tiempo.
+
+### Relación entre ambos conceptos
+
+- El entrenador asignado **no limita** la creación de planes.
+- Cualquier entrenador del mismo gimnasio puede crear planes para cualquier cliente del tenant.
+- El entrenador actual puede cambiar de forma natural sin intervención administrativa.
+- El historial de planes conserva siempre la autoría original.
+
+### Estado de implementación
+
+- El backend soporta completamente esta separación de responsabilidades.
+- La lógica de derivación del entrenador actual está implementada a nivel de datos.
+- La UI actual utiliza principalmente la asignación administrativa.
+- La exposición completa del entrenador actual en UI (cliente, entrenador, administrador) queda planificada para una implementación posterior.
+
+Esta separación permite flexibilidad operativa, colaboración entre entrenadores y una experiencia de usuario fluida, sin comprometer el control administrativo del gimnasio.
+
+

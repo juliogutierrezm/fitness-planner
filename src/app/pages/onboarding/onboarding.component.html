@@ -1,0 +1,33 @@
+<div class="onboarding-container">
+  <mat-card class="onboarding-card">
+    <mat-card-header>
+      <mat-card-title>Configura tu contexto</mat-card-title>
+      <mat-card-subtitle>Elige el tipo de negocio para continuar.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <mat-radio-group class="options" [(ngModel)]="selectedUserType">
+        <mat-radio-button value="GYM_OWNER">
+          <div class="option">
+            <div class="option-title">Dueno de gimnasio</div>
+            <div class="option-desc">Gestiono un gimnasio con multiples entrenadores.</div>
+          </div>
+        </mat-radio-button>
+        <mat-radio-button value="INDEPENDENT_TRAINER">
+          <div class="option">
+            <div class="option-title">Entrenador independiente</div>
+            <div class="option-desc">Trabajo por mi cuenta con mis clientes.</div>
+          </div>
+        </mat-radio-button>
+      </mat-radio-group>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-raised-button color="primary" (click)="confirmSelection()" [disabled]="loading || !selectedUserType">
+        <mat-icon>check_circle</mat-icon>
+        Continuar
+      </button>
+      <mat-progress-spinner *ngIf="loading" diameter="24" mode="indeterminate"></mat-progress-spinner>
+    </mat-card-actions>
+  </mat-card>
+</div>

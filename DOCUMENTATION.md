@@ -19,7 +19,7 @@ La aplicación implementa un sistema de autenticación híbrido que combina las 
 - **Control de acceso basado en roles**: Sistema jerárquico con tres roles (Admin, Trainer, Client)
 - **Gestión de perfiles de usuario**: Atributos personalizados y metadatos de usuario
 - **Sesiones avanzadas**: Manejo automático de refresh tokens y estados de autenticación
-- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos y atributos personalizados
+- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos de Cognito
 
 ### Configuración de AWS Cognito
 
@@ -86,6 +86,36 @@ private generateCodeVerifier(length: number = 64): string {
 | **Admin** | Acceso completo a usuarios, planes, ejercicios y configuraciones del sistema |
 | **Trainer** | Gestión de sus clientes asignados, creación de planes, acceso al catálogo de ejercicios |
 | **Client** | Acceso a sus propios planes asignados y perfil personal |
+
+## User Initialization & Onboarding
+
+### userType (solo onboarding)
+- userType indica el contexto operativo del usuario y no es un rol.
+- Valores soportados: GYM_OWNER, INDEPENDENT_TRAINER.
+- Se usa solo en la UI de onboarding y en el body de POST /users/initialize.
+- No se persiste en el perfil ni se usa para permisos.
+
+### Estado de inicializacion (groups only)
+- Usuario inicializado para planner = pertenece a Admin o Trainer.
+- Fuente de verdad: grupos de Cognito (cognito:groups).
+
+### companyId (aislamiento de tenant)
+- companyId se asigna en backend durante /users/initialize.
+- INDEPENDENT_TRAINER -> INDEPENDENT
+- GYM_OWNER -> GYM#<uuid>
+
+### Rol vs estado
+- Role (admin/trainer/client) controla permisos de acceso y se deriva de grupos.
+- userType solo define contexto de negocio durante onboarding.
+
+### Por que el onboarding es post-login
+- El onboarding requiere un JWT valido para llamar POST /users/initialize.
+- Evita mostrar onboarding antes de autenticar al usuario.
+
+### Guards deciden
+- AuthGuard solo valida autenticacion.
+- OnboardingGuard permite /onboarding solo si el usuario autenticado no tiene grupos Admin/Trainer; si los tiene, redirige a /dashboard.
+- PostLoginRedirectGuard redirige a /onboarding cuando el usuario autenticado no tiene grupos Admin/Trainer.
 
 ### Integración con API Backend
 ```typescript
@@ -420,6 +450,10 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
 - **Plantillas**: La asignación de plantillas filtra solo clientes.
 
+## Estado actual del desarrollo
+
+
+
 ## Ejemplos de uso
 ### Iniciar sesión con OAuth 2.0 + PKCE
 ```typescript
@@ -732,3 +766,50 @@ export class AiGenerationDialogComponent {
 - **Virtualización de listas**: Aplicar virtualización a listas largas de ejercicios
 - **Lazy loading**: Implementar carga diferida para módulos no críticos
 - **Optimización de API**: Mejorar eficiencia de llamadas a servicios backend
+
+## Entrenador asignado vs entrenador actual (decisión de arquitectura)
+
+El sistema distingue explícitamente entre dos conceptos relacionados con entrenadores y clientes, los cuales cumplen propósitos distintos y no deben confundirse.
+
+### Entrenador asignado (administrativo)
+
+- Representa una asignación organizativa dentro del gimnasio.
+- Se almacena de forma explícita en el perfil del usuario:
+  - `USERS.trainerId`
+- Es gestionado únicamente por el administrador / gym owner.
+- Se utiliza para:
+  - Vistas administrativas
+  - Organización interna del gimnasio
+  - Conteo de clientes por entrenador
+  - Reporting y métricas de gestión
+- No representa actividad reciente ni autoría de planes.
+
+### Entrenador actual (operativo)
+
+- Representa al entrenador que más recientemente creó un plan para el cliente.
+- **No se almacena como estado fijo**.
+- Se deriva dinámicamente a partir del último plan de entrenamiento:
+  - `WorkoutPlans` ordenados por fecha descendente.
+- Se utiliza para:
+  - Experiencia de usuario del cliente
+  - Personalización de la interfaz
+  - Contexto operativo en vistas de entrenador y cliente
+- Un cliente puede tener planes creados por múltiples entrenadores a lo largo del tiempo.
+
+### Relación entre ambos conceptos
+
+- El entrenador asignado **no limita** la creación de planes.
+- Cualquier entrenador del mismo gimnasio puede crear planes para cualquier cliente del tenant.
+- El entrenador actual puede cambiar de forma natural sin intervención administrativa.
+- El historial de planes conserva siempre la autoría original.
+
+### Estado de implementación
+
+- El backend soporta completamente esta separación de responsabilidades.
+- La lógica de derivación del entrenador actual está implementada a nivel de datos.
+- La UI actual utiliza principalmente la asignación administrativa.
+- La exposición completa del entrenador actual en UI (cliente, entrenador, administrador) queda planificada para una implementación posterior.
+
+Esta separación permite flexibilidad operativa, colaboración entre entrenadores y una experiencia de usuario fluida, sin comprometer el control administrativo del gimnasio.
+
+

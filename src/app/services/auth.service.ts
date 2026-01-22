@@ -10,12 +10,14 @@ import { isIndependentTenant } from '../shared/shared-utils';
 // Configure Amplify
 Amplify.configure(awsExports);
 
+export type UserType = 'GYM_OWNER' | 'INDEPENDENT_TRAINER';
 export interface UserProfile {
   id: string;
   email: string;
   givenName?: string;
   familyName?: string;
   role: UserRole;
+  groups: string[];
   companyId?: string;
   trainerIds?: string[];
   isActive: boolean;
@@ -34,15 +36,13 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserProfile | null>(null);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private readonly isBrowser: boolean;
-
+  private initialized = false;
+  
   public currentUser$ = this.currentUserSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   constructor(@Inject(PLATFORM_ID) platformId: Object) {
     this.isBrowser = isPlatformBrowser(platformId);
-    if (this.isBrowser) {
-      this.checkAuthState();
-    }
   }
 
   async signInWithRedirect(): Promise<void> {
@@ -57,11 +57,13 @@ export class AuthService {
     }
   }
 
-  async checkAuthState(): Promise<void> {
+  async checkAuthState(forceRefresh: boolean = false): Promise<void> {
+    if (this.initialized && !forceRefresh) return;
+      this.initialized = true;
     try {
       if (!this.isBrowser) { return; }
       const user = await getCurrentUser();
-      const session = await fetchAuthSession();
+      const session = await fetchAuthSession({ forceRefresh });
       
       if (user && session.tokens) {
         const userProfile = await this.buildUserProfile(user, session);
@@ -84,8 +86,11 @@ export class AuthService {
     const idPayload = idToken?.payload || {};
     const accessPayload = accessToken?.payload || {};
 
-    // Extract role from custom attributes or Cognito groups (check both tokens)
+    // Extract role from Cognito groups (check both tokens)
     const role = this.extractUserRole(idPayload, accessPayload);
+
+    // Extract groups from cognito:groups claim
+    const groups = this.extractGroups(idPayload, accessPayload);
 
     // Prefer ID token for profile fields; fallback to access token
     const email = idPayload.email || accessPayload.email || user.username;
@@ -100,26 +105,36 @@ export class AuthService {
       givenName,
       familyName,
       role,
+      groups,
       companyId,
       trainerIds: typeof trainerIdsRaw === 'string' ? trainerIdsRaw.split(',') : undefined,
       isActive: true
     };
   }
 
-  private extractUserRole(idPayload: any, accessPayload: any): UserRole {
-    const norm = (v: any) => (typeof v === 'string' ? v.toLowerCase() : v);
-
-    // 1) Custom role attribute on either token
-    const customRole = norm(idPayload?.['custom:role'] || accessPayload?.['custom:role']);
-    if (customRole === 'admin') return UserRole.ADMIN;
-    if (customRole === 'trainer') return UserRole.TRAINER;
-
-    // 2) Cognito groups claim on either token
-    const groups = idPayload?.['cognito:groups'] || accessPayload?.['cognito:groups'];
-    if (groups && Array.isArray(groups)) {
-      if (groups.includes('Admin')) return UserRole.ADMIN;
-      if (groups.includes('Trainer')) return UserRole.TRAINER;
+  private extractGroups(idPayload: any, accessPayload: any): string[] {
+    const groupsClaim = idPayload?.['cognito:groups'] || accessPayload?.['cognito:groups'];
+    
+    if (!groupsClaim) {
+      return [];
     }
+    
+    // Handle both array and string formats
+    if (Array.isArray(groupsClaim)) {
+      return groupsClaim;
+    }
+    
+    if (typeof groupsClaim === 'string') {
+      return groupsClaim.split(',').map(g => g.trim()).filter(g => g.length > 0);
+    }
+    
+    return [];
+  }
+
+  private extractUserRole(idPayload: any, accessPayload: any): UserRole {
+    const groups = this.extractGroups(idPayload, accessPayload);
+    if (groups.includes('Admin')) return UserRole.ADMIN;
+    if (groups.includes('Trainer')) return UserRole.TRAINER;
 
     // Default to CLIENT
     return UserRole.CLIENT;
@@ -132,6 +147,11 @@ export class AuthService {
   // Synchronous read for guards/callback logic to avoid flicker
   isAuthenticatedSync(): boolean {
     return this.isAuthenticatedSubject.value;
+  }
+
+  hasPlannerGroups(): boolean {
+    const groups = this.currentUserSubject.value?.groups ?? [];
+    return groups.includes('Admin') || groups.includes('Trainer');
   }
 
   getCurrentUserId(): string | null {
@@ -200,11 +220,11 @@ export class AuthService {
   }
 
   // Utility method to get auth session for API calls
-  getAuthSession(): Observable<any> {
+  getAuthSession(forceRefresh: boolean = false): Observable<any> {
     if (!this.isBrowser) {
       return of(null);
     }
-    return from(fetchAuthSession()).pipe(
+    return from(fetchAuthSession({ forceRefresh })).pipe(
       catchError(error => {
         console.error('Error getting auth session:', error);
         return of(null);
@@ -216,6 +236,12 @@ export class AuthService {
   getIdToken(): Observable<string | null> {
     return this.getAuthSession().pipe(
       map(session => session?.tokens?.idToken?.toString() || null)
+    );
+  }
+
+  getAccessToken(): Observable<string | null> {
+    return this.getAuthSession().pipe(
+      map(session => session?.tokens?.accessToken?.toString() || null)
     );
   }
 }

@@ -32,7 +32,13 @@ export class RoleGuard implements CanActivate {
           return false;
         }
 
-        if (!requiredRoles.includes(user.role)) {
+        if (requiredRoles && !requiredRoles.includes(user.role)) {
+          this.router.navigate(['/unauthorized']);
+          return false;
+        }
+
+        const excludeIndependent = route.data?.['excludeIndependent'] === true;
+        if (excludeIndependent && this.authService.isIndependentTenant()) {
           this.router.navigate(['/unauthorized']);
           return false;
         }

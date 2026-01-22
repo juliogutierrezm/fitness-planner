@@ -143,7 +143,14 @@
             <mat-icon>edit</mat-icon>
           </button>
           <div class="trash-icon">
-          <button matTooltip="Eliminar usuario"  mat-mini-fab color="warn" (click)="remove(u)" aria-label="Eliminar">
+          <button *ngIf="isAdmin"
+            matTooltip="Eliminar usuario"
+            mat-mini-fab
+            color="warn"
+            (click)="remove(u)"
+            [disabled]="deletingUserId === u.id"
+            aria-label="Eliminar"
+          >
             <mat-icon>delete</mat-icon>
           </button>
           </div>

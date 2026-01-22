@@ -25,6 +25,7 @@ import { AuthService, UserRole } from '../../services/auth.service';
 import { isIndependentTenant } from '../../shared/shared-utils';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 
 
 
@@ -77,6 +78,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   trainerClientMap: Record<string, AppUser[]> = {};
   trainerPlanCounts: Record<string, number> = {};
   trainerMetricsLoading = false;
+  deletingUserId: string | null = null;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -422,20 +424,56 @@ export class UsersComponent implements OnInit, OnDestroy {
     });
   }
 
-  remove(u: AppUser) {
-    if (!u.id) return;
-    this.api.deleteUser(u.id).subscribe(ok => {
-      if (ok !== null) {
-        this.users = this.users.filter(x => x.id !== u.id);
-        this.allUsers = this.allUsers.filter(x => x.id !== u.id);
-        if (this.isTrainerView) {
-          this.refreshTrainerMetrics();
-        }
-        this.cdr.markForCheck();
-        this.snack.open('Usuario eliminado', 'Cerrar', { duration: 1800 });
-      } else {
-        this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+  /**
+   * Purpose: confirm and delete a user with UI feedback.
+   * Input: user entity. Output: removes user from local lists when successful.
+   * Error handling: shows snackbar and logs errors if deletion fails.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  remove(u: AppUser): void {
+    if (!u?.id || this.deletingUserId) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Eliminar ${roleLabel}`,
+        message: `¿Eliminar ${label}? Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        icon: 'delete_outline'
       }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.deletingUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.deleteUser(u.id!).pipe(
+        finalize(() => {
+          this.deletingUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (ok) => {
+          if (ok !== null) {
+            this.users = this.users.filter(x => x.id !== u.id);
+            this.allUsers = this.allUsers.filter(x => x.id !== u.id);
+            if (this.isTrainerView) {
+              this.refreshTrainerMetrics();
+            }
+            this.snack.open('Usuario eliminado', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('deleteUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+        }
+      });
     });
   }
 

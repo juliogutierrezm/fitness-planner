@@ -60,7 +60,7 @@
           color="primary"
           (click)="submitPlan()"
           [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
-          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading || (isTemplateMode && form.get('templateName')!.invalid)"
+          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
         >
           <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'list_alt' : 'list_alt') }}</mat-icon>
           {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
@@ -524,7 +524,7 @@
       mat-fab extended
       color="primary"
       (click)="confirmSaveTemplate()"
-      [disabled]="!templateNameInput.trim() || isSavingTemplate"
+      [disabled]="isSavingTemplate"
     >
       Guardar
     </button>

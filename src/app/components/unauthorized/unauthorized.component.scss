@@ -56,7 +56,12 @@ p {
 }
 
 .actions button {
-  min-width: 140px;
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+    color: #e4e6eb;
 }
 
 .actions button mat-icon {

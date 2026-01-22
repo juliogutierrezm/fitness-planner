@@ -1507,6 +1507,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     }
 
+    if (!this.validateSessionsHaveItems(enrichedSessions)) {
+      return null;
+    }
+
     const incompleteItems = findIncompletePlanItems(enrichedSessions);
     if (incompleteItems.length === 0) {
       return enrichedSessions;
@@ -1527,6 +1531,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
       : 'Hay ejercicios incompletos. Recarga la biblioteca o reemplazalos antes de guardar.';
     this.snackBar.open(message, 'Cerrar', { duration: 4500 });
     return null;
+  }
+
+  /**
+   * Purpose: enforce that every session has at least one exercise before save.
+   * Input: sessions array. Output: boolean indicating validation pass/fail.
+   * Error handling: logs details and shows snackbar when empty sessions are found.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private validateSessionsHaveItems(sessions: Session[]): boolean {
+    const emptySessions = (sessions || []).filter(session => !session?.items || session.items.length === 0);
+    if (emptySessions.length === 0) {
+      return true;
+    }
+
+    console.warn('[Planner] Empty sessions detected before save', {
+      emptySessionIds: emptySessions.map(session => session.id),
+      emptySessionNames: emptySessions.map(session => session.name),
+      totalSessions: sessions?.length || 0
+    });
+    this.snackBar.open(
+      'Cada sesion debe tener al menos un ejercicio. Completa o elimina las sesiones vacias antes de guardar.',
+      'Cerrar',
+      { duration: 4500 }
+    );
+    return false;
   }
 
   /**

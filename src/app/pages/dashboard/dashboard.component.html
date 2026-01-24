@@ -1,28 +1,146 @@
-<!-- VIDEO RENDER URL https://exercise-videos-fitness-planner.s3.us-east-1.amazonaws.com/Derived_Bend/Walking_Good_Morning_-_OPEX_Exercise_Library_IGZ_APNaqAQ.mp4/Walking_Good_Morning_-_OPEX_Exercise_Library_IGZ_APNaqAQ_preview.mp4 -->
 <div class="dashboard-container">
-  <mat-card class="header-card">
-    <mat-card-header>
-      <mat-card-title>
-        <mat-icon>dashboard</mat-icon>
-        Dashboard
-      </mat-card-title>
-      <mat-card-subtitle>Resumen general de la actividad y métricas clave</mat-card-subtitle>
-    </mat-card-header>
-  </mat-card>
+  <section class="hero">
+    <div class="hero__content">
+      <div class="hero__eyebrow">Panel operativo</div>
+      <h1>Hola, {{ displayName }}</h1>
+      <p class="hero__subtitle">Gestiona tu jornada como entrenador con foco en clientes y planes activos.</p>
+      <div class="hero__meta">
+        <span class="hero__chip">
+          <mat-icon>sports</mat-icon>
+          Rol: Entrenador
+        </span>
+        <span class="hero__chip">
+          <mat-icon>group</mat-icon>
+          Clientes asignados: {{ metrics.assignedClientsLabel }}
+        </span>
+      </div>
+    </div>
+    <mat-card class="hero-card">
+      <div class="hero-card__title">Estado operativo</div>
+      <div class="hero-card__metric">
+        <span class="hero-card__value">{{ metrics.activePlansLabel }}</span>
+        <span class="hero-card__label">planes activos</span>
+      </div>
+      <div class="hero-card__secondary">
+        <mat-icon>auto_awesome</mat-icon>
+        IA en proceso: {{ metrics.aiPendingLabel }}
+      </div>
+    </mat-card>
+  </section>
 
-  <div class="video-section">
-    <h2>Featured Exercise Video</h2>
-    <video width="640" height="360" controls>
-      <source src="https://exercise-videos-fitness-planner.s3.us-east-1.amazonaws.com/previews/Mobility/Upward_Dog__arnMWbvYro_preview.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-  </div>
+  <section class="metrics">
+    <div class="section-header">
+      <h2>Métricas clave</h2>
+      <span class="section-hint">Conteos agregados para seguimiento rápido.</span>
+    </div>
+    <div class="metrics-grid">
+      <a class="metric-card" routerLink="/clients">
+        <div class="metric-card__icon">
+          <mat-icon>group</mat-icon>
+        </div>
+        <div class="metric-card__content">
+          <div class="metric-card__label">Clientes asignados</div>
+          <div class="metric-card__value">{{ metrics.assignedClientsLabel }}</div>
+        </div>
+        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
+      </a>
+      <a class="metric-card" routerLink="/users">
+        <div class="metric-card__icon">
+          <mat-icon>library_books</mat-icon>
+        </div>
+        <div class="metric-card__content">
+          <div class="metric-card__label">Planes creados</div>
+          <div class="metric-card__value">{{ metrics.totalPlansLabel }}</div>
+        </div>
+        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
+      </a>
+      <a class="metric-card" routerLink="/templates">
+        <div class="metric-card__icon">
+          <mat-icon>style</mat-icon>
+        </div>
+        <div class="metric-card__content">
+          <div class="metric-card__label">Plantillas guardadas</div>
+          <div class="metric-card__value">{{ metrics.templatesLabel }}</div>
+        </div>
+        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
+      </a>
+      <a class="metric-card" routerLink="/diagnostics">
+        <div class="metric-card__icon">
+          <mat-icon>auto_awesome</mat-icon>
+        </div>
+        <div class="metric-card__content">
+          <div class="metric-card__label">IA en proceso</div>
+          <div class="metric-card__value">{{ metrics.aiPendingLabel }}</div>
+        </div>
+        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
+      </a>
+    </div>
+  </section>
 
-  <div class="stats-section">
-    <h2>Your Fitness Stats</h2>
-    <!-- Placeholder for fitness stats -->
-    <p>Total Workouts: 25</p>
-    <p>Total Hours: 15</p>
-    <p>Calories Burned: 5000</p>
-  </div>
+  <section class="quick-actions">
+    <div class="section-header">
+      <h2>Acciones rápidas</h2>
+      <span class="section-hint">Acceso directo a vistas clave antes de iniciar flujos.</span>
+    </div>
+    <div class="quick-actions-grid">
+      <a class="quick-action" routerLink="/clients">
+        <mat-icon>group</mat-icon>
+        <div>
+          <div class="quick-action__title">Ver clientes</div>
+          <div class="quick-action__subtitle">Gestiona clientes activos y planes.</div>
+        </div>
+      </a>
+      <a class="quick-action" routerLink="/clients">
+        <mat-icon>warning</mat-icon>
+        <div>
+          <div class="quick-action__title">Clientes sin plan activo</div>
+          <div class="quick-action__subtitle">Prioriza atención inmediata.</div>
+        </div>
+      </a>
+      <a class="quick-action" routerLink="/users">
+        <mat-icon>history</mat-icon>
+        <div>
+          <div class="quick-action__title">Planes recientes</div>
+          <div class="quick-action__subtitle">Revisa y ajusta planes.</div>
+        </div>
+      </a>
+      <a class="quick-action" routerLink="/templates">
+        <mat-icon>style</mat-icon>
+        <div>
+          <div class="quick-action__title">Plantillas</div>
+          <div class="quick-action__subtitle">Reutiliza estructuras existentes.</div>
+        </div>
+      </a>
+    </div>
+  </section>
 
+  <section class="activity">
+    <div class="section-header">
+      <h2>Actividad reciente</h2>
+      <span class="section-hint">Últimas acciones relevantes del entrenador.</span>
+    </div>
+    <mat-card class="activity-card">
+      <ng-container *ngIf="recentActivity.length; else emptyActivity">
+        <div class="activity-item" *ngFor="let item of recentActivity">
+          <div class="activity-item__icon">
+            <mat-icon>{{ item.icon }}</mat-icon>
+          </div>
+          <div class="activity-item__content">
+            <div class="activity-item__title">{{ item.title }}</div>
+            <div class="activity-item__meta">{{ item.description }}</div>
+          </div>
+          <div class="activity-item__time">{{ item.timestamp }}</div>
+        </div>
+      </ng-container>
+      <ng-template #emptyActivity>
+        <div class="activity-empty">
+          <mat-icon>schedule</mat-icon>
+          <div>
+            <p>No hay actividad reciente registrada.</p>
+            <span>Comienza revisando clientes o plantillas.</span>
+          </div>
+        </div>
+      </ng-template>
+    </mat-card>
+  </section>
+</div>

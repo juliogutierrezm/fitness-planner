@@ -20,7 +20,7 @@ export class AppComponent implements OnInit {
     console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.start' });
     try {
       // Ensure current auth state is synced on app load
-      await this.authService.checkAuthState();
+      await this.authService.checkAuthState(false, true);
       console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.checkAuthStateComplete' });
     } catch (error) {
       console.error('[AuthDebug]', { op: 'AppComponent.ngOnInit.error', error });

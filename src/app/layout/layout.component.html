@@ -11,7 +11,7 @@
       <div *ngIf="isLoggedIn && user" class="user-badge">
         <mat-icon>account_circle</mat-icon>
         <span>{{ displayName }}</span>
-        <button mat-mini-fab class="logout-btn" (click)="logout()">
+        <button mat-mini-fab class="logout-btn" (click)="logout()" [disabled]="isSigningOut">
           <mat-icon>logout</mat-icon>
         </button>
       </div>

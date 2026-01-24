@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, from, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { catchError, map, tap, filter, switchMap, take } from 'rxjs/operators';
 import { AuthService, AuthFlowStep } from '../services/auth.service';
 
 @Injectable({
@@ -16,7 +16,11 @@ export class AuthFlowGuard implements CanActivate {
   canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
     return from(this.authService.checkAuthState()).pipe(
       tap(() => console.debug('[AuthDebug]', { op: 'AuthFlowGuard.checkAuthStateComplete' })),
-      map(() => this.evaluateRoute(route)),
+      switchMap(() => this.authService.isAuthLoading$.pipe(
+        filter(isLoading => !isLoading),
+        take(1),
+        map(() => this.evaluateRoute(route))
+      )),
       tap(result => console.debug('[AuthDebug]', { op: 'AuthFlowGuard.evaluateRoute.result', result })),
       catchError(error => {
         console.error('[AuthDebug]', { op: 'AuthFlowGuard.error', error });

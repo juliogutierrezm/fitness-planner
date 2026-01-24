@@ -60,6 +60,7 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserProfile | null>(null);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private authFlowSubject = new BehaviorSubject<AuthFlowState | null>(null);
+  private authLoadingSubject = new BehaviorSubject<boolean>(true);
   private readonly isBrowser: boolean;
   private initialized = false;
   private readonly AUTH_FLOW_STORAGE_KEY = 'auth_flow_state';
@@ -68,6 +69,7 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   public authFlow$ = this.authFlowSubject.asObservable();
+  public isAuthLoading$ = this.authLoadingSubject.asObservable();
 
   constructor(@Inject(PLATFORM_ID) platformId: Object) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -519,6 +521,7 @@ export class AuthService {
       this.currentUserSubject.next(null);
       this.isAuthenticatedSubject.next(false);
     } finally {
+      this.authLoadingSubject.next(false);
       console.debug('[AuthDebug]', {
         op: 'AuthService.checkAuthState.end',
         elapsedMs: Date.now() - startedAt

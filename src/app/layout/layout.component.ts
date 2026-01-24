@@ -29,6 +29,7 @@ export class LayoutComponent implements OnInit {
   sidebarOpen = true;
   user: UserProfile | null = null;
   private authenticated = false;
+  isSigningOut = false;
 
   constructor(
     private authService: AuthService,
@@ -72,7 +73,16 @@ export class LayoutComponent implements OnInit {
     this.router.navigate(['/login']);
   }
 
-  logout() {
-    this.authService.signOut();
+  async logout() {
+    if (this.isSigningOut) {
+      return;
+    }
+    this.isSigningOut = true;
+    try {
+      await this.authService.signOut();
+      await this.router.navigate(['/login']);
+    } finally {
+      this.isSigningOut = false;
+    }
   }
 }

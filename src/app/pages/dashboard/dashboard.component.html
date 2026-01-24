@@ -1,146 +1,127 @@
-<div class="dashboard-container">
-  <section class="hero">
-    <div class="hero__content">
-      <div class="hero__eyebrow">Panel operativo</div>
-      <h1>Hola, {{ displayName }}</h1>
-      <p class="hero__subtitle">Gestiona tu jornada como entrenador con foco en clientes y planes activos.</p>
-      <div class="hero__meta">
-        <span class="hero__chip">
-          <mat-icon>sports</mat-icon>
-          Rol: Entrenador
-        </span>
-        <span class="hero__chip">
-          <mat-icon>group</mat-icon>
-          Clientes asignados: {{ metrics.assignedClientsLabel }}
-        </span>
+<div class="users-page" [@fadeInUp]>
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>dashboard</mat-icon>
+        Dashboard operativo
+      </mat-card-title>
+      <mat-card-subtitle>
+        Vista principal personalizada para tu contexto.
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <mat-card class="hero-card" [@fadeInUp]>
+    <div class="hero-card__header">
+      <div>
+        <div class="hero-card__eyebrow">Panel operativo</div>
+        <h1>Hola, {{ displayName }}</h1>
+        <p class="hero-card__subtitle">Seguimiento inmediato de IA y operación diaria.</p>
       </div>
+      <button mat-raised-button class="refresh-button" (click)="refresh()">
+        <mat-icon>refresh</mat-icon>
+        Actualizar
+      </button>
     </div>
-    <mat-card class="hero-card">
-      <div class="hero-card__title">Estado operativo</div>
-      <div class="hero-card__metric">
-        <span class="hero-card__value">{{ metrics.activePlansLabel }}</span>
-        <span class="hero-card__label">planes activos</span>
-      </div>
-      <div class="hero-card__secondary">
+    <div class="hero-card__meta" *ngIf="vm$ | async as vm">
+      <span class="hero-chip">
+        <mat-icon>verified</mat-icon>
+        {{ getModeLabel(vm.mode) }}
+      </span>
+      <span class="hero-chip">
         <mat-icon>auto_awesome</mat-icon>
-        IA en proceso: {{ metrics.aiPendingLabel }}
+        Planes IA este mes: {{ vm.aiPlansThisMonth }}
+      </span>
+      <span class="hero-chip">
+        <mat-icon>bolt</mat-icon>
+        Clientes con IA este mes: {{ vm.clientsWithAiThisMonth }}
+      </span>
+    </div>
+  </mat-card>
+
+  <section class="loading-container" *ngIf="loading">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+  </section>
+
+  <section class="error-card" *ngIf="!loading && error">
+    <mat-icon>error_outline</mat-icon>
+    <div>
+      <p>No pudimos cargar el dashboard.</p>
+      <span>Reintenta la actualización.</span>
+    </div>
+    <button mat-raised-button class="refresh-button" (click)="refresh()">Reintentar</button>
+  </section>
+
+  <ng-container *ngIf="!loading && !error && (vm$ | async) as vm">
+    <section class="section" [@fadeInUp]>
+      <div class="section-header">
+        <h2>KPIs principales</h2>
+        <span class="section-hint">Indicadores clave del mes.</span>
       </div>
-    </mat-card>
-  </section>
-
-  <section class="metrics">
-    <div class="section-header">
-      <h2>Métricas clave</h2>
-      <span class="section-hint">Conteos agregados para seguimiento rápido.</span>
-    </div>
-    <div class="metrics-grid">
-      <a class="metric-card" routerLink="/clients">
-        <div class="metric-card__icon">
-          <mat-icon>group</mat-icon>
-        </div>
-        <div class="metric-card__content">
-          <div class="metric-card__label">Clientes asignados</div>
-          <div class="metric-card__value">{{ metrics.assignedClientsLabel }}</div>
-        </div>
-        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
-      </a>
-      <a class="metric-card" routerLink="/users">
-        <div class="metric-card__icon">
-          <mat-icon>library_books</mat-icon>
-        </div>
-        <div class="metric-card__content">
-          <div class="metric-card__label">Planes creados</div>
-          <div class="metric-card__value">{{ metrics.totalPlansLabel }}</div>
-        </div>
-        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
-      </a>
-      <a class="metric-card" routerLink="/templates">
-        <div class="metric-card__icon">
-          <mat-icon>style</mat-icon>
-        </div>
-        <div class="metric-card__content">
-          <div class="metric-card__label">Plantillas guardadas</div>
-          <div class="metric-card__value">{{ metrics.templatesLabel }}</div>
-        </div>
-        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
-      </a>
-      <a class="metric-card" routerLink="/diagnostics">
-        <div class="metric-card__icon">
-          <mat-icon>auto_awesome</mat-icon>
-        </div>
-        <div class="metric-card__content">
-          <div class="metric-card__label">IA en proceso</div>
-          <div class="metric-card__value">{{ metrics.aiPendingLabel }}</div>
-        </div>
-        <mat-icon class="metric-card__chevron">chevron_right</mat-icon>
-      </a>
-    </div>
-  </section>
-
-  <section class="quick-actions">
-    <div class="section-header">
-      <h2>Acciones rápidas</h2>
-      <span class="section-hint">Acceso directo a vistas clave antes de iniciar flujos.</span>
-    </div>
-    <div class="quick-actions-grid">
-      <a class="quick-action" routerLink="/clients">
-        <mat-icon>group</mat-icon>
-        <div>
-          <div class="quick-action__title">Ver clientes</div>
-          <div class="quick-action__subtitle">Gestiona clientes activos y planes.</div>
-        </div>
-      </a>
-      <a class="quick-action" routerLink="/clients">
-        <mat-icon>warning</mat-icon>
-        <div>
-          <div class="quick-action__title">Clientes sin plan activo</div>
-          <div class="quick-action__subtitle">Prioriza atención inmediata.</div>
-        </div>
-      </a>
-      <a class="quick-action" routerLink="/users">
-        <mat-icon>history</mat-icon>
-        <div>
-          <div class="quick-action__title">Planes recientes</div>
-          <div class="quick-action__subtitle">Revisa y ajusta planes.</div>
-        </div>
-      </a>
-      <a class="quick-action" routerLink="/templates">
-        <mat-icon>style</mat-icon>
-        <div>
-          <div class="quick-action__title">Plantillas</div>
-          <div class="quick-action__subtitle">Reutiliza estructuras existentes.</div>
-        </div>
-      </a>
-    </div>
-  </section>
-
-  <section class="activity">
-    <div class="section-header">
-      <h2>Actividad reciente</h2>
-      <span class="section-hint">Últimas acciones relevantes del entrenador.</span>
-    </div>
-    <mat-card class="activity-card">
-      <ng-container *ngIf="recentActivity.length; else emptyActivity">
-        <div class="activity-item" *ngFor="let item of recentActivity">
-          <div class="activity-item__icon">
-            <mat-icon>{{ item.icon }}</mat-icon>
+      <div class="kpi-grid" [@listStagger]>
+        <mat-card class="kpi-card" *ngFor="let kpi of vm.kpis; trackBy: trackByKpi">
+          <div class="kpi-icon">
+            <mat-icon>{{ kpi.icon }}</mat-icon>
           </div>
-          <div class="activity-item__content">
-            <div class="activity-item__title">{{ item.title }}</div>
-            <div class="activity-item__meta">{{ item.description }}</div>
+          <div class="kpi-info">
+            <div class="kpi-value">{{ kpi.value }}</div>
+            <div class="kpi-label">{{ kpi.label }}</div>
           </div>
-          <div class="activity-item__time">{{ item.timestamp }}</div>
-        </div>
-      </ng-container>
-      <ng-template #emptyActivity>
-        <div class="activity-empty">
-          <mat-icon>schedule</mat-icon>
+        </mat-card>
+      </div>
+    </section>
+
+    <section class="section" [@fadeInUp]>
+      <div class="section-header">
+        <h2>Actividad IA reciente</h2>
+        <span class="section-hint">Últimos planes generados por IA.</span>
+      </div>
+      <mat-card class="list-card">
+        <ng-container *ngIf="vm.recentAiActivity.length; else emptyActivity">
+          <div class="user-row" *ngFor="let item of vm.recentAiActivity; trackBy: trackByActivity" [@fadeInUp]>
+            <div class="info">
+              <div class="name">{{ item.title }}</div>
+              <div class="meta">
+                <span>{{ item.subtitle }}</span>
+                <span class="meta-sep">•</span>
+                <span *ngIf="item.date">{{ item.date | date:'mediumDate' }}</span>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button mat-raised-button color="primary" [routerLink]="['/ai-plans/user', item.clientId]">
+                Ver historial IA
+              </button>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #emptyActivity>
+          <div class="activity-empty">
+            <mat-icon>schedule</mat-icon>
+            <div>
+              <p>Sin actividad IA este mes.</p>
+              <span>Genera planes desde la vista de clientes.</span>
+            </div>
+          </div>
+        </ng-template>
+      </mat-card>
+    </section>
+
+    <section class="section" [@fadeInUp]>
+      <div class="section-header">
+        <h2>Acciones rápidas</h2>
+        <span class="section-hint">Accesos directos a vistas clave.</span>
+      </div>
+      <div class="quick-actions-grid" [@listStagger]>
+        <a class="quick-action" *ngFor="let action of vm.quickActions; trackBy: trackByAction" [routerLink]="action.route">
+          <div class="quick-action__icon">
+            <mat-icon>{{ action.icon }}</mat-icon>
+          </div>
           <div>
-            <p>No hay actividad reciente registrada.</p>
-            <span>Comienza revisando clientes o plantillas.</span>
+            <div class="quick-action__title">{{ action.label }}</div>
+            <div class="quick-action__subtitle">{{ action.description }}</div>
           </div>
-        </div>
-      </ng-template>
-    </mat-card>
-  </section>
+        </a>
+      </div>
+    </section>
+  </ng-container>
 </div>

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
@@ -30,7 +30,10 @@ export class LayoutComponent implements OnInit {
   user: UserProfile | null = null;
   private authenticated = false;
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   ngOnInit() {
     this.authService.currentUser$.subscribe(user => {
@@ -66,7 +69,7 @@ export class LayoutComponent implements OnInit {
   }
 
   login() {
-    this.authService.signInWithRedirect();
+    this.router.navigate(['/login']);
   }
 
   logout() {

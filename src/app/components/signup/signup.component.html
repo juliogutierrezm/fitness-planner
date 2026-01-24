@@ -1,0 +1,116 @@
+<div class="auth-container">
+  <mat-card class="auth-card">
+    <mat-card-content>
+      <div class="brand">
+        <img src="/assets/TrainGrid.png" alt="TrainGrid Logo" class="brand-logo">
+        <h1>TrainGrid</h1>
+        <p>Planifica y gestiona tus entrenamientos</p>
+      </div>
+
+      <div class="auth-header">
+        <h2>Crea tu cuenta</h2>
+        <p>Regístrate con tu correo para comenzar.</p>
+      </div>
+
+      <div class="error-banner" *ngIf="error">{{ error }}</div>
+
+      <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
+          <input matInput type="text" formControlName="givenName" autocomplete="given-name">
+          <mat-error *ngIf="form.get('givenName')?.hasError('required')">
+            Ingresa tu nombre.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Apellido</mat-label>
+          <input matInput type="text" formControlName="familyName" autocomplete="family-name">
+          <mat-error *ngIf="form.get('familyName')?.hasError('required')">
+            Ingresa tu apellido.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Correo electrónico</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="email">
+          <mat-error *ngIf="form.get('email')?.hasError('required')">
+            Ingresa tu correo.
+          </mat-error>
+          <mat-error *ngIf="form.get('email')?.hasError('email')">
+            Ingresa un correo válido.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Contraseña</mat-label>
+          <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePassword()"
+            aria-label="Mostrar u ocultar contraseña"
+          >
+            <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-error *ngIf="form.get('password')?.hasError('required')">
+            Ingresa una contraseña.
+          </mat-error>
+          <mat-error *ngIf="form.get('password')?.hasError('minlength')">
+            Debe tener al menos 8 caracteres.
+          </mat-error>
+          <mat-error *ngIf="form.get('password')?.hasError('uppercase')">
+            Debe incluir al menos una letra mayúscula.
+          </mat-error>
+          <mat-error *ngIf="form.get('password')?.hasError('lowercase')">
+            Debe incluir al menos una letra minúscula.
+          </mat-error>
+          <mat-error *ngIf="form.get('password')?.hasError('number')">
+            Debe incluir al menos un número.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Repite la contraseña</mat-label>
+          <input
+            matInput
+            [type]="showConfirmPassword ? 'text' : 'password'"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+          >
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="toggleConfirmPassword()"
+            aria-label="Mostrar u ocultar contraseña"
+          >
+            <mat-icon>{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-error *ngIf="form.get('confirmPassword')?.hasError('required')">
+            Repite la contraseña.
+          </mat-error>
+          <mat-error *ngIf="form.hasError('mismatch') && form.get('confirmPassword')?.touched">
+            Las contraseñas no coinciden.
+          </mat-error>
+        </mat-form-field>
+
+        <p class="helper-text">Usa mínimo 8 caracteres, mayúsculas, minúsculas y números.</p>
+
+        <button mat-flat-button class="auth-primary" type="submit" [disabled]="loading">
+          <mat-icon>person_add</mat-icon>
+          <span *ngIf="!loading">Crear cuenta</span>
+          <span *ngIf="loading">Creando...</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>¿Ya tienes cuenta?</span>
+        <button mat-button type="button" class="link-button" (click)="goToLogin()">
+          Iniciar sesión
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

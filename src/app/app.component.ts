@@ -15,9 +15,22 @@ import { AuthService } from './services/auth.service';
 export class AppComponent implements OnInit {
   constructor(private authService: AuthService) {}
 
-  async ngOnInit() {
-    // Ensure current auth state is synced on app load
-    await this.authService.checkAuthState();
+  async ngOnInit(): Promise<void> {
+    const startedAt = Date.now();
+    console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.start' });
+    try {
+      // Ensure current auth state is synced on app load
+      await this.authService.checkAuthState();
+      console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.checkAuthStateComplete' });
+    } catch (error) {
+      console.error('[AuthDebug]', { op: 'AppComponent.ngOnInit.error', error });
+      throw error;
+    } finally {
+      console.debug('[AuthDebug]', {
+        op: 'AppComponent.ngOnInit.end',
+        elapsedMs: Date.now() - startedAt
+      });
+    }
   }
 }
 

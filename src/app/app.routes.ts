@@ -1,26 +1,65 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './layout/layout.component';
 import { AuthGuard } from './guards/auth.guard';
+import { AuthFlowGuard } from './guards/auth-flow.guard';
 import { OnboardingGuard } from './guards/onboarding.guard';
 import { PostLoginRedirectGuard } from './guards/post-login-redirect.guard';
 import { RoleGuard } from './guards/role.guard';
 import { UserRole } from './services/auth.service';
 
 export const routes: Routes = [
-  // OAuth callback route (outside of layout)
+  // Rutas publicas de autenticacion
   {
-    path: 'callback',
-    loadComponent: () => import('./components/callback/callback.component').then(m => m.CallbackComponent)
+    path: 'confirm-code',
+    redirectTo: 'confirm-signup',
+    pathMatch: 'full'
+  },
+  {
+    path: 'force-new-password',
+    redirectTo: 'force-change-password',
+    pathMatch: 'full'
   },
   {
     path: 'login',
-    loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent)
+    loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'none' }
+  },
+  {
+    path: 'signup',
+    loadComponent: () => import('./components/signup/signup.component').then(m => m.SignupComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'none' }
+  },
+  {
+    path: 'confirm-signup',
+    loadComponent: () => import('./components/confirm-code/confirm-code.component').then(m => m.ConfirmCodeComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'confirmSignUp', fallback: '/signup' }
+  },
+  {
+    path: 'force-change-password',
+    loadComponent: () => import('./components/force-new-password/force-new-password.component').then(m => m.ForceNewPasswordComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'newPasswordRequired', fallback: '/login' }
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('./components/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'none' }
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./components/reset-password/reset-password.component').then(m => m.ResetPasswordComponent),
+    canActivate: [AuthFlowGuard],
+    data: { flow: 'resetPassword', fallback: '/forgot-password' }
   },
   {
     path: 'unauthorized',
     loadComponent: () => import('./components/unauthorized/unauthorized.component').then(m => m.UnauthorizedComponent)
   },
-  
+
   // Main application routes
   {
     path: '',

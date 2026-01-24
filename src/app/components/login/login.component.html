@@ -1,5 +1,5 @@
-<div class="login-container">
-  <mat-card class="login-card">
+<div class="auth-container">
+  <mat-card class="auth-card">
     <mat-card-content>
       <div class="brand">
         <img src="/assets/TrainGrid.png" alt="TrainGrid Logo" class="brand-logo">
@@ -7,20 +7,60 @@
         <p>Planifica y gestiona tus entrenamientos</p>
       </div>
 
-      <div class="actions" *ngIf="!loading">
-        <button mat-flat-button class="login-primary" (click)="signInWithHostedUI()">
+      <div class="auth-header">
+        <h2>Inicia sesión</h2>
+        <p>Accede con tu cuenta de Cognito</p>
+      </div>
+
+      <div class="error-banner" *ngIf="error">{{ error }}</div>
+
+      <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline">
+          <mat-label>Correo electrónico</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="email">
+          <mat-error *ngIf="form.get('email')?.hasError('required')">
+            Ingresa tu correo.
+          </mat-error>
+          <mat-error *ngIf="form.get('email')?.hasError('email')">
+            Ingresa un correo válido.
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Contraseña</mat-label>
+          <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" autocomplete="current-password">
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePassword()"
+            aria-label="Mostrar u ocultar contraseña"
+          >
+            <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-error *ngIf="form.get('password')?.hasError('required')">
+            Ingresa tu contraseña.
+          </mat-error>
+        </mat-form-field>
+
+        <button mat-flat-button class="auth-primary" type="submit" [disabled]="loading">
           <mat-icon>login</mat-icon>
-          Iniciar sesión
+          <span *ngIf="!loading">Iniciar sesión</span>
+          <span *ngIf="loading">Ingresando...</span>
         </button>
-        <button mat-stroked-button class="login-secondary" (click)="signUpWithHostedUI()">
-          <mat-icon>person_add</mat-icon>
-          Crear cuenta
+      </form>
+
+      <div class="auth-links">
+        <button mat-button type="button" class="link-button" (click)="goToForgotPassword()">
+          ¿Olvidaste tu contraseña?
         </button>
       </div>
 
-      <div class="loading" *ngIf="loading">
-        <mat-spinner diameter="48"></mat-spinner>
-        <p>Redirigiendo al proveedor…</p>
+      <div class="auth-footer">
+        <span>¿Aún no tienes cuenta?</span>
+        <button mat-button type="button" class="link-button" (click)="goToSignup()">
+          Crear cuenta
+        </button>
       </div>
     </mat-card-content>
   </mat-card>

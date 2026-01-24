@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { Observable, from } from 'rxjs';
-import { map, take, switchMap } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { map, take, switchMap, catchError, tap, filter } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
@@ -31,19 +31,29 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   private checkAuth(_route: ActivatedRouteSnapshot): Observable<boolean> {
     // Ensure we refresh auth state once before deciding
     return from(this.authService.checkAuthState()).pipe(
-      switchMap(() => this.authService.isAuthenticated$.pipe(
+      tap(() => console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.checkAuthStateComplete' })),
+      switchMap(() => this.authService.isAuthLoading$.pipe(
+        filter(isLoading => !isLoading),
         take(1),
-        map(isAuthenticated => {
-          if (!isAuthenticated) {
-            // Prefer Hosted UI redirect if available
-            try { this.authService.signInWithRedirect(); } catch {}
-            this.router.navigate(['/login']);
-            return false;
-          }
+        switchMap(() => this.authService.isAuthenticated$.pipe(
+          take(1),
+          map(isAuthenticated => {
+            console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.isAuthenticated', isAuthenticated });
+            if (!isAuthenticated) {
+              console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.redirectLogin' });
+              this.router.navigate(['/login']);
+              return false;
+            }
 
-          return true;
-        })
-      ))
+            return true;
+          })
+        ))
+      )),
+      catchError(error => {
+        console.error('[AuthDebug]', { op: 'AuthGuard.checkAuth.error', error });
+        this.router.navigate(['/login']);
+        return of(false);
+      })
     );
   }
 }

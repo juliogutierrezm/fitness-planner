@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { Observable } from 'rxjs';
-import { map, take } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { map, take, switchMap, catchError, tap, filter } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
@@ -12,30 +12,45 @@ export class OnboardingGuard implements CanActivate {
     private authService: AuthService,
     private router: Router
   ) {}
-
   canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> {
-    return this.authService.isAuthenticated$.pipe(
-      take(1),
-      map(isAuthenticated => {
-        if (!isAuthenticated) {
-          this.router.navigate(['/login']);
-          return false;
-        }
+    return from(this.authService.checkAuthState()).pipe(
+      tap(() => console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuthStateComplete' })),
+      switchMap(() => this.authService.isAuthLoading$.pipe(
+        filter(isLoading => !isLoading),
+        take(1),
+        switchMap(() => this.authService.isAuthenticated$.pipe(
+          take(1),
+          map(isAuthenticated => {
+            console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuth.isAuthenticated', isAuthenticated });
+            if (!isAuthenticated) {
+              console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuth.redirectLogin' });
+              this.router.navigate(['/login']);
+              return false;
+            }
 
-        if (this.authService.isClientOnly()) {
-          this.router.navigate(['/unauthorized']);
-          return false;
-        }
+            if (this.authService.isClientOnly()) {
+              console.debug('[AuthDebug]', { op: 'OnboardingGuard.redirectUnauthorized', reason: 'clientOnly' });
+              this.router.navigate(['/unauthorized']);
+              return false;
+            }
 
-        if (this.authService.hasPlannerGroups()) {
-          this.router.navigate(['/dashboard']);
-          return false;
-        }
+            if (this.authService.hasPlannerGroups()) {
+              console.debug('[AuthDebug]', { op: 'OnboardingGuard.redirectDashboard', reason: 'plannerGroups' });
+              this.router.navigate(['/dashboard']);
+              return false;
+            }
 
-        return true;
+            return true;
+          })
+        ))
+      )),
+      catchError(error => {
+        console.error('[AuthDebug]', { op: 'OnboardingGuard.error', error });
+        this.router.navigate(['/login']);
+        return of(false);
       })
     );
   }

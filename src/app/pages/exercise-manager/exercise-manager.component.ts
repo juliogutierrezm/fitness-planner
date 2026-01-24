@@ -9,12 +9,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
-import { Exercise, ExerciseFilters, FilterOptions, PaginatorState } from '../../shared/models';
+import { Exercise, ExerciseFilters, FilterOptions, InlineEditCatalogs, PaginatorState, EXERCISE_DIFFICULTY_OPTIONS, EXERCISE_MUSCLE_TYPE_OPTIONS } from '../../shared/models';
 import { FeedbackConfig, ExerciseMessages, ErrorMapper, DevLogger } from '../../shared/feedback-utils';
 import { ExerciseFiltersComponent } from './components/exercise-filters/exercise-filters.component';
 import { ExerciseTableComponent } from './components/exercise-table/exercise-table.component';
 import { ExerciseVideoDialogComponent } from './components/exercise-video-dialog/exercise-video-dialog.component';
 import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
+import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
 
 @Component({
   selector: 'app-exercise-manager',
@@ -56,6 +57,8 @@ export class ExerciseManagerComponent implements OnInit {
   // Pagination state
   paginatorState: PaginatorState | null = null;
 
+  inlineCatalogs: InlineEditCatalogs | null = null;
+
   // Persistence key
   private readonly STORAGE_KEY = 'exercise-manager-filters';
 
@@ -64,7 +67,8 @@ export class ExerciseManagerComponent implements OnInit {
     private dialog: MatDialog,
     private router: Router,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private inlineOptionsService: InlineEditOptionsService
   ) {}
 
   ngOnInit(): void {
@@ -151,6 +155,16 @@ export class ExerciseManagerComponent implements OnInit {
 
         // Populate filter options from data
         this.populateFilterOptions();
+
+        // Build inline edit catalogs from backend data/cache
+        const catalogs = this.inlineOptionsService.buildCatalogs(
+          this.exercises,
+          EXERCISE_DIFFICULTY_OPTIONS
+        );
+        this.inlineCatalogs = {
+          ...catalogs,
+          exerciseTypeOptions: [...EXERCISE_MUSCLE_TYPE_OPTIONS]
+        };
 
         // Apply combined filtering
         this.applyCombinedFilter();

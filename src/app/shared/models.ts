@@ -149,3 +149,14 @@ export interface PaginatorState {
   pageIndex: number;
   pageSize: number;
 }
+
+export interface InlineEditCatalogs {
+  categoryOptions: string[];
+  muscleGroupOptions: string[];
+  equipmentTypeOptions: string[];
+  exerciseTypeOptions: string[];
+  difficultyOptions: string[];
+}
+
+export const EXERCISE_DIFFICULTY_OPTIONS = ['Principiante', 'Intermedio', 'Avanzado'];
+export const EXERCISE_MUSCLE_TYPE_OPTIONS = ['Aislado', 'Compuesto'];

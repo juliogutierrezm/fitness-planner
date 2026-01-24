@@ -11,7 +11,7 @@
       <div *ngIf="isLoggedIn && user" class="user-badge">
         <mat-icon>account_circle</mat-icon>
         <span>{{ displayName }}</span>
-        <button mat-mini-fab class="logout-btn" (click)="logout()">
+        <button mat-mini-fab class="logout-btn" (click)="logout()" [disabled]="isSigningOut">
           <mat-icon>logout</mat-icon>
         </button>
       </div>
@@ -48,6 +48,15 @@
           <a class="nav-link" routerLink="/diagnostics" routerLinkActive="active">
             <mat-icon>analytics</mat-icon>
             <span>Diagnostics</span>
+          </a>
+          <a
+            class="nav-link ai-nav-link"
+            routerLink="/ai-plans"
+            routerLinkActive="active"
+            *ngIf="canAccessAiPlans"
+          >
+            <mat-icon>auto_awesome</mat-icon>
+            <span>Planes IA</span>
           </a>
 
           <!-- Settings Section for Admin only -->

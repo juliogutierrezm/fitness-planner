@@ -1,33 +1,85 @@
 <div class="onboarding-container">
-  <mat-card class="onboarding-card">
-    <mat-card-header>
-      <mat-card-title>Configura tu contexto</mat-card-title>
-      <mat-card-subtitle>Elige el tipo de negocio para continuar.</mat-card-subtitle>
-    </mat-card-header>
+  <div class="onboarding-shell">
+    <mat-card class="header-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>select_all</mat-icon>
+          Elige cómo usarás la plataforma
+        </mat-card-title>
+        <mat-card-subtitle>Selecciona el contexto que mejor describe tu operación para configurar tu experiencia.</mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
 
-    <mat-card-content>
-      <mat-radio-group class="options" [(ngModel)]="selectedUserType">
-        <mat-radio-button value="GYM_OWNER">
-          <div class="option">
-            <div class="option-title">Dueno de gimnasio</div>
-            <div class="option-desc">Gestiono un gimnasio con multiples entrenadores.</div>
+    <div class="options-grid" role="radiogroup" aria-label="Tipo de uso de la plataforma">
+      <mat-card
+        class="option-card"
+        role="radio"
+        tabindex="0"
+        [attr.aria-checked]="selectedUserType === 'GYM_OWNER'"
+        [class.selected]="selectedUserType === 'GYM_OWNER'"
+        (click)="selectedUserType = 'GYM_OWNER'"
+        (keyup.enter)="selectedUserType = 'GYM_OWNER'"
+        (keyup.space)="selectedUserType = 'GYM_OWNER'"
+      >
+        <div class="option-header">
+          <mat-icon aria-hidden="true">apartment</mat-icon>
+          <div>
+            <h2>Gimnasio / Centro</h2>
+            <p>Para equipos con entrenadores y operación colaborativa.</p>
           </div>
-        </mat-radio-button>
-        <mat-radio-button value="INDEPENDENT_TRAINER">
-          <div class="option">
-            <div class="option-title">Entrenador independiente</div>
-            <div class="option-desc">Trabajo por mi cuenta con mis clientes.</div>
-          </div>
-        </mat-radio-button>
-      </mat-radio-group>
-    </mat-card-content>
+        </div>
 
-    <mat-card-actions align="end">
+        <ul class="capability-list">
+          <li><mat-icon color="primary">check_circle</mat-icon>Gestión de entrenadores y clientes</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Asignación administrativa de entrenadores</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Catálogo centralizado de ejercicios</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Creación y reutilización de plantillas</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Generación de planes con IA</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Métricas y vistas administrativas</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Identidad visual propia</li>
+        </ul>
+
+        <p class="option-hint">Selecciona esta tarjeta para continuar.</p>
+      </mat-card>
+
+      <mat-card
+        class="option-card"
+        role="radio"
+        tabindex="0"
+        [attr.aria-checked]="selectedUserType === 'INDEPENDENT_TRAINER'"
+        [class.selected]="selectedUserType === 'INDEPENDENT_TRAINER'"
+        (click)="selectedUserType = 'INDEPENDENT_TRAINER'"
+        (keyup.enter)="selectedUserType = 'INDEPENDENT_TRAINER'"
+        (keyup.space)="selectedUserType = 'INDEPENDENT_TRAINER'"
+      >
+        <div class="option-header">
+          <mat-icon aria-hidden="true">person</mat-icon>
+          <div>
+            <h2>Entrenador independiente</h2>
+            <p>Para operar de forma individual con configuración rápida.</p>
+          </div>
+        </div>
+
+        <ul class="capability-list">
+          <li><mat-icon color="primary">check_circle</mat-icon>Gestión directa de clientes propios</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Creación de planes personalizados</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Generación de planes con IA</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Catálogo completo de ejercicios</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Plantillas reutilizables</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Sin administración de entrenadores</li>
+          <li><mat-icon color="primary">check_circle</mat-icon>Setup inmediato</li>
+        </ul>
+
+        <p class="option-hint">Selecciona esta tarjeta para continuar.</p>
+      </mat-card>
+    </div>
+
+    <div class="onboarding-actions">
       <button mat-raised-button color="primary" (click)="confirmSelection()" [disabled]="loading || !selectedUserType">
         <mat-icon>check_circle</mat-icon>
-        Continuar
+        Confirmar selección
       </button>
       <mat-progress-spinner *ngIf="loading" diameter="24" mode="indeterminate"></mat-progress-spinner>
-    </mat-card-actions>
-  </mat-card>
+    </div>
+  </div>
 </div>

@@ -1,0 +1,63 @@
+<div class="users-page">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>history</mat-icon>
+        Historial IA del cliente
+      </mat-card-title>
+      <mat-card-subtitle>
+        Planes generados por IA para este cliente.
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <div class="arrow-back-button">
+    <button
+      mat-mini-fab
+      [routerLink]="['/ai-plans']"
+      matTooltip="Volver a planes IA"
+    >
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  </div>
+
+  <section *ngIf="unauthorized" class="unauthorized">
+    <mat-card class="list-card">
+      <div class="empty">No autorizado. Regresa al dashboard.</div>
+      <div class="actions">
+        <button mat-raised-button color="primary" routerLink="/ai-plans">Volver</button>
+      </div>
+    </mat-card>
+  </section>
+
+  <section *ngIf="!unauthorized">
+    <div *ngIf="loading" class="loading-container">
+      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    </div>
+
+    <mat-card class="list-card" *ngIf="!loading">
+      <div class="list-header">
+        <div>
+          <h3>{{ totalPlans }} planes IA</h3>
+          <p>Selecciona un plan para revisar el detalle.</p>
+        </div>
+      </div>
+
+      <div *ngIf="isEmpty" class="empty">No hay planes IA aún.</div>
+
+      <div *ngFor="let plan of plans; trackBy: trackByPlan" class="user-row">
+        <div class="info">
+          <div class="name">{{ plan.createdAt | date:'medium' }}</div>
+          <div class="meta">
+            <span>ID: {{ plan.executionId }}</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button mat-raised-button color="primary" [routerLink]="['/ai-plans/user', userId, 'plan', plan.executionId]">
+            Ver
+          </button>
+        </div>
+      </div>
+    </mat-card>
+  </section>
+</div>

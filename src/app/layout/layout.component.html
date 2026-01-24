@@ -49,6 +49,15 @@
             <mat-icon>analytics</mat-icon>
             <span>Diagnostics</span>
           </a>
+          <a
+            class="nav-link ai-nav-link"
+            routerLink="/ai-plans"
+            routerLinkActive="active"
+            *ngIf="canAccessAiPlans"
+          >
+            <mat-icon>auto_awesome</mat-icon>
+            <span>Planes IA</span>
+          </a>
 
           <!-- Settings Section for Admin only -->
           <mat-divider *ngIf="user?.role === 'admin'" style="margin: 8px 0;"></mat-divider>

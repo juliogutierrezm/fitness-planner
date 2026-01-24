@@ -1,0 +1,79 @@
+<div class="users-page">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>auto_awesome</mat-icon>
+        Planes IA
+      </mat-card-title>
+      <mat-card-subtitle>
+        Resumen de actividad de planes generados por IA ({{ scopeLabel }}).
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <div class="arrow-back-button">
+    <button
+      mat-mini-fab
+      routerLink="/dashboard"
+      matTooltip="Volver al dashboard"
+    >
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  </div>
+
+  <section *ngIf="unauthorized" class="unauthorized">
+    <mat-card class="list-card">
+      <div class="empty">No autorizado. Regresa al dashboard.</div>
+      <div class="actions">
+        <button mat-raised-button color="primary" routerLink="/dashboard">Volver</button>
+      </div>
+    </mat-card>
+  </section>
+
+  <section *ngIf="!unauthorized">
+    <div *ngIf="loading" class="loading-container">
+      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    </div>
+
+    <section *ngIf="!loading" class="metrics-grid">
+      <mat-card class="metric-card" *ngFor="let metric of metrics">
+        <div class="metric-icon">
+          <mat-icon>{{ metric.icon }}</mat-icon>
+        </div>
+        <div class="metric-info">
+          <div class="metric-value">{{ metric.value }}</div>
+          <div class="metric-label">{{ metric.label }}</div>
+        </div>
+      </mat-card>
+    </section>
+
+    <mat-card class="list-card" *ngIf="!loading">
+      <div class="list-header">
+        <div>
+          <h3>Clientes con planes IA</h3>
+          <p>Selecciona un cliente para ver su historial.</p>
+        </div>
+      </div>
+
+      <div *ngIf="isEmpty" class="empty">No hay planes IA aún.</div>
+
+      <div *ngFor="let client of clients; trackBy: trackByClient" class="user-row">
+        <div class="info">
+          <div class="name">{{ client.clientName }}</div>
+          <div class="meta">
+            <span>{{ client.email }}</span>
+            <span class="meta-sep">•</span>
+            <span>{{ client.totalPlans }} planes</span>
+            <span class="meta-sep" *ngIf="client.latestPlanDate">•</span>
+            <span *ngIf="client.latestPlanDate">Último: {{ client.latestPlanDate | date:'mediumDate' }}</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button mat-raised-button color="primary" [routerLink]="['/ai-plans/user', client.clientId]">
+            Ver planes IA
+          </button>
+        </div>
+      </div>
+    </mat-card>
+  </section>
+</div>

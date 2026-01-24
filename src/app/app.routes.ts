@@ -119,6 +119,24 @@ export const routes: Routes = [
         data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
       },
       {
+        path: 'ai-plans',
+        loadComponent: () => import('./pages/ai-plans-dashboard/ai-plans-dashboard.component').then(m => m.AiPlansDashboardComponent),
+        canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
+        path: 'ai-plans/user/:id',
+        loadComponent: () => import('./pages/ai-plans-user/ai-plans-user.component').then(m => m.AiPlansUserComponent),
+        canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
+        path: 'ai-plans/user/:id/plan/:executionId',
+        loadComponent: () => import('./pages/ai-plan-detail/ai-plan-detail.component').then(m => m.AiPlanDetailComponent),
+        canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],
+        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+      },
+      {
         path: 'trainers',
         loadComponent: () => import('./pages/trainers/trainers.component').then(m => m.TrainersComponent),
         canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],

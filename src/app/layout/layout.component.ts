@@ -69,6 +69,16 @@ export class LayoutComponent implements OnInit {
     return this.authService.isIndependentTenant();
   }
 
+  /**
+   * Purpose: show AI plans nav item based on Cognito groups.
+   * Input: none. Output: boolean.
+   * Error handling: returns false for unauthenticated users.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get canAccessAiPlans(): boolean {
+    return this.authService.isAdmin() || this.authService.isTrainer();
+  }
+
   login() {
     this.router.navigate(['/login']);
   }

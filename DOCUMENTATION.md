@@ -10,8 +10,9 @@ Tambien incluye configuracion de apariencia por tenant (branding, colores, tipog
 La aplicación implementa autenticación 100% custom con AWS Cognito y Amplify Auth, sin Hosted UI ni redirects.
 
 #### Componentes principales
-- **AuthService** (`src/app/services/auth.service.ts`): manejo de signup/login/reset, tokens y grupos
-- **AuthFlowGuard** (`src/app/guards/auth-flow.guard.ts`): idempotencia y control de rutas de auth
+- **AuthService** (`src/app/services/auth.service.ts`): manejo de signup/login/reset, tokens, grupos y estado del flujo
+- **AuthFlowGuard** (`src/app/guards/auth-flow.guard.ts`): control de rutas públicas según el paso de auth
+- **AuthFlowState**: persistencia temporal en `sessionStorage` para confirmación y reset
 - **UI de autenticación**: login, signup, confirm-signup, forgot/reset password, force-change-password
 
 ### Configuración de AWS Cognito
@@ -47,8 +48,9 @@ Resources:
 #### Flujo de Autenticación
 1. **Inicio de sesión/registro**: Formularios custom con Amplify Auth
 2. **nextStep**: Confirmación de cuenta, reset o cambio de contraseña obligatorio
-3. **Sesión Cognito**: Amplify mantiene los tokens en storage seguro
-4. **Guards**: Redirección a dashboard/onboarding/unauthorized según grupos
+3. **AuthFlowState**: El estado se guarda temporalmente para recuperar el flujo en navegación
+4. **Sesión Cognito**: Amplify mantiene los tokens en storage seguro
+5. **Guards**: Redirección a dashboard/onboarding/unauthorized según grupos
 
 ### Seguridad Implementada
 - **Amplify Auth**: manejo de tokens y refresh automático
@@ -59,6 +61,7 @@ Resources:
 - **AuthGuard**: Protección básica de rutas autenticadas
 - **RoleGuard**: Control de acceso basado en roles específicos
 - **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
+- **AuthFlowGuard**: Routing de pantallas públicas según el paso de autenticación
 
 ### Roles y Permisos
 
@@ -164,14 +167,38 @@ fitness-planner/
 │   │   │   ├── tempLogo.png
 │   │   │   └── TrainGrid.png
 │   │   ├── components/
+│   │   │   ├── callback/
+│   │   │   │   ├── callback.component.html
+│   │   │   │   ├── callback.component.scss
+│   │   │   │   └── callback.component.ts
+│   │   │   ├── confirm-code/
+│   │   │   │   ├── confirm-code.component.html
+│   │   │   │   ├── confirm-code.component.scss
+│   │   │   │   └── confirm-code.component.ts
 │   │   │   ├── confirm-dialog/
 │   │   │   │   ├── confirm-dialog.component.html
 │   │   │   │   ├── confirm-dialog.component.scss
 │   │   │   │   └── confirm-dialog.component.ts
+│   │   │   ├── force-new-password/
+│   │   │   │   ├── force-new-password.component.html
+│   │   │   │   ├── force-new-password.component.scss
+│   │   │   │   └── force-new-password.component.ts
+│   │   │   ├── forgot-password/
+│   │   │   │   ├── forgot-password.component.html
+│   │   │   │   ├── forgot-password.component.scss
+│   │   │   │   └── forgot-password.component.ts
 │   │   │   ├── login/
 │   │   │   │   ├── login.component.html
 │   │   │   │   ├── login.component.scss
 │   │   │   │   └── login.component.ts
+│   │   │   ├── reset-password/
+│   │   │   │   ├── reset-password.component.html
+│   │   │   │   ├── reset-password.component.scss
+│   │   │   │   └── reset-password.component.ts
+│   │   │   ├── signup/
+│   │   │   │   ├── signup.component.html
+│   │   │   │   ├── signup.component.scss
+│   │   │   │   └── signup.component.ts
 │   │   │   ├── planner/
 │   │   │   │   ├── ai/
 │   │   │   │   │   ├── ai-generation-dialog.component.ts
@@ -220,7 +247,10 @@ fitness-planner/
 │   │   │       ├── workout-plan-view.component.spec.ts
 │   │   │       └── workout-plan-view.component.ts
 │   │   ├── guards/
+│   │   │   ├── auth-flow.guard.ts
 │   │   │   ├── auth.guard.ts
+│   │   │   ├── onboarding.guard.ts
+│   │   │   ├── post-login-redirect.guard.ts
 │   │   │   └── role.guard.ts
 │   │   ├── interceptors/
 │   │   │   └── auth.interceptor.ts
@@ -306,11 +336,14 @@ fitness-planner/
 │   │   │   ├── client-body-metrics.service.ts
 │   │   │   ├── client-body-metrics.service.spec.ts
 │   │   │   ├── template-assignment.service.ts
-│   │   │   └── theme.service.ts
+│   │   │   ├── theme.service.ts
+│   │   │   └── user-initialization.service.ts
 │   │   ├── shared/
 │   │   │   ├── ai-generation-timeline.component.html
 │   │   │   ├── ai-generation-timeline.component.scss
 │   │   │   ├── ai-generation-timeline.component.ts
+│   │   │   ├── auth-error-utils.ts
+│   │   │   ├── auth-validators.ts
 │   │   │   ├── feedback-utils.ts
 │   │   │   ├── models.ts
 │   │   │   ├── shared-utils.ts
@@ -408,6 +441,7 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
 - **Métricas corporales de clientes**: Seguimiento histórico de composición corporal (peso, grasa corporal, masa muscular, IMC, metabolismo basal, edad metabólica) con gráficos y gestión de mediciones
 - **Interfaz unificada de usuario**: Arquitectura simplificada donde todos los roles acceden a través de la aplicación principal sin interfaces separadas
+- **Flujo de autenticación controlado**: Pantallas públicas con guard de flujo, persistencia temporal en `sessionStorage` y redirecciones claras
 
 ## Modulos de usuarios por rol
 - **Clientes**: Gestión de usuarios con role = client, con asignación/cambio de entrenador (solo admin). Los clientes acceden a través de la aplicación principal según sus permisos.
@@ -657,6 +691,7 @@ export class AiGenerationDialogComponent {
 
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
+- **Pantallas de autenticación**: Completo - Login, signup, confirmación, reset y cambio de contraseña
 - **Dashboard principal**: Completo - Navegación básica implementada
 - **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
 - **Generación de planes con IA**: Completo - Diálogo parametric avanzado con timeline visual, perfiles de usuario detallados y polling en tiempo real para generación de planes con Claude 3
@@ -687,16 +722,16 @@ export class AiGenerationDialogComponent {
 ## Cambios recientes (ultimos commits)
 
 ### Ultimas actualizaciones implementadas (últimos 10 commits):
-- **99ad3a5**: changed layout setup
-- **c0049c8**: changed stylesX
-- **105c3e5**: finaly fixed planner supersets viewX
-- **f48fceb**: added body metrics feature
-- **112027c**: remove clientX
-- **b296446**: Merge pull request #10 from juliogutierrezm/feat/planner-refactorX
-- **b997ce3**: remove clientX
-- **c7c1250**: refactor planner component
-- **b0f5974**: refactor planner componentX
-- **a2efa95**: Merge pull request #8 from juliogutierrezm/feat/client-app-view
+- **2dbc23f**: added new login page (merge)
+- **2ad115c**: added new login page
+- **4e242fe**: merge PR session requires exercise
+- **e7e9c71**: fixed ui and auth bugs (merge)
+- **ad767fc**: fixed ui and auth bugs
+- **eadabff**: merge PR planner default session one
+- **2046802**: fixed styles and bugs
+- **435613b**: fixed auth routing logs
+- **85af0c1**: implemented onboarding auth
+- **9950266**: update documentation
 
 ## Mejoras Pendientes
 
@@ -755,5 +790,6 @@ El sistema distingue explícitamente entre dos conceptos relacionados con entren
 - La exposición completa del entrenador actual en UI (cliente, entrenador, administrador) queda planificada para una implementación posterior.
 
 Esta separación permite flexibilidad operativa, colaboración entre entrenadores y una experiencia de usuario fluida, sin comprometer el control administrativo del gimnasio.
+
 
 

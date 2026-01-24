@@ -11,6 +11,22 @@
                 <button mat-icon-button color="primary" (click)="onEditExercise(ex)" matTooltip="Editar ejercicio">
                     <mat-icon>edit</mat-icon>
                 </button>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  *ngIf="hasRowError(ex)"
+                  (click)="retrySave(ex, $event)"
+                  matTooltip="Reintentar guardado">
+                    <mat-icon>refresh</mat-icon>
+                </button>
+                <mat-icon class="save-status saved" *ngIf="showRowSaved(ex)">check_circle</mat-icon>
+                <mat-icon class="save-status error" *ngIf="hasRowError(ex)" matTooltip="No se pudo guardar">error</mat-icon>
+                <mat-progress-spinner
+                  *ngIf="isRowSaving(ex)"
+                  class="row-saving"
+                  diameter="18"
+                  mode="indeterminate">
+                </mat-progress-spinner>
             </td>
         </ng-container>
 
@@ -50,16 +66,31 @@
         <ng-container matColumnDef="name_es">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
             <td mat-cell *matCellDef="let ex">
-                <div class="exercise-name-container">
-                    <div class="exercise-name">{{ getFieldValue(ex, 'name_es') || '—' }}</div>
-                    <div class="exercise-aliases-list" *ngIf="getAliasesOptions(ex).length > 0">
-                        <span
-                          class="exercise-alias-chip"
-                          *ngFor="let alias of getAliasesOptions(ex)"
-                          (click)="onAliasClick(ex, alias, $event)">
-                          {{ alias }}
-                        </span>
-                    </div>
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'name_es')" (click)="startEdit(ex, 'name_es', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'name_es'); else nameEdit">
+                        <div class="exercise-name-container">
+                            <div class="exercise-name">{{ getInlineValue(ex, 'name_es') || '—' }}</div>
+                            <div class="exercise-aliases-list" *ngIf="getAliasesOptions(ex).length > 0">
+                                <span
+                                  class="exercise-alias-chip"
+                                  *ngFor="let alias of getAliasesOptions(ex)"
+                                  (click)="onAliasClick(ex, alias, $event)">
+                                  {{ alias }}
+                                </span>
+                            </div>
+                        </div>
+                    </ng-container>
+                    <ng-template #nameEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <input
+                              matInput
+                              [ngModel]="getInlineValue(ex, 'name_es')"
+                              (ngModelChange)="updateDraft(ex, 'name_es', $event)"
+                              (blur)="commitEdit(ex, 'name_es')"
+                              (keydown.enter)="commitEdit(ex, 'name_es')"
+                              aria-label="Editar nombre">
+                        </mat-form-field>
+                    </ng-template>
                 </div>
             </td>
         </ng-container>
@@ -67,24 +98,149 @@
         <!-- Muscle Group Column -->
         <ng-container matColumnDef="muscle_group">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo Muscular</th>
-            <td mat-cell *matCellDef="let ex" matTooltip="{{ getFieldValue(ex, 'muscle_group') || '' }}">
-                {{ getFieldValue(ex, 'muscle_group') || '—' }}
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'muscle_group')" (click)="startEdit(ex, 'muscle_group', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'muscle_group'); else muscleEdit">
+                        <span matTooltip="{{ getInlineValue(ex, 'muscle_group') || '' }}">{{ getInlineValue(ex, 'muscle_group') || '—' }}</span>
+                    </ng-container>
+                    <ng-template #muscleEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getInlineValue(ex, 'muscle_group')"
+                              (selectionChange)="updateDraft(ex, 'muscle_group', $event.value)"
+                              (closed)="commitEdit(ex, 'muscle_group')"
+                              aria-label="Editar grupo muscular">
+                                <mat-option *ngFor="let option of inlineCatalogs?.muscleGroupOptions" [value]="option">
+                                    {{ option }}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
             </td>
         </ng-container>
 
         <!-- Equipment Type Column -->
         <ng-container matColumnDef="equipment_type">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Equipo</th>
-            <td mat-cell *matCellDef="let ex" matTooltip="{{ getFieldValue(ex, 'equipment_type') || '' }}">
-                {{ getFieldValue(ex, 'equipment_type') || '—' }}
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'equipment_type')" (click)="startEdit(ex, 'equipment_type', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'equipment_type'); else equipmentEdit">
+                        <span matTooltip="{{ getInlineValue(ex, 'equipment_type') || '' }}">{{ getInlineValue(ex, 'equipment_type') || '—' }}</span>
+                    </ng-container>
+                    <ng-template #equipmentEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getInlineValue(ex, 'equipment_type')"
+                              (selectionChange)="updateDraft(ex, 'equipment_type', $event.value)"
+                              (closed)="commitEdit(ex, 'equipment_type')"
+                              aria-label="Editar equipo">
+                                <mat-option *ngFor="let option of inlineCatalogs?.equipmentTypeOptions" [value]="option">
+                                    {{ option }}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
             </td>
         </ng-container>
 
         <!-- Category Column -->
         <ng-container matColumnDef="category">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoría</th>
-            <td mat-cell *matCellDef="let ex" matTooltip="{{ getFieldValue(ex, 'category') || '' }}">
-                {{ getFieldValue(ex, 'category') || '—' }}
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'category')" (click)="startEdit(ex, 'category', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'category'); else categoryEdit">
+                        <span matTooltip="{{ getInlineValue(ex, 'category') || '' }}">{{ getInlineValue(ex, 'category') || '—' }}</span>
+                    </ng-container>
+                    <ng-template #categoryEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getInlineValue(ex, 'category')"
+                              (selectionChange)="updateDraft(ex, 'category', $event.value)"
+                              (closed)="commitEdit(ex, 'category')"
+                              aria-label="Editar categoría">
+                                <mat-option *ngFor="let option of inlineCatalogs?.categoryOptions" [value]="option">
+                                    {{ option }}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
+            </td>
+        </ng-container>
+
+        <!-- Functional Column -->
+        <ng-container matColumnDef="functional">
+            <th mat-header-cell *matHeaderCellDef>Funcional</th>
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'functional')" (click)="startEdit(ex, 'functional', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'functional'); else functionalEdit">
+                        <span>{{ getFunctionalLabel(ex) }}</span>
+                    </ng-container>
+                    <ng-template #functionalEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getFunctionalValue(ex)"
+                              (selectionChange)="updateDraft(ex, 'functional', $event.value)"
+                              (closed)="commitEdit(ex, 'functional')"
+                              aria-label="Editar funcional">
+                                <mat-option [value]="true">Sí</mat-option>
+                                <mat-option [value]="false">No</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
+            </td>
+        </ng-container>
+
+        <!-- Muscle Type Column -->
+        <ng-container matColumnDef="exercise_type">
+            <th mat-header-cell *matHeaderCellDef>Tipo de grupo</th>
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'exercise_type')" (click)="startEdit(ex, 'exercise_type', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'exercise_type'); else typeEdit">
+                        <span>{{ getInlineValue(ex, 'exercise_type') || '—' }}</span>
+                    </ng-container>
+                    <ng-template #typeEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getInlineValue(ex, 'exercise_type')"
+                              (selectionChange)="updateDraft(ex, 'exercise_type', $event.value)"
+                              (closed)="commitEdit(ex, 'exercise_type')"
+                              aria-label="Editar tipo de grupo muscular">
+                                <mat-option *ngFor="let option of inlineCatalogs?.exerciseTypeOptions" [value]="option">
+                                    {{ option }}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
+            </td>
+        </ng-container>
+
+        <!-- Difficulty Column -->
+        <ng-container matColumnDef="difficulty">
+            <th mat-header-cell *matHeaderCellDef>Dificultad</th>
+            <td mat-cell *matCellDef="let ex">
+                <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'difficulty')" (click)="startEdit(ex, 'difficulty', $event)">
+                    <ng-container *ngIf="!isEditingCell(ex, 'difficulty'); else difficultyEdit">
+                        <span>{{ getInlineValue(ex, 'difficulty') || '—' }}</span>
+                    </ng-container>
+                    <ng-template #difficultyEdit>
+                        <mat-form-field appearance="outline" class="inline-field">
+                            <mat-select
+                              [ngModel]="getInlineValue(ex, 'difficulty')"
+                              (selectionChange)="updateDraft(ex, 'difficulty', $event.value)"
+                              (closed)="commitEdit(ex, 'difficulty')"
+                              aria-label="Editar dificultad">
+                                <mat-option *ngFor="let option of inlineCatalogs?.difficultyOptions" [value]="option">
+                                    {{ option }}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </ng-template>
+                </div>
             </td>
         </ng-container>
 

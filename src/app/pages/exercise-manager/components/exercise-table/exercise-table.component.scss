@@ -20,6 +20,10 @@ table.compact-table {
     padding: 6px 12px; // Further reduced padding for compactness
     min-height: 32px; // Set minimum instead of fixed height to allow expansion
 
+    .inline-field {
+      width: 100%;
+    }
+
     // Fixed column widths for short columns
     &:nth-child(1) { // Actions column
       width: 60px;
@@ -41,6 +45,48 @@ table.compact-table {
       white-space: normal;
     }
   }
+}
+
+.inline-cell {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: rgba(25, 118, 210, 0.06);
+  }
+
+  &.is-editing {
+    background: rgba(25, 118, 210, 0.1);
+    border: 1px solid rgba(25, 118, 210, 0.3);
+  }
+
+  .mat-mdc-form-field {
+    margin: 0;
+  }
+}
+
+.save-status {
+  font-size: 18px;
+  vertical-align: middle;
+  margin-left: 4px;
+
+  &.saved {
+    color: #2e7d32;
+  }
+
+  &.error {
+    color: #d32f2f;
+  }
+}
+
+.row-saving {
+  display: inline-flex;
+  margin-left: 4px;
 }
 
 tr.mdc-data-table__row {

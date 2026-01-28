@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,7 +17,7 @@ import { AiPlanSummary, AiPlansService, AiUserPlansResponse } from '../../servic
 import { AuthService } from '../../services/auth.service';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
-import { TemplateAssignmentService } from '../../services/template-assignment.service';
+import { PlanAssignmentService } from '../../services/plan-assignment.service';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { PlanProgressions } from '../../components/planner/models/planner-plan.model';
 import {
@@ -71,17 +71,20 @@ export class AiPlanDetailComponent implements OnInit {
   assignableUsers: AppUser[] = [];
   filteredAssignableUsers: AppUser[] = [];
   userSearch = '';
-  selectedUserId: string | null = null;
   @ViewChild('userSelectDialog') userSelectDialog?: TemplateRef<any>;
   private userSelectDialogRef: any = null;
+  templateNameInput = '';
+  @ViewChild('templateNameDialog') templateNameDialog?: TemplateRef<any>;
+  private templateNameDialogRef: any = null;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private aiPlansService: AiPlansService,
     private authService: AuthService,
     private api: ExerciseApiService,
     private userApi: UserApiService,
-    private templateAssignment: TemplateAssignmentService,
+    private planAssignmentService: PlanAssignmentService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
@@ -283,21 +286,47 @@ export class AiPlanDetailComponent implements OnInit {
       this.snackBar.open('No se pudo identificar el usuario.', 'Cerrar', { duration: 3000 });
       return;
     }
-
-    this.selectedUserId = userId;
     this.userSelectDialogRef?.close();
-    this.saveAsTemplateAndAssign(userId);
+    this.assignToUser(user);
+  }
+
+  assignToUser(user: AppUser): void {
+    this.planAssignmentService.setPlanData(user, this.previewPlan);
+    this.router.navigate(['/planner']);
   }
 
   saveAsTemplate(): void {
-    this.persistTemplatePlan();
+    this.openTemplateNameDialog();
   }
 
-  private saveAsTemplateAndAssign(userId: string): void {
-    this.persistTemplatePlan(true, userId);
+  private openTemplateNameDialog(): void {
+    if (!this.templateNameDialog) {
+      this.snackBar.open('No se pudo abrir el dialogo de plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    this.templateNameInput = '';
+    this.templateNameDialogRef = this.dialog.open(this.templateNameDialog, {
+      width: '480px',
+      maxWidth: '94vw'
+    });
+    this.templateNameDialogRef.afterClosed().subscribe(() => {
+      this.templateNameInput = '';
+      this.templateNameDialogRef = null;
+      this.cdr.markForCheck();
+    });
   }
 
-  private persistTemplatePlan(assignAfterSave = false, userId?: string): void {
+  confirmTemplateName(): void {
+    const templateName = this.templateNameInput.trim();
+    if (!templateName) {
+      this.snackBar.open('Ingresa un nombre de plantilla.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    this.templateNameDialogRef?.close();
+    this.persistTemplatePlan(templateName);
+  }
+
+  private persistTemplatePlan(templateName: string): void {
     if (!this.previewPlan) {
       this.snackBar.open('No hay plan para guardar.', 'Cerrar', { duration: 3000 });
       return;
@@ -309,7 +338,9 @@ export class AiPlanDetailComponent implements OnInit {
     }
 
     const planId = `plan-${Date.now()}`;
-    const planName = this.planSummary ? `Plan IA ${new Date(this.planSummary.createdAt || '').toLocaleDateString()}` : 'Plan IA';
+    const planName = templateName || (this.planSummary
+      ? `Plan IA ${new Date(this.planSummary.createdAt || '').toLocaleDateString()}`
+      : 'Plan IA');
     const payload: any = {
       planId,
       name: planName,
@@ -319,7 +350,7 @@ export class AiPlanDetailComponent implements OnInit {
       objective: this.planBody?.objective,
       userId: currentUser.id,
       isTemplate: true,
-      templateName: planName
+      templateName
     };
     if (this.progressions) {
       payload.progressions = this.progressions;
@@ -333,13 +364,6 @@ export class AiPlanDetailComponent implements OnInit {
         this.isSavingTemplate = false;
         if (res) {
           this.snackBar.open('Plantilla guardada correctamente.', 'Cerrar', { duration: 2500 });
-          if (assignAfterSave && userId) {
-            this.templateAssignment.assignTemplateToUser({
-              userId,
-              snackBar: this.snackBar,
-              templateId: planId
-            });
-          }
           this.cdr.markForCheck();
           return;
         }

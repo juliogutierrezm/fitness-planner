@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 import { AuthService, UserRole } from './services/auth.service';
 import { isGymMode } from './shared/shared-utils';
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface AppUser {
   id?: string;
@@ -21,6 +23,7 @@ export interface AppUser {
   injuries?: string;    // Free text, optional (null when noInjuries=true)
   notes?: string;       // Trainer internal notes, optional
   createdAt?: string;
+  status?: UserStatus;  // User status: 'ACTIVE' or 'INACTIVE'. Defaults to 'ACTIVE' if undefined.
 }
 
 export interface CreateUserWithRoleRequest {
@@ -145,11 +148,59 @@ export class UserApiService {
     );
   }
 
-  deleteUser(userId: string): Observable<any> {
+  /**
+   * Purpose: delete a user permanently. Only allowed if user is INACTIVE.
+   * Input: userId string, userStatus optional for client-side validation.
+   * Output: Observable with result or error.
+   * Error handling: returns error if user is not INACTIVE.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  deleteUser(userId: string, userStatus?: UserStatus): Observable<any> {
     if (!userId) return of(null);
+    // Client-side validation: only allow deletion of INACTIVE users
+    if (userStatus && userStatus !== 'INACTIVE') {
+      console.error('deleteUser blocked: user must be INACTIVE to delete');
+      return throwError(() => new Error('User must be INACTIVE to delete'));
+    }
     return this.http.delete(`${this.base}/${encodeURIComponent(userId)}`).pipe(
       catchError(err => { console.error('deleteUser error', err); return of(null); })
     );
+  }
+
+  /**
+   * Purpose: set user status (ACTIVE or INACTIVE) via POST endpoint.
+   * Input: userId string, status UserStatus.
+   * Output: Observable with updated user or null.
+   * Error handling: logs error and returns null on failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  setUserStatus(userId: string, status: UserStatus): Observable<any> {
+    if (!userId) return of(null);
+    const url = `${this.base}/${encodeURIComponent(userId)}`;
+    return this.http.post(url, { status }).pipe(
+      tap(res => console.log(`User status set to ${status}`, res)),
+      catchError(err => { console.error('setUserStatus error', err); return of(null); })
+    );
+  }
+
+  /**
+   * Purpose: convenience method to deactivate a user.
+   * Input: userId string.
+   * Output: Observable with result.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  deactivateUser(userId: string): Observable<any> {
+    return this.setUserStatus(userId, 'INACTIVE');
+  }
+
+  /**
+   * Purpose: convenience method to activate a user.
+   * Input: userId string.
+   * Output: Observable with result.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  activateUser(userId: string): Observable<any> {
+    return this.setUserStatus(userId, 'ACTIVE');
   }
 
 getUserById(userId: string): Observable<AppUser | null> {
@@ -160,21 +211,24 @@ getUserById(userId: string): Observable<AppUser | null> {
 
   return this.http.get<any>(url).pipe(
     map(res => {
+      let user: AppUser | null = null;
       // Caso 1: backend ya devuelve el usuario directo
       if (res && !res.body && res.id) {
-        return res as AppUser;
+        user = res as AppUser;
       }
-
       // Caso 2: API Gateway proxy { statusCode, body }
-      if (res && typeof res.body === 'string') {
+      else if (res && typeof res.body === 'string') {
         try {
-          return JSON.parse(res.body) as AppUser;
+          user = JSON.parse(res.body) as AppUser;
         } catch {
           return null;
         }
       }
-
-      return null;
+      // Normalize status to ACTIVE if undefined
+      if (user && !user.status) {
+        user.status = 'ACTIVE';
+      }
+      return user;
     }),
     catchError(err => {
       console.error('getUserById error', err);

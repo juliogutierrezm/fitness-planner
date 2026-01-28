@@ -44,14 +44,18 @@ export class ExerciseManagerComponent implements OnInit {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: ''
+    equipmentTypeFilter: '',
+    difficultyFilter: '',
+    groupTypeFilter: ''
   };
 
   // Filter options populated from data
   filterOptions: FilterOptions = {
     categoryOptions: [],
     muscleGroupOptions: [],
-    equipmentTypeOptions: []
+    equipmentTypeOptions: [],
+    difficultyOptions: [],
+    groupTypeOptions: []
   };
 
   // Pagination state
@@ -85,7 +89,9 @@ export class ExerciseManagerComponent implements OnInit {
           searchValue: filters.searchValue || '',
           categoryFilter: filters.categoryFilter || '',
           muscleGroupFilter: filters.muscleGroupFilter || '',
-          equipmentTypeFilter: filters.equipmentTypeFilter || ''
+          equipmentTypeFilter: filters.equipmentTypeFilter || '',
+          difficultyFilter: filters.difficultyFilter || '',
+          groupTypeFilter: filters.groupTypeFilter || ''
         };
       }
     } catch (error) {
@@ -120,7 +126,9 @@ export class ExerciseManagerComponent implements OnInit {
     this.filterOptions = {
       categoryOptions: Array.from(categories).sort(),
       muscleGroupOptions: Array.from(muscleGroups).sort(),
-      equipmentTypeOptions: Array.from(equipmentTypes).sort()
+      equipmentTypeOptions: Array.from(equipmentTypes).sort(),
+      difficultyOptions: EXERCISE_DIFFICULTY_OPTIONS,
+      groupTypeOptions: EXERCISE_MUSCLE_TYPE_OPTIONS
     };
   }
 
@@ -236,7 +244,16 @@ export class ExerciseManagerComponent implements OnInit {
       const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
         this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
 
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
+      // Difficulty filter
+      const matchesDifficulty = !this.currentFilters.difficultyFilter ||
+        this.getFieldValue(exercise, 'difficulty') === this.currentFilters.difficultyFilter;
+
+      // Group type filter
+      const matchesGroupType = !this.currentFilters.groupTypeFilter ||
+      this.getFieldValue(exercise, 'exercise_type') === this.currentFilters.groupTypeFilter;
+
+
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesDifficulty && matchesGroupType;
     });
 
     this.dataSource.data = filteredData;

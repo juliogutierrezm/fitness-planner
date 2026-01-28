@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
+import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -36,6 +36,7 @@ import { AiGenerationDialogComponent } from './ai/ai-generation-dialog.component
 import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialog.component';
 import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
+import { PlanAssignmentService } from '../../services/plan-assignment.service';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
 import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
 import { PlannerFormService } from './services/planner-form.service';
@@ -105,14 +106,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: ''
+    equipmentTypeFilter: '',
+    difficultyFilter: '',
+    groupTypeFilter: ''
   };
 
   // Filter options populated from data
   filterOptions: FilterOptions = {
     categoryOptions: [],
     muscleGroupOptions: [],
-    equipmentTypeOptions: []
+    equipmentTypeOptions: [],
+    difficultyOptions: [],
+    groupTypeOptions: []
   };
   private readonly functionalCategoryLabel = 'Funcional';
 
@@ -170,6 +175,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   isGenerating: boolean = false;
   currentAiStep?: AiStep;
   private pollingSub?: Subscription;
+  private planAssignmentSub?: Subscription;
   private currentUserId: string | null = null;
   currentExecutionId!: string;
   private aiGenDialogRef: any = null;
@@ -202,7 +208,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private userApi: UserApiService
+    private userApi: UserApiService,
+    private planAssignmentService: PlanAssignmentService
   ) {
     console.log('PlannerComponent constructor called');
   }
@@ -345,6 +352,33 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.applyUiState();
 
     this.snackBar.open('Plan de IA cargado exitosamente!', undefined, { duration: 2000 });
+    this.cdr.markForCheck();
+  }
+
+  private applyPlanToPlannerFromData(aiPlan: any): void {
+    if (!aiPlan) return;
+
+    const sessions = Array.isArray(aiPlan.sessions) ? aiPlan.sessions : [];
+    const patch: Partial<{ objective: string; sessionCount: number; notes: string }> = {
+      sessionCount: sessions.length,
+      objective: aiPlan.objective,
+      notes: aiPlan.generalNotes
+    };
+
+    this.form.patchValue(patch);
+    if (aiPlan.progressions) {
+      this.setProgressionsFromPlan(aiPlan.progressions);
+    }
+
+    const enrichedSessions = enrichPlanSessionsFromLibrary(sessions, this.exerciseLibraryMap);
+    const normalizedSessions = normalizePlanSessionsForRender(enrichedSessions);
+
+    this.sessions = normalizedSessions;
+    this.rebuildDropLists();
+    this.persist();
+    this.applyUiState();
+
+    this.snackBar.open('Plan de IA cargado para asignar.', undefined, { duration: 2000 });
     this.cdr.markForCheck();
   }
 
@@ -602,6 +636,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    this.planAssignmentService.clearPlanData();
+    if (this.planAssignmentSub) {
+      this.planAssignmentSub.unsubscribe();
+    }
   }
 
 
@@ -720,6 +758,14 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.isTemplateMode = true;
     }
     this.applyTemplateNameValidators();
+
+    this.planAssignmentSub = this.planAssignmentService.currentPlanData.subscribe(data => {
+      if (data && data.user && data.user.id && data.plan) {
+        this.loadUser(data.user.id);
+        this.applyPlanToPlannerFromData(data.plan);
+        this.planAssignmentService.clearPlanData();
+      }
+    });
 
     // Read userId from queryParams and load user immediately if valid
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');

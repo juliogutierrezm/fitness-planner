@@ -15,12 +15,13 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
-import { UserApiService, AppUser } from '../../user-api.service';
+import { UserApiService, AppUser, UserStatus } from '../../user-api.service';
 import { AuthService, UserRole } from '../../services/auth.service';
 import { isIndependentTenant } from '../../shared/shared-utils';
 
@@ -50,6 +51,7 @@ import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-
     MatProgressSpinnerModule,
     MatListModule,
     MatDividerModule,
+    MatTabsModule,
     RouterModule,
     MatTooltipModule
   ],
@@ -79,6 +81,8 @@ export class UsersComponent implements OnInit, OnDestroy {
   trainerPlanCounts: Record<string, number> = {};
   trainerMetricsLoading = false;
   deletingUserId: string | null = null;
+  togglingStatusUserId: string | null = null;
+  selectedTabIndex = 0;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -148,6 +152,38 @@ export class UsersComponent implements OnInit, OnDestroy {
    */
   get isTrainerView(): boolean {
     return this.contextRole === 'trainer';
+  }
+
+  /**
+   * Purpose: filter users to only active ones.
+   * Input: none. Output: filtered AppUser array.
+   * Error handling: returns empty array if users is null/undefined.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get activeUsers(): AppUser[] {
+    if (!this.users) return [];
+    return this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+  }
+
+  /**
+   * Purpose: filter users to only inactive ones.
+   * Input: none. Output: filtered AppUser array.
+   * Error handling: returns empty array if users is null/undefined.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get inactiveUsers(): AppUser[] {
+    if (!this.users) return [];
+    return this.users.filter(u => u.status === 'INACTIVE');
+  }
+
+  /**
+   * Purpose: check if current user can change user status (Admin only).
+   * Input: none. Output: boolean.
+   * Error handling: returns false if not admin.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  canChangeStatus(): boolean {
+    return this.isAdmin;
   }
 
   /**
@@ -433,17 +469,24 @@ export class UsersComponent implements OnInit, OnDestroy {
   remove(u: AppUser): void {
     if (!u?.id || this.deletingUserId) return;
 
+    // Block deletion if user is not INACTIVE
+    const userStatus = u.status || 'ACTIVE';
+    if (userStatus !== 'INACTIVE') {
+      this.snack.open('Solo se pueden eliminar usuarios inactivos.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
     const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
     const label = fullName || u.email || 'este usuario';
     const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
 
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: `Eliminar ${roleLabel}`,
-        message: `¿Eliminar ${label}? Esta acción no se puede deshacer.`,
-        confirmLabel: 'Eliminar',
+        title: `Eliminar ${roleLabel} permanentemente`,
+        message: `¿Eliminar ${label} permanentemente? Esta acción no se puede deshacer y se perderán todos los datos asociados.`,
+        confirmLabel: 'Eliminar permanentemente',
         cancelLabel: 'Cancelar',
-        icon: 'delete_outline'
+        icon: 'delete_forever'
       }
     });
 
@@ -451,7 +494,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       if (!confirmed) return;
       this.deletingUserId = u.id!;
       this.cdr.markForCheck();
-      this.api.deleteUser(u.id!).pipe(
+      this.api.deleteUser(u.id!, u.status).pipe(
         finalize(() => {
           this.deletingUserId = null;
           this.cdr.markForCheck();
@@ -464,7 +507,7 @@ export class UsersComponent implements OnInit, OnDestroy {
             if (this.isTrainerView) {
               this.refreshTrainerMetrics();
             }
-            this.snack.open('Usuario eliminado', 'Cerrar', { duration: 1800 });
+            this.snack.open('Usuario eliminado permanentemente', 'Cerrar', { duration: 1800 });
           } else {
             this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
           }
@@ -472,6 +515,108 @@ export class UsersComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('deleteUser failed', { userId: u.id, error });
           this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Purpose: deactivate a user with confirmation dialog.
+   * Input: user entity. Output: updates user status to INACTIVE.
+   * Error handling: shows snackbar on success/failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  deactivateUser(u: AppUser): void {
+    if (!u?.id || this.togglingStatusUserId || !this.canChangeStatus()) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Desactivar ${roleLabel}`,
+        message: `¿Desactivar a ${label}? El usuario no podrá acceder al sistema pero sus datos se conservarán.`,
+        confirmLabel: 'Desactivar',
+        cancelLabel: 'Cancelar',
+        icon: 'block'
+      }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.togglingStatusUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.deactivateUser(u.id!).pipe(
+        finalize(() => {
+          this.togglingStatusUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (res) => {
+          if (res !== null) {
+            // Update local user status
+            this.users = this.users.map(x => x.id === u.id ? { ...x, status: 'INACTIVE' as UserStatus } : x);
+            this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, status: 'INACTIVE' as UserStatus } : x);
+            this.snack.open('Usuario desactivado', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo desactivar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('deactivateUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo desactivar', 'Cerrar', { duration: 2500 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Purpose: activate a user with confirmation dialog.
+   * Input: user entity. Output: updates user status to ACTIVE.
+   * Error handling: shows snackbar on success/failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  activateUser(u: AppUser): void {
+    if (!u?.id || this.togglingStatusUserId || !this.canChangeStatus()) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Activar ${roleLabel}`,
+        message: `¿Activar a ${label}? El usuario podrá volver a acceder al sistema.`,
+        confirmLabel: 'Activar',
+        cancelLabel: 'Cancelar',
+        icon: 'check_circle'
+      }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.togglingStatusUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.activateUser(u.id!).pipe(
+        finalize(() => {
+          this.togglingStatusUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (res) => {
+          if (res !== null) {
+            // Update local user status
+            this.users = this.users.map(x => x.id === u.id ? { ...x, status: 'ACTIVE' as UserStatus } : x);
+            this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, status: 'ACTIVE' as UserStatus } : x);
+            this.snack.open('Usuario activado', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo activar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('activateUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo activar', 'Cerrar', { duration: 2500 });
         }
       });
     });
@@ -548,7 +693,11 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (this.isIndependentTenant) return [];
     const currentUser = this.auth.getCurrentUser();
     const companyId = currentUser?.companyId || 'INDEPENDENT';
-    return this.allUsers.filter(u => u.role === 'trainer' && (u.companyId === companyId || u.companyId === 'INDEPENDENT'));
+    return this.allUsers.filter(u => 
+      u.role === 'trainer' && 
+      (u.companyId === companyId || u.companyId === 'INDEPENDENT') &&
+      (u.status || 'ACTIVE') === 'ACTIVE'  // Exclude inactive trainers
+    );
   }
 
   assignTrainer(client: AppUser) {

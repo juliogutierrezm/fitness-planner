@@ -46,10 +46,6 @@
             <mat-icon>style</mat-icon>
             Guardar como plantilla
           </button>
-          <button mat-fab extended color="accent" (click)="openAssignUserDialog()" [disabled]="isSavingTemplate || !hasPreviewPlan">
-            <mat-icon>person_add</mat-icon>
-            Asignar a usuario
-          </button>
         </div>
       </div>
 
@@ -124,5 +120,24 @@
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #templateNameDialog>
+  <h2 mat-dialog-title>Guardar plantilla</h2>
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" class="template-name-field">
+      <mat-label>Nombre de la plantilla</mat-label>
+      <input
+        matInput
+        [(ngModel)]="templateNameInput"
+        placeholder="Ej. Fuerza 4 semanas"
+        (keydown.enter)="confirmTemplateName()"
+      />
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" (click)="confirmTemplateName()">Guardar</button>
   </mat-dialog-actions>
 </ng-template>

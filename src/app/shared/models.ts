@@ -13,6 +13,7 @@ export interface Exercise {
   category?: string;
   exercise_type?: string;
   difficulty?: string;
+  group_type?: string;
   training_goal?: string;
   description_es?: string;
   description_en?: string;
@@ -131,6 +132,8 @@ export interface ExerciseFilters {
   categoryFilter: string;
   muscleGroupFilter: string;
   equipmentTypeFilter: string;
+  difficultyFilter: string;
+  groupTypeFilter: string;
   functionalOnly?: boolean;
 }
 
@@ -138,6 +141,8 @@ export interface FilterOptions {
   categoryOptions: string[];
   muscleGroupOptions: string[];
   equipmentTypeOptions: string[];
+  difficultyOptions: string[];
+  groupTypeOptions: string[];
 }
 
 export interface ExerciseTableEvent {

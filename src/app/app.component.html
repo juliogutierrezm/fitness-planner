@@ -1,4 +1,10 @@
-<div class="planner-container">
-  <app-exercise-list (exerciseDropped)="onExerciseDropped($event)"></app-exercise-list>
-  <app-training-sessions></app-training-sessions>
-</div>
+<ng-container *ngIf="(authStatus$ | async) !== 'unknown'; else splash">
+  <router-outlet></router-outlet>
+</ng-container>
+
+<ng-template #splash>
+  <div class="app-splash" role="status" aria-live="polite">
+    <img src="/assets/TrainGrid.png" alt="TrainGrid" class="app-splash__logo" />
+    <div class="app-splash__text">Cargando…</div>
+  </div>
+</ng-template>

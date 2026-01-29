@@ -16,6 +16,11 @@ export class OnboardingGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> {
+    // SSR/hydration note: do not redirect while auth is unknown.
+    if (this.authService.getAuthStatusSync() === 'unknown') {
+      console.debug('[AuthDebug]', { op: 'OnboardingGuard.allow', reason: 'authUnknown', url: state.url });
+      return of(true);
+    }
     return from(this.authService.checkAuthState()).pipe(
       tap(() => console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuthStateComplete' })),
       switchMap(() => this.authService.isAuthLoading$.pipe(

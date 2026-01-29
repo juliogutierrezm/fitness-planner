@@ -25,6 +25,12 @@ export class RoleGuard implements CanActivate {
       return of(true);
     }
 
+    // SSR/hydration note: while auth is 'unknown', do not redirect.
+    if (this.authService.getAuthStatusSync() === 'unknown') {
+      console.debug('[AuthDebug]', { op: 'RoleGuard.allow', reason: 'authUnknown', url: state.url });
+      return of(true);
+    }
+
     return this.authService.currentUser$.pipe(
       take(1),
       map(user => {

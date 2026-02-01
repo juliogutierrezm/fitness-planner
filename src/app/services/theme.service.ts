@@ -28,13 +28,13 @@ export class ThemeService {
 
   // Default theme values
   private readonly defaultTenantTheme: ThemeConfig = {
-    primaryColor: '#FF9900',
-    accentColor: '#22D3EE',
+    primaryColor: '#0ea5e9',
+    accentColor: '#38bdf8',
     backgroundMode: 'dark',
     fontFamily: 'Inter',
-    appName: 'TrainGrid',
+    appName: 'SpeedUp Coach',
     tagline: 'Entrena mejor. Progresa mas rapido.',
-    logoUrl: '/assets/TrainGrid.png'
+    logoUrl: '/assets/faviconSC.png'
   };
 
   constructor(private http: HttpClient) {}

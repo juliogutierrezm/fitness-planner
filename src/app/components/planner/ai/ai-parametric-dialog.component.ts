@@ -17,6 +17,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AiPlanRequest } from '../../../shared/models';
 import { ExerciseApiService } from '../../../exercise-api.service';
+import { AuthService } from '../../../services/auth.service';
 import { finalize, switchMap, catchError, filter, take, scan } from 'rxjs/operators';
 import { timer, of, Subscription, EMPTY } from 'rxjs';
 
@@ -100,17 +101,38 @@ export class AiParametricDialogComponent implements OnInit {
   ];
 
   equipmentOptions = [
-    'Mancuerna', 'Barra', 'Máquina', 'Bandas', 'Kettlebell',
-    'TRX', 'Anillas', 'Banco', 'Peso corporal'
+    { label: 'Bandas', value: 'Bandas' },
+    { label: 'Barra', value: 'Barra' },
+    { label: 'Kettlebell', value: 'Kettlebell' },
+    { label: 'Mancuernas', value: 'Mancuernas' },
+    { label: 'Máquina', value: 'Máquina' },
+    { label: 'Peso corporal', value: 'Peso corporal' },
+    { label: 'Anillas', value: 'Rings' }
   ];
 
   muscleGroupOptions = [
     // Musculares
-    'Pectorales', 'Dorsales', 'Deltoides', 'Bíceps', 'Tríceps',
-    'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Pantorrillas',
-    'Trapecio', 'Antebrazos', 'Core',
+    { label: 'Pectorales', value: 'Pectorales' },
+    { label: 'Dorsales', value: 'Dorsales' },
+    { label: 'Deltoides', value: 'Deltoides' },
+    { label: 'Bíceps', value: 'Bíceps' },
+    { label: 'Tríceps', value: 'Tríceps' },
+    { label: 'Cuádriceps', value: 'Cuádriceps' },
+    { label: 'Isquiotibiales', value: 'Isquiotibiales' },
+    { label: 'Glúteos', value: 'Glúteos' },
+    { label: 'Pantorrillas', value: 'Pantorrillas' },
+    { label: 'Trapecio', value: 'Trapecio' },
+    { label: 'Antebrazos', value: 'Antebrazos' },
+    { label: 'Core', value: 'Core' },
     // Tipos / categorías
-    'Cardio', 'Mobility', 'Push', 'Pull', 'Squat', 'Lunge', 'Bend', 'Funcional'
+    { label: 'Cardio', value: 'Cardio' },
+    { label: 'Mobility', value: 'Mobility' },
+    { label: 'Push', value: 'Push' },
+    { label: 'Pull', value: 'Pull' },
+    { label: 'Squat', value: 'Squat' },
+    { label: 'Lunge', value: 'Lunge' },
+    { label: 'Hip', value: 'Bend' },
+    { label: 'Funcional', value: 'Funcional' }
   ];
 
   // Purpose: store planner-supplied user context for AI requests.
@@ -127,7 +149,8 @@ export class AiParametricDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: any,
     private api: ExerciseApiService,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private authService: AuthService
   ) {
     this.userId = data?.userId ?? null;
     this.userProfile = data?.userProfile ?? null;
@@ -153,8 +176,6 @@ export class AiParametricDialogComponent implements OnInit {
 
       // Preferences
       availableEquipment: [[]],
-      includeSupersets: [true],
-      includeMobility: [true],
 
       // Session Blueprint
       sessionBlueprint: this.fb.array([]),
@@ -172,16 +193,17 @@ export class AiParametricDialogComponent implements OnInit {
     this.updateSessionBlueprint();
   }
 
-  // Purpose: rebuild session blueprint while preserving existing muscle selections.
+  // Purpose: rebuild session blueprint while preserving existing muscle selections and supersets.
   // Input/Output: reads totalSessions + current FormArray values, writes updated FormArray.
-  // Error handling: defaults to empty targets when prior values are missing.
+  // Error handling: defaults to empty targets and true for includeSupersets when prior values are missing.
   // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
     const existingValues = sessionBlueprintArray.controls.map((control) => ({
       targets: Array.isArray(control.get('targets')?.value)
         ? [...(control.get('targets')?.value as string[])]
-        : []
+        : [],
+      includeSupersets: control.get('includeSupersets')?.value ?? true
     }));
 
     const totalSessions = this.form.get('totalSessions')?.value || 1;
@@ -192,9 +214,11 @@ export class AiParametricDialogComponent implements OnInit {
 
     for (let i = 0; i < totalSessions; i++) {
       const existingTargets = existingValues[i]?.targets ?? [];
+      const existingIncludeSupersets = existingValues[i]?.includeSupersets ?? true;
       sessionBlueprintArray.push(this.fb.group({
         name: [`Sesion ${i + 1}`, Validators.required],
-        targets: [existingTargets, Validators.required]
+        targets: [existingTargets, Validators.required],
+        includeSupersets: [existingIncludeSupersets]
       }));
     }
   }
@@ -213,10 +237,20 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('targets') as FormControl;
   }
 
+  getSessionSupersetsControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('includeSupersets') as FormControl;
+  }
+
   removeTarget(sessionIndex: number, target: string) {
     const control = this.getSessionTargetsControl(sessionIndex);
     const current = control.value as string[];
     control.setValue(current.filter(t => t !== target));
+  }
+
+  getMuscleLabel(value: string): string {
+    const option = this.muscleGroupOptions.find(m => m.value === value);
+    return option?.label || value;
   }
 
   isFormValid(): boolean {
@@ -275,6 +309,14 @@ export class AiParametricDialogComponent implements OnInit {
     }
 
     // Build the AI payload with planner-supplied user context
+    // companyId is required, trainerId only if user is a trainer (not admin)
+    const companyId = this.authService.getCurrentCompanyId();
+    if (!companyId) {
+      console.error('AI Plan generation blocked: companyId missing');
+      this.snackBar.open('No se pudo generar: companyId no disponible.', undefined, { duration: 3500 });
+      return;
+    }
+
     const request: AiPlanRequest = {
       gender: this.userProfile?.gender,
       difficulty: formValue.difficulty,
@@ -283,12 +325,12 @@ export class AiParametricDialogComponent implements OnInit {
       sessionDuration: formValue.sessionDuration,
       availableEquipment: formValue.availableEquipment || [],
       excludeMuscles: formValue.excludeMuscles || [],
-      includeSupersets: formValue.includeSupersets,
-      includeMobility: formValue.includeMobility,
       expectedExercisesPerSession: formValue.expectedExercisesPerSession,
       sessionBlueprint: this.buildSessionBlueprint(formValue),
       generalNotes: formValue.customNotes?.trim() || '',
+      companyId,
       userId: this.userId || undefined,
+      trainerId: this.authService.isTrainer() ? this.authService.getCurrentUserId() : null,
       ...(this.userAge !== null && { age: this.userAge }),
       ...(userContext && { userContext })
     };
@@ -340,8 +382,12 @@ export class AiParametricDialogComponent implements OnInit {
       });
   }
 
-  private buildSessionBlueprint(formValue: any): { name: string; targets: string[] }[] {
-    return formValue.sessionBlueprint;
+  private buildSessionBlueprint(formValue: any): { name: string; targets: string[]; includeSupersets: boolean }[] {
+    return formValue.sessionBlueprint.map((session: any) => ({
+      name: session.name,
+      targets: session.targets,
+      includeSupersets: session.includeSupersets ?? true
+    }));
   }
 
   // Get form field error messages

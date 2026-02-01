@@ -72,6 +72,20 @@
   
 
   <form [formGroup]="form" class="planner-header">
+    <div class="header-group header-group-meta">
+      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
+        <mat-label>Nombre de plantilla</mat-label>
+        <input
+          matInput
+          formControlName="templateName"
+          placeholder="Ej: Fuerza base"
+          required
+        />
+        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
+          El nombre de la plantilla es obligatorio.
+        </mat-error>
+      </mat-form-field>
+    </div>
     <div class="header-group header-group-text">
       <mat-form-field appearance="outline" class="field-objective compact-textarea">
         <mat-label>Objetivo</mat-label>
@@ -106,21 +120,6 @@
           <input matInput type="number" formControlName="sessionCount" min="1"/>
         </mat-form-field>
       </div>
-    </div>
-
-    <div class="header-group header-group-meta">
-      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
-        <mat-label>Nombre de plantilla</mat-label>
-        <input
-          matInput
-          formControlName="templateName"
-          placeholder="Ej: Fuerza base"
-          required
-        />
-        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
-          El nombre de la plantilla es obligatorio.
-        </mat-error>
-      </mat-form-field>
     </div>
   </form>
 

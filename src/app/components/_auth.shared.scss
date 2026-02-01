@@ -1,0 +1,386 @@
+/* =============================================
+   SPEEDUP COACH - AUTH SHARED STYLES (Dark Theme)
+   Colors extracted from logo:
+   - Light Blue: #7dd3fc / #38bdf8
+   - Mid Blue: #0ea5e9 / #0284c7
+   - Dark Blue: #0c4a6e / #0f172a
+============================================= */
+
+/* Base Variables */
+$color-bg-dark: #050d18;
+$color-bg-card: #08172a;
+$color-border: rgba(56, 189, 248, 0.2);
+$color-border-focus: rgba(56, 189, 248, 0.5);
+$color-text: #f1f5f9;
+$color-text-muted: rgba(241, 245, 249, 0.6);
+$color-error: #f87171;
+$color-success: #4ade80;
+$gradient-primary: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 50%, #0c4a6e 100%);
+$gradient-button: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0c4a6e 100%);
+
+/* Page Container */
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $color-bg-dark;
+  background-image: 
+    radial-gradient(ellipse at 20% 0%, rgba(14, 165, 233, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 50%);
+  padding: 24px 16px;
+}
+
+.auth-wrapper {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Card */
+.auth-card {
+  width: 100%;
+  padding: 0;
+  border-radius: 24px;
+  background: $color-bg-card;
+  border: 1px solid $color-border;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(56, 189, 248, 0.08) inset;
+  overflow: hidden;
+
+  // Override Material card defaults
+  &.mat-mdc-card {
+    --mdc-elevated-card-container-color: #{$color-bg-card};
+    --mdc-elevated-card-container-shape: 24px;
+    border-radius: 24px;
+  }
+}
+
+/* Logo (inside card) */
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 28px 24px 16px;
+  background: $color-bg-card;
+  
+  img {
+    width: 160px;
+    height: auto;
+    object-fit: contain;
+  }
+}
+
+/* Header */
+.auth-header {
+  text-align: center;
+  padding: 0 24px 20px;
+
+  h1, h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: $color-text;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 6px 0 0;
+    font-size: 0.9rem;
+    color: $color-text-muted;
+  }
+
+  .auth-email {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #38bdf8;
+    font-weight: 500;
+  }
+}
+
+/* Form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 24px 28px;
+}
+
+/* Material Form Field Overrides */
+mat-form-field {
+  width: 100%;
+
+  // Container styling
+  --mdc-outlined-text-field-container-shape: 12px;
+  --mdc-outlined-text-field-outline-color: #{$color-border};
+  --mdc-outlined-text-field-focus-outline-color: #{$color-border-focus};
+  --mdc-outlined-text-field-hover-outline-color: rgba(56, 189, 248, 0.35);
+  --mdc-outlined-text-field-label-text-color: #{$color-text-muted};
+  --mdc-outlined-text-field-focus-label-text-color: #38bdf8;
+  --mdc-outlined-text-field-input-text-color: #{$color-text};
+  --mdc-outlined-text-field-caret-color: #38bdf8;
+  
+  // Background
+  .mdc-text-field--outlined {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+  }
+
+  .mat-mdc-form-field-subscript-wrapper {
+    margin-top: 4px;
+  }
+
+  // Error styling
+  --mdc-outlined-text-field-error-outline-color: #{$color-error};
+  --mdc-outlined-text-field-error-focus-outline-color: #{$color-error};
+  --mdc-outlined-text-field-error-label-text-color: #{$color-error};
+  --mdc-outlined-text-field-error-hover-outline-color: #{$color-error};
+
+  mat-error {
+    color: $color-error;
+    font-size: 0.78rem;
+  }
+
+  // Icon button in suffix
+  .mat-mdc-icon-button {
+    --mdc-icon-button-icon-color: #{$color-text-muted};
+    
+    &:hover {
+      --mdc-icon-button-icon-color: #38bdf8;
+    }
+  }
+}
+
+/* Helper Text */
+.helper-text {
+  margin: -8px 0 0;
+  padding: 0;
+  color: $color-text-muted;
+  font-size: 0.78rem;
+}
+
+/* Primary Button */
+.auth-primary {
+  width: 100%;
+  height: 48px;
+  padding: 14px 20px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: $gradient-button;
+  color: #fff;
+  box-shadow: 
+    0 4px 16px rgba(14, 165, 233, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 220ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 24px rgba(14, 165, 233, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  // Material button override
+  &.mat-mdc-button-base {
+    --mdc-filled-button-container-color: transparent;
+    --mdc-filled-button-label-text-color: #fff;
+    background: $gradient-button;
+  }
+}
+
+/* Secondary Button */
+.auth-secondary {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid $color-border;
+  background: transparent;
+  color: $color-text;
+  font-weight: 600;
+  transition: all 200ms ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: $color-border-focus;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // Material button override
+  &.mat-mdc-outlined-button {
+    --mdc-outlined-button-outline-color: #{$color-border};
+    --mdc-outlined-button-label-text-color: #{$color-text};
+  }
+}
+
+/* Actions Container */
+.auth-actions {
+  padding: 0 24px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Link Button */
+.link-button {
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 180ms ease;
+  text-transform: none;
+
+  &:hover:not(:disabled) {
+    color: #7dd3fc;
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // Material button override
+  &.mat-mdc-button {
+    --mdc-text-button-label-text-color: #38bdf8;
+    
+    &:hover {
+      --mdc-text-button-label-text-color: #7dd3fc;
+    }
+  }
+}
+
+/* Links Container */
+.auth-links {
+  display: flex;
+  justify-content: center;
+  padding: 0 24px 8px;
+}
+
+/* Error Banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 24px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: $color-error;
+  font-size: 0.85rem;
+  font-weight: 500;
+
+  svg, mat-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+}
+
+/* Notice/Success Banner */
+.notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 24px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: $color-success;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Footer */
+.auth-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px 24px;
+  color: $color-text-muted;
+  font-size: 0.85rem;
+}
+
+.auth-copyright {
+  margin: 0;
+  font-size: 0.75rem;
+  color: $color-text-muted;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-card {
+    border-radius: 20px;
+
+    &.mat-mdc-card {
+      --mdc-elevated-card-container-shape: 20px;
+      border-radius: 20px;
+    }
+  }
+
+  .auth-logo {
+    padding: 24px 20px 12px;
+    
+    img {
+      width: 140px;
+    }
+  }
+
+  .auth-header {
+    padding: 0 20px 16px;
+    
+    h1, h2 {
+      font-size: 1.35rem;
+    }
+  }
+
+  .auth-form {
+    padding: 0 20px 24px;
+  }
+
+  .error-banner,
+  .notice-banner {
+    margin: 0 20px 12px;
+  }
+
+  .auth-footer {
+    padding: 0 20px 20px;
+  }
+}

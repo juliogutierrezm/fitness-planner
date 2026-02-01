@@ -318,11 +318,14 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private applyPlanToPlanner(aiPlan: any): void {
+    // Handle new format with meta + plan, or legacy format with sessions array
     const sessions = Array.isArray(aiPlan)
       ? aiPlan
-      : Array.isArray(aiPlan?.sessions)
-        ? aiPlan.sessions
-        : [];
+      : Array.isArray(aiPlan?.plan)
+        ? aiPlan.plan
+        : Array.isArray(aiPlan?.sessions)
+          ? aiPlan.sessions
+          : [];
     const patch: Partial<{ userName: string; objective: string; sessionCount: number; notes: string }> = {
       sessionCount: sessions.length
     };
@@ -358,7 +361,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
   private applyPlanToPlannerFromData(aiPlan: any): void {
     if (!aiPlan) return;
 
-    const sessions = Array.isArray(aiPlan.sessions) ? aiPlan.sessions : [];
+    // Handle new format with meta + plan, or legacy format with sessions array
+    const sessions = Array.isArray(aiPlan.plan)
+      ? aiPlan.plan
+      : Array.isArray(aiPlan.sessions)
+        ? aiPlan.sessions
+        : [];
     const patch: Partial<{ objective: string; sessionCount: number; notes: string }> = {
       sessionCount: sessions.length,
       objective: aiPlan.objective,

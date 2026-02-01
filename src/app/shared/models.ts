@@ -96,15 +96,16 @@ export interface AiPlanRequest {
   sessionDuration: number;
   availableEquipment: string[];
   excludeMuscles: string[];
-  includeSupersets: boolean;
-  includeMobility: boolean;
   expectedExercisesPerSession: number;
   sessionBlueprint: {
     name: string;
     targets: string[];
+    includeSupersets: boolean;
   }[];
   generalNotes: string;
+  companyId: string;
   userId?: string;
+  trainerId?: string | null;
   age?: number;
   userContext?: {
     injuries?: string;

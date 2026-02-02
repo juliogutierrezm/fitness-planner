@@ -8,7 +8,12 @@ import { environment } from '../../environments/environment';
 export interface AiPlanSummary {
   executionId: string;
   createdAt: string;
-  planKey: string;
+  userId: string;
+  trainerId?: string | null;
+  companyId: string;
+  source: 'AI';
+  /** @deprecated planKey is a legacy S3 artifact, use executionId instead */
+  planKey?: string;
   plan?: Record<string, unknown>;
 }
 
@@ -30,12 +35,21 @@ export interface AiClientPlansSummary {
   plans: AiPlanSummary[];
 }
 
+/**
+ * Response from /ai-plans/by-gym/{companyId} or /ai-plans/by-trainer/{trainerId}
+ * Now returns a flat list of plans from DynamoDB
+ */
 export interface AiAggregateResponse {
   scope: 'gym' | 'trainer';
   scopeId: string;
-  totalClients: number;
-  totalClientsWithAIPlans: number;
-  clientsWithAIPlans: AiClientPlansSummary[];
+  totalPlans: number;
+  plans: AiPlanSummary[];
+  /** @deprecated Use plans array and group by userId instead */
+  totalClients?: number;
+  /** @deprecated Use plans array and group by userId instead */
+  totalClientsWithAIPlans?: number;
+  /** @deprecated Use plans array and group by userId instead */
+  clientsWithAIPlans?: AiClientPlansSummary[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -101,6 +115,29 @@ export class AiPlansService {
     return this.http.get<AiAggregateResponse>(url, { params }).pipe(
       tap(() => console.log('📊 Ai plans por gym cargados')),
       catchError(err => this.handleError('No pudimos cargar los datos del gym.', err))
+    );
+  }
+
+  /**
+   * Fetch a single AI plan by executionId directly from DynamoDB.
+   * Use this for detail views instead of searching through user plans.
+   */
+  getByExecutionId(
+    executionId: string,
+    opts: { includePlanBody?: boolean } = {}
+  ): Observable<AiPlanSummary | null> {
+    if (!executionId) {
+      this.openError('No se pudo cargar el plan: falta el executionId.');
+      return of(null);
+    }
+    let params = new HttpParams();
+    if (opts.includePlanBody) {
+      params = params.set('includePlanBody', 'true');
+    }
+    const url = `${this.baseUrl}/${encodeURIComponent(executionId)}`;
+    return this.http.get<AiPlanSummary>(url, { params }).pipe(
+      tap(() => console.log('📊 Ai plan por executionId cargado')),
+      catchError(err => this.handleError('No pudimos cargar el plan IA.', err))
     );
   }
 

@@ -13,7 +13,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AiPlanSummary, AiPlansService, AiUserPlansResponse } from '../../services/ai-plans.service';
+import { AiPlanSummary, AiPlansService } from '../../services/ai-plans.service';
 import { AuthService } from '../../services/auth.service';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
@@ -121,43 +121,19 @@ export class AiPlanDetailComponent implements OnInit {
       return;
     }
 
-    this.aiPlansService.getByUser(this.userId).subscribe(response => {
-      if (!response) {
-        this.loading = false;
+    // Fetch plan directly by executionId from DynamoDB
+    this.aiPlansService.getByExecutionId(this.executionId, { includePlanBody: true }).subscribe(plan => {
+      this.loading = false;
+      if (!plan) {
         this.cdr.markForCheck();
         return;
       }
-      const targetPlan = this.findPlan(response);
-      this.planSummary = targetPlan;
-      const planKey = targetPlan?.planKey;
-      if (!planKey) {
-        this.loading = false;
-        this.cdr.markForCheck();
-        return;
-      }
-      this.aiPlansService
-        .getByUser(this.userId, { includePlanBodies: true })
-        .subscribe(fullResponse => {
-          this.handlePlanBody(fullResponse, planKey);
-        });
-    });
-  }
-
-  private findPlan(response: AiUserPlansResponse): AiPlanSummary | null {
-    return response.plans.find(plan => plan.executionId === this.executionId) || null;
-  }
-
-  private handlePlanBody(response: AiUserPlansResponse | null, planKey: string): void {
-    this.loading = false;
-    if (!response) {
+      this.planSummary = plan;
+      this.planBody = (plan.plan as AiPlanBody) || null;
+      this.progressions = this.normalizeProgressions(this.planBody?.progressions || null);
+      this.buildPreviewPlan();
       this.cdr.markForCheck();
-      return;
-    }
-    const plan = response.plans.find(item => item.planKey === planKey) || null;
-    this.planBody = (plan?.plan as AiPlanBody) || null;
-    this.progressions = this.normalizeProgressions(this.planBody?.progressions || null);
-    this.buildPreviewPlan();
-    this.cdr.markForCheck();
+    });
   }
 
   private loadExerciseLibrary(): void {

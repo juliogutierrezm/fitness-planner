@@ -1,20 +1,20 @@
 <div class="user-detail">
-  <div class="header-simple">
-    <div class="actions-left">
-      <button mat-mini-fab  routerLink="/users"  matTooltip="Volver a la lista de usuarios">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-    </div>
-  </div>
   <mat-card class="header-card">
     <mat-card-header>
       <mat-card-title>
         <mat-icon>assignment</mat-icon>
           Planes de entrenamiento de {{ user | userDisplayName }}
-      </mat-card-title>
-      <mat-card-subtitle>Gestión y seguimiento de planes personalizados</mat-card-subtitle>
-    </mat-card-header>
-  </mat-card>
+        </mat-card-title>
+        <mat-card-subtitle>Gestión y seguimiento de planes personalizados</mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+    <div class="header-simple">
+      <div class="actions-left">
+        <button mat-mini-fab  routerLink="/users"  matTooltip="Volver a la lista de usuarios">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+      </div>
+    </div>
 
   <mat-card class="plans-card">
     <div class="plans-header">

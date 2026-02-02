@@ -72,6 +72,20 @@
   
 
   <form [formGroup]="form" class="planner-header">
+    <div class="header-group header-group-meta">
+      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
+        <mat-label>Nombre de plantilla</mat-label>
+        <input
+          matInput
+          formControlName="templateName"
+          placeholder="Ej: Fuerza base"
+          required
+        />
+        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
+          El nombre de la plantilla es obligatorio.
+        </mat-error>
+      </mat-form-field>
+    </div>
     <div class="header-group header-group-text">
       <mat-form-field appearance="outline" class="field-objective compact-textarea">
         <mat-label>Objetivo</mat-label>
@@ -106,21 +120,6 @@
           <input matInput type="number" formControlName="sessionCount" min="1"/>
         </mat-form-field>
       </div>
-    </div>
-
-    <div class="header-group header-group-meta">
-      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
-        <mat-label>Nombre de plantilla</mat-label>
-        <input
-          matInput
-          formControlName="templateName"
-          placeholder="Ej: Fuerza base"
-          required
-        />
-        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
-          El nombre de la plantilla es obligatorio.
-        </mat-error>
-      </mat-form-field>
     </div>
   </form>
 
@@ -223,6 +222,22 @@
           <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" class="compact-field">
+        <mat-label>Dificultad</mat-label>
+        <mat-select [(ngModel)]="currentFilters.difficultyFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todas</mat-option>
+          <mat-option *ngFor="let diff of filterOptions.difficultyOptions" [value]="diff">{{ diff }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+<!--       <mat-form-field appearance="outline" class="compact-field">
+        <mat-label>Tipo de Grupo</mat-label>
+        <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
+        </mat-select>
+      </mat-form-field> -->
     </div>
   </div>
 

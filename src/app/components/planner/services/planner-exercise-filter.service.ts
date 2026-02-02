@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Exercise, ExerciseFilters, FilterOptions } from '../../../shared/models';
+import { Exercise, ExerciseFilters, FilterOptions, EXERCISE_DIFFICULTY_OPTIONS, EXERCISE_MUSCLE_TYPE_OPTIONS } from '../../../shared/models';
 
 /**
  * Purpose: encapsulate planner exercise filtering, searching, and filter persistence.
@@ -14,7 +14,9 @@ export class PlannerExerciseFilterService {
       searchValue: '',
       categoryFilter: '',
       muscleGroupFilter: '',
-      equipmentTypeFilter: ''
+      equipmentTypeFilter: '',
+      difficultyFilter: '',
+      groupTypeFilter: ''
     };
   }
 
@@ -38,7 +40,9 @@ export class PlannerExerciseFilterService {
     return {
       categoryOptions: Array.from(categories).sort(),
       muscleGroupOptions: Array.from(muscleGroups).sort(),
-      equipmentTypeOptions: Array.from(equipmentTypes).sort()
+      equipmentTypeOptions: Array.from(equipmentTypes).sort(),
+      difficultyOptions: EXERCISE_DIFFICULTY_OPTIONS,
+      groupTypeOptions: EXERCISE_MUSCLE_TYPE_OPTIONS
     };
   }
 
@@ -51,7 +55,9 @@ export class PlannerExerciseFilterService {
           searchValue: parsed.searchValue || '',
           categoryFilter: parsed.categoryFilter || '',
           muscleGroupFilter: parsed.muscleGroupFilter || '',
-          equipmentTypeFilter: parsed.equipmentTypeFilter || ''
+          equipmentTypeFilter: parsed.equipmentTypeFilter || '',
+          difficultyFilter: parsed.difficultyFilter || '',
+          groupTypeFilter: parsed.groupTypeFilter || ''
         };
       }
     } catch (error) {
@@ -93,7 +99,13 @@ export class PlannerExerciseFilterService {
       const matchesEquipmentType = !filters.equipmentTypeFilter ||
         this.getFieldValue(exercise, 'equipment_type') === filters.equipmentTypeFilter;
 
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
+      const matchesDifficulty = !filters.difficultyFilter ||
+        this.getFieldValue(exercise, 'difficulty') === filters.difficultyFilter;
+
+      const matchesGroupType = !filters.groupTypeFilter ||
+        this.getFieldValue(exercise, 'group_type') === filters.groupTypeFilter;
+
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesDifficulty && matchesGroupType;
     });
 
     if (storageKey) {

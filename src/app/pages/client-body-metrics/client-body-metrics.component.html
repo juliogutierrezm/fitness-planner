@@ -1,25 +1,23 @@
 <div class="body-metrics-page" *ngIf="clientId">
   
-  <section class="hero">
-    <button mat-mini-fab color="primary" aria-label="Volver" [routerLink]="['/users']">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-
-  </section>
-    <mat-card class="header-card">
+  <mat-card class="header-card">
     <mat-card-header>
       <mat-card-title>
         <mat-icon>accessibility_new</mat-icon>
-      Composición corporal de {{ client?.givenName || 'Cliente' }} {{ client?.familyName || '' }}
+        Composición corporal de {{ client?.givenName || 'Cliente' }} {{ client?.familyName || '' }}
       </mat-card-title>
       <mat-card-subtitle>    <div class="identity">
-      <h1></h1>
-      <p class="role">Histórico de mediciones</p>
-    </div></mat-card-subtitle>
+        <h1></h1>
+        <p class="role">Histórico de mediciones</p>
+      </div></mat-card-subtitle>
     </mat-card-header>
   </mat-card>
-
-
+  <section class="hero">
+    <button mat-mini-fab color="primary" aria-label="Volver" [routerLink]="['/users']">
+      <mat-icon>arrow_back</mat-icon>
+    </button>    
+  </section>
+  
   <section class="history-section">
     <mat-card class="summary-card">
       <div class="summary-header">

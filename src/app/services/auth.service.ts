@@ -42,6 +42,8 @@ export enum UserRole {
 
 export type AuthFlowStep = 'confirmSignUp' | 'resetPassword' | 'newPasswordRequired';
 
+export type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated';
+
 export interface AuthFlowState {
   step: AuthFlowStep;
   username: string;
@@ -61,6 +63,7 @@ export class AuthService {
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private authFlowSubject = new BehaviorSubject<AuthFlowState | null>(null);
   private authLoadingSubject = new BehaviorSubject<boolean>(true);
+  private authStatusSubject = new BehaviorSubject<AuthStatus>('unknown');
   private readonly isBrowser: boolean;
   private initialized = false;
   private readonly AUTH_FLOW_STORAGE_KEY = 'auth_flow_state';
@@ -70,12 +73,24 @@ export class AuthService {
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   public authFlow$ = this.authFlowSubject.asObservable();
   public isAuthLoading$ = this.authLoadingSubject.asObservable();
+  public authStatus$ = this.authStatusSubject.asObservable();
 
   constructor(@Inject(PLATFORM_ID) platformId: Object) {
     this.isBrowser = isPlatformBrowser(platformId);
     if (this.isBrowser) {
       this.restoreAuthFlowState();
     }
+  }
+
+  /**
+   * Synchronous accessors for guards and bootstrap gates.
+   */
+  getAuthStatusSync(): AuthStatus {
+    return this.authStatusSubject.value;
+  }
+
+  isAuthResolvedSync(): boolean {
+    return this.authStatusSubject.value !== 'unknown';
   }
 
   getAuthFlowSnapshot(): AuthFlowState | null {
@@ -467,6 +482,9 @@ export class AuthService {
     }
     try {
       if (!this.isBrowser) {
+        // SSR: we cannot deterministically resolve browser auth tokens.
+        // Keep auth status as 'unknown' so the app can render a neutral splash
+        // (never the login UI) until the browser resolves auth.
         console.debug('[AuthDebug]', { op: 'AuthService.checkAuthState.notBrowser' });
         return;
       }
@@ -483,6 +501,7 @@ export class AuthService {
       if (!tokens) {
         this.currentUserSubject.next(null);
         this.isAuthenticatedSubject.next(false);
+        this.authStatusSubject.next('unauthenticated');
         console.debug('[AuthDebug]', {
           op: 'AuthService.checkAuthState.unauthenticated',
           elapsedMs: Date.now() - startedAt
@@ -504,6 +523,7 @@ export class AuthService {
       const userProfile = await this.buildUserProfile(user, session);
       this.currentUserSubject.next(userProfile);
       this.isAuthenticatedSubject.next(true);
+      this.authStatusSubject.next('authenticated');
       this.clearAuthFlowState();
       console.debug('[AuthDebug]', {
         op: 'AuthService.checkAuthState.authenticated',
@@ -520,6 +540,9 @@ export class AuthService {
       });
       this.currentUserSubject.next(null);
       this.isAuthenticatedSubject.next(false);
+      if (this.isBrowser) {
+        this.authStatusSubject.next('unauthenticated');
+      }
     } finally {
       this.authLoadingSubject.next(false);
       console.debug('[AuthDebug]', {
@@ -700,15 +723,15 @@ export class AuthService {
     const currentUser = this.getCurrentUser();
     if (!currentUser) return false;
 
-    // Admin can access all data
+    // Admin can access all data within their organization
     if (currentUser.role === UserRole.ADMIN) return true;
 
     // Users can access their own data
     if (currentUser.id === targetUserId) return true;
 
-    // Trainers can access their clients' data
-    if (currentUser.role === UserRole.TRAINER && 
-        currentUser.trainerIds?.includes(targetUserId)) {
+    // Trainers can access client data - actual authorization is validated server-side
+    // Frontend allows trainers to attempt access; backend validates gym/client relationship
+    if (currentUser.role === UserRole.TRAINER) {
       return true;
     }
 
@@ -723,6 +746,7 @@ export class AuthService {
       await signOut();
       this.currentUserSubject.next(null);
       this.isAuthenticatedSubject.next(false);
+      this.authStatusSubject.next('unauthenticated');
       this.clearAuthFlowState();
       console.debug('[AuthDebug]', { op: 'AuthService.signOut.success' });
     } catch (error) {

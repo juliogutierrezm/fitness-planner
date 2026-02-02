@@ -1,48 +1,58 @@
-<div class="auth-container">
-  <mat-card class="auth-card">
-    <mat-card-content>
-      <div class="brand">
-        <img src="/assets/TrainGrid.png" alt="TrainGrid Logo" class="brand-logo">
-        <h1>TrainGrid</h1>
-        <p>Planifica y gestiona tus entrenamientos</p>
-      </div>
+<div class="auth-page">
+  <div class="auth-wrapper">
+    <!-- Card -->
+    <mat-card class="auth-card">
+      <mat-card-content>
+        <!-- Logo Section (integrated) -->
+        <div class="auth-logo">
+          <img src="assets/SpeedUpCoachLogoPNG.png" alt="SpeedUp Coach" />
+        </div>
 
-      <div class="auth-header">
-        <h2>Confirmar cuenta</h2>
-        <p>Revisa tu correo para confirmar tu cuenta.</p>
-        <p class="auth-email" *ngIf="email">Cuenta: {{ email }}</p>
-      </div>
+        <div class="auth-header">
+          <h1>Confirmar cuenta</h1>
+          <p>Revisa tu correo para confirmar tu cuenta.</p>
+          <p class="auth-email" *ngIf="email">Cuenta: {{ email }}</p>
+        </div>
 
-      <div class="notice-banner" *ngIf="notice">{{ notice }}</div>
-      <div class="error-banner" *ngIf="error">{{ error }}</div>
+        <div class="notice-banner" *ngIf="notice">
+          <mat-icon>check_circle</mat-icon>
+          {{ notice }}
+        </div>
+        <div class="error-banner" *ngIf="error">
+          <mat-icon>error_outline</mat-icon>
+          {{ error }}
+        </div>
 
-      <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field appearance="outline">
-          <mat-label>Código de verificación</mat-label>
-          <input matInput type="text" formControlName="code" autocomplete="one-time-code">
-          <mat-error *ngIf="form.get('code')?.hasError('required')">
-            Ingresa el código.
-          </mat-error>
-        </mat-form-field>
+        <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+          <mat-form-field appearance="outline">
+            <mat-label>Código de verificación</mat-label>
+            <input matInput type="text" formControlName="code" autocomplete="one-time-code" placeholder="123456">
+            <mat-error *ngIf="form.get('code')?.hasError('required')">
+              Ingresa el código.
+            </mat-error>
+          </mat-form-field>
 
-        <button mat-flat-button class="auth-primary" type="submit" [disabled]="loading">
-          <mat-icon>verified</mat-icon>
-          <span *ngIf="!loading">Confirmar código</span>
-          <span *ngIf="loading">Validando...</span>
-        </button>
-      </form>
+          <button mat-flat-button class="auth-primary" type="submit" [disabled]="loading">
+            <span *ngIf="!loading">Confirmar código</span>
+            <span *ngIf="loading">Validando...</span>
+          </button>
+        </form>
 
-      <div class="auth-actions">
-        <button mat-stroked-button class="auth-secondary" type="button" (click)="resendCode()" [disabled]="resending">
-          <span *ngIf="!resending">Reenviar código</span>
-          <span *ngIf="resending">Reenviando...</span>
-        </button>
-      </div>
+        <div class="auth-actions">
+          <button mat-stroked-button class="auth-secondary" type="button" (click)="resendCode()" [disabled]="resending">
+            <span *ngIf="!resending">Reenviar código</span>
+            <span *ngIf="resending">Reenviando...</span>
+          </button>
+        </div>
 
-      <div class="auth-footer">
-        <span>¿Quieres volver al inicio?</span>
-        <a mat-button class="link-button" [routerLink]="['/login']">Iniciar sesión</a>
-      </div>
-    </mat-card-content>
-  </mat-card>
+        <div class="auth-footer">
+          <span>¿Quieres volver al inicio?</span>
+          <a mat-button class="link-button" [routerLink]="['/login']">Iniciar sesión</a>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Footer -->
+    <p class="auth-copyright">© 2026 SpeedUp Coach. Todos los derechos reservados.</p>
+  </div>
 </div>

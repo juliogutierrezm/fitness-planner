@@ -50,7 +50,11 @@ export class WorkoutPlanViewComponent implements OnChanges {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private refreshSessions(): void {
-    this.sessions = parsePlanSessions(this.plan?.sessions);
+    // Support both new format { meta, plan: [...sessions] } and legacy { sessions: [...] }
+    const rawSessions = Array.isArray(this.plan?.plan)
+      ? this.plan.plan
+      : this.plan?.sessions;
+    this.sessions = parsePlanSessions(rawSessions);
     this.hasRenderableSessions = hasRenderablePlanContent(this.sessions);
   }
 

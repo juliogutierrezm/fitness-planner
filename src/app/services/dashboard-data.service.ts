@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { combineLatest, Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { AiClientPlansSummary, AiPlansService } from './ai-plans.service';
-import { UserApiService } from '../user-api.service';
+import { AiAggregateResponse, AiClientPlansSummary, AiPlansService, AiPlanSummary } from './ai-plans.service';
+import { UserApiService, AppUser } from '../user-api.service';
 
 export type DashboardMode = 'GYM_ADMIN' | 'GYM_TRAINER' | 'INDEPENDENT_TRAINER';
 
@@ -51,7 +51,7 @@ export class DashboardDataService {
     return combineLatest([ai$, users$]).pipe(
       map(([aiResponse, users]) => {
         const clients = (users || []).filter(user => user.role === 'client');
-        const aiStats = this.buildAiStats(aiResponse?.clientsWithAIPlans || []);
+        const { clientsWithPlans, aiStats } = this.processAiResponse(aiResponse, users || []);
         const viewModel: DashboardViewModel = {
           mode,
           kpis: [
@@ -74,7 +74,7 @@ export class DashboardDataService {
               icon: 'insights'
             }
           ],
-          recentAiActivity: this.buildRecentActivity(aiResponse?.clientsWithAIPlans || []),
+          recentAiActivity: this.buildRecentActivity(clientsWithPlans),
           quickActions: this.getTrainerQuickActions(),
           aiPlansThisMonth: aiStats.aiPlansThisMonth,
           clientsWithAiThisMonth: aiStats.clientsWithAiThisMonth
@@ -93,7 +93,7 @@ export class DashboardDataService {
       map(([aiResponse, users]) => {
         const trainers = (users || []).filter(user => user.role === 'trainer');
         const clients = (users || []).filter(user => user.role === 'client');
-        const aiStats = this.buildAiStats(aiResponse?.clientsWithAIPlans || []);
+        const { clientsWithPlans, aiStats } = this.processAiResponse(aiResponse, users || []);
         const viewModel: DashboardViewModel = {
           mode: 'GYM_ADMIN',
           kpis: [
@@ -122,7 +122,7 @@ export class DashboardDataService {
               icon: 'bolt'
             }
           ],
-          recentAiActivity: this.buildRecentActivity(aiResponse?.clientsWithAIPlans || []),
+          recentAiActivity: this.buildRecentActivity(clientsWithPlans),
           quickActions: this.getGymAdminQuickActions(),
           aiPlansThisMonth: aiStats.aiPlansThisMonth,
           clientsWithAiThisMonth: aiStats.clientsWithAiThisMonth
@@ -131,6 +131,98 @@ export class DashboardDataService {
       }),
       catchError(() => of(this.emptyGymVm()))
     );
+  }
+
+  /**
+   * Process AI response - handles both new DynamoDB format (flat plans array)
+   * and legacy format (clientsWithAIPlans).
+   */
+  private processAiResponse(
+    aiResponse: AiAggregateResponse | null,
+    users: AppUser[]
+  ): {
+    clientsWithPlans: AiClientPlansSummary[];
+    aiStats: { aiPlansThisMonth: number; clientsWithAiThisMonth: number; totalPlans: number };
+  } {
+    // New DynamoDB format: flat plans array
+    if (aiResponse?.plans && Array.isArray(aiResponse.plans)) {
+      const userMap = new Map<string, AppUser>();
+      for (const user of users) {
+        if (user.id) userMap.set(user.id, user);
+      }
+
+      // Group plans by userId
+      const plansByUser = new Map<string, AiPlanSummary[]>();
+      for (const plan of aiResponse.plans) {
+        const userId = plan.userId;
+        if (!plansByUser.has(userId)) {
+          plansByUser.set(userId, []);
+        }
+        plansByUser.get(userId)!.push(plan);
+      }
+
+      // Build clientsWithPlans array
+      const clientsWithPlans: AiClientPlansSummary[] = [];
+      for (const [userId, plans] of plansByUser) {
+        const user = userMap.get(userId);
+        const sortedPlans = plans.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        clientsWithPlans.push({
+          clientId: userId,
+          clientName: user ? `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email || userId : userId,
+          email: user?.email || '',
+          trainerId: plans[0]?.trainerId || undefined,
+          companyId: plans[0]?.companyId,
+          totalPlans: plans.length,
+          latestPlanDate: sortedPlans[0]?.createdAt,
+          plans: sortedPlans
+        });
+      }
+
+      return {
+        clientsWithPlans,
+        aiStats: this.buildAiStatsFromPlans(aiResponse.plans)
+      };
+    }
+
+    // Legacy format: clientsWithAIPlans
+    const legacyClients = aiResponse?.clientsWithAIPlans || [];
+    return {
+      clientsWithPlans: legacyClients,
+      aiStats: this.buildAiStats(legacyClients)
+    };
+  }
+
+  /**
+   * Build AI stats directly from flat plans array (new DynamoDB format)
+   */
+  private buildAiStatsFromPlans(plans: AiPlanSummary[]): {
+    aiPlansThisMonth: number;
+    clientsWithAiThisMonth: number;
+    totalPlans: number;
+  } {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let aiPlansThisMonth = 0;
+    const clientsWithAiMonth = new Set<string>();
+
+    for (const plan of plans) {
+      const date = plan?.createdAt ? new Date(plan.createdAt) : null;
+      if (!date || Number.isNaN(date.getTime())) continue;
+      if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        aiPlansThisMonth += 1;
+        clientsWithAiMonth.add(plan.userId);
+      }
+    }
+
+    return {
+      aiPlansThisMonth,
+      clientsWithAiThisMonth: clientsWithAiMonth.size,
+      totalPlans: plans.length
+    };
   }
 
   private buildAiStats(clients: AiClientPlansSummary[]): {

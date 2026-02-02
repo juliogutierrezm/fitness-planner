@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from './services/auth.service';
@@ -10,27 +10,15 @@ import { AuthService } from './services/auth.service';
     CommonModule,
     RouterModule
   ],
-  template: `<router-outlet></router-outlet>`
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit {
-  constructor(private authService: AuthService) {}
-
-  async ngOnInit(): Promise<void> {
-    const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.start' });
-    try {
-      // Ensure current auth state is synced on app load
-      await this.authService.checkAuthState(false, true);
-      console.debug('[AuthDebug]', { op: 'AppComponent.ngOnInit.checkAuthStateComplete' });
-    } catch (error) {
-      console.error('[AuthDebug]', { op: 'AppComponent.ngOnInit.error', error });
-      throw error;
-    } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AppComponent.ngOnInit.end',
-        elapsedMs: Date.now() - startedAt
-      });
-    }
-  }
+export class AppComponent {
+  /**
+   * Gate rendering until auth is deterministically resolved.
+   * In SSR, auth remains 'unknown' => we render splash (never login).
+   */
+  private readonly authService = inject(AuthService);
+  readonly authStatus$ = this.authService.authStatus$;
 }
 

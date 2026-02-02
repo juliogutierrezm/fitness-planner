@@ -14,6 +14,11 @@ export class AuthFlowGuard implements CanActivate {
   ) {}
 
   canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
+    // SSR/hydration note: auth is unknown on server; do not redirect to /login.
+    if (this.authService.getAuthStatusSync() === 'unknown') {
+      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'authUnknown' });
+      return of(true);
+    }
     return from(this.authService.checkAuthState()).pipe(
       tap(() => console.debug('[AuthDebug]', { op: 'AuthFlowGuard.checkAuthStateComplete' })),
       switchMap(() => this.authService.isAuthLoading$.pipe(

@@ -29,7 +29,15 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   }
 
   private checkAuth(_route: ActivatedRouteSnapshot): Observable<boolean> {
-    // Ensure we refresh auth state once before deciding
+    // SSR/hydration note:
+    // - On the server we cannot resolve browser auth tokens, so authStatus remains 'unknown'.
+    // - We must NOT redirect to /login in that state (it breaks deep links and causes login flash).
+    if (this.authService.getAuthStatusSync() === 'unknown') {
+      console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.allow', reason: 'authUnknown' });
+      return of(true);
+    }
+
+    // Browser: Ensure we refresh auth state once before deciding
     return from(this.authService.checkAuthState()).pipe(
       tap(() => console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.checkAuthStateComplete' })),
       switchMap(() => this.authService.isAuthLoading$.pipe(

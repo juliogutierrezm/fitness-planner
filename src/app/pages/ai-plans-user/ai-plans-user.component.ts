@@ -80,8 +80,20 @@ export class AiPlansUserComponent implements OnInit {
       this.cdr.markForCheck();
       return;
     }
-    this.plans = response.plans || [];
-    this.totalPlans = response.totalPlans || this.plans.length;
+
+    let plans = response.plans || [];
+
+    // Si el usuario es Trainer, filtrar solo los planes creados por él
+    // Admin ve todos los planes del cliente
+    if (this.authService.isTrainer() && !this.authService.isAdmin()) {
+      const currentTrainerId = this.authService.getCurrentUserId();
+      if (currentTrainerId) {
+        plans = plans.filter(plan => plan.trainerId === currentTrainerId);
+      }
+    }
+
+    this.plans = plans;
+    this.totalPlans = plans.length;
     this.cdr.markForCheck();
   }
 }

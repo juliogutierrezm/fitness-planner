@@ -41,7 +41,7 @@
           <h3>Plan IA{{ userName ? ' - ' + userName : '' }}</h3>
         </div>
         <div class="header-actions">
-          <button mat-fab extended color="primary" (click)="saveAsTemplate()" [disabled]="isSavingTemplate || !hasPreviewPlan">
+          <button *ngIf="!isGymAdmin" mat-fab extended color="primary" (click)="saveAsTemplate()" [disabled]="isSavingTemplate || !hasPreviewPlan">
             <mat-icon>style</mat-icon>
             Guardar como plantilla
           </button>

@@ -79,6 +79,16 @@ export class LayoutComponent implements OnInit {
     return this.authService.isAdmin() || this.authService.isTrainer();
   }
 
+  /**
+   * Purpose: identify if current user is a Gym Administrator for UI badge display.
+   * Input: none. Output: boolean.
+   * Error handling: returns false for unauthenticated users.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
   login() {
     this.router.navigate(['/login']);
   }

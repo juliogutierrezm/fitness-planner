@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 
 @Component({
@@ -18,7 +19,12 @@ export class PlanViewPageComponent implements OnInit {
   plan: any = null;
   loading = true;
   planId: string | null = null;
-  constructor(private route: ActivatedRoute, private router: Router, private api: ExerciseApiService) {}
+  constructor(private route: ActivatedRoute, private router: Router, private api: ExerciseApiService, private authService: AuthService) {}
+
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
   ngOnInit() {
     this.planId = this.route.snapshot.paramMap.get('id');
     if (!this.planId) { this.loading = false; return; }

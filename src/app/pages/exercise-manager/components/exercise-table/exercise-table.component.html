@@ -8,7 +8,7 @@
                 <button mat-icon-button (click)="onViewDetails(ex)" matTooltip="Ver detalles">
                     <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button color="primary" (click)="onEditExercise(ex)" matTooltip="Editar ejercicio">
+                <button *ngIf="canModify" mat-icon-button color="primary" (click)="onEditExercise(ex)" matTooltip="Editar ejercicio">
                     <mat-icon>edit</mat-icon>
                 </button>
                 <button

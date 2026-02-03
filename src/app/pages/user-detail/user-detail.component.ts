@@ -86,6 +86,10 @@ export class UserDetailComponent implements OnInit {
     private templateAssignment: TemplateAssignmentService,
   ) {}
 
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
   ngOnInit() {
     this.user = history.state.user;
     this.userId = this.route.snapshot.paramMap.get('id');

@@ -710,6 +710,18 @@ export class AuthService {
   }
 
   /**
+   * Purpose: identify if current user is a Gym Administrator (read-only admin role).
+   * Admin-only users have read-only access to plans/templates.
+   * Admin+Trainer users have full access.
+   * Input: none. Output: boolean.
+   * Error handling: returns false when user or groups are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  isGymAdmin(): boolean {
+    return this.hasGroup('Admin') && !this.hasGroup('Trainer');
+  }
+
+  /**
    * Purpose: expose independent tenant detection for UI and guards.
    * Input: none. Output: boolean.
    * Error handling: treats missing companyId as INDEPENDENT fallback.

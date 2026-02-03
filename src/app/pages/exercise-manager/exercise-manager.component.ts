@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
+import { AuthService } from '../../services/auth.service';
 import { Exercise, ExerciseFilters, FilterOptions, InlineEditCatalogs, PaginatorState, EXERCISE_DIFFICULTY_OPTIONS, EXERCISE_MUSCLE_TYPE_OPTIONS } from '../../shared/models';
 import { FeedbackConfig, ExerciseMessages, ErrorMapper, DevLogger } from '../../shared/feedback-utils';
 import { ExerciseFiltersComponent } from './components/exercise-filters/exercise-filters.component';
@@ -68,12 +69,17 @@ export class ExerciseManagerComponent implements OnInit {
 
   constructor(
     private api: ExerciseApiService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private router: Router,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private inlineOptionsService: InlineEditOptionsService
   ) {}
+
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
 
   ngOnInit(): void {
     this.loadFiltersFromStorage();

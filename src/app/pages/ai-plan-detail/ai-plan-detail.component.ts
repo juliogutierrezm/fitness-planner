@@ -78,6 +78,10 @@ export class AiPlanDetailComponent implements OnInit {
   @ViewChild('templateNameDialog') templateNameDialog?: TemplateRef<any>;
   private templateNameDialogRef: any = null;
 
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,

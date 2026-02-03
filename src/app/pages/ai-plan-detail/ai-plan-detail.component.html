@@ -38,8 +38,7 @@
     <mat-card class="list-card" *ngIf="!loading">
       <div class="list-header">
         <div>
-          <h3>Plan IA</h3>
-          <p *ngIf="planSummary">Ejecutado: {{ planSummary.createdAt | date:'medium' }}</p>
+          <h3>Plan IA{{ userName ? ' - ' + userName : '' }}</h3>
         </div>
         <div class="header-actions">
           <button mat-fab extended color="primary" (click)="saveAsTemplate()" [disabled]="isSavingTemplate || !hasPreviewPlan">
@@ -78,12 +77,12 @@
         <app-workout-plan-view [plan]="previewPlan"></app-workout-plan-view>
       </section>
 
-      <mat-expansion-panel class="json-panel" *ngIf="hasPlanBody">
+<!--       <mat-expansion-panel class="json-panel" *ngIf="hasPlanBody">
         <mat-expansion-panel-header>
           <mat-panel-title>Ver JSON completo</mat-panel-title>
         </mat-expansion-panel-header>
         <pre>{{ planBody | json }}</pre>
-      </mat-expansion-panel>
+      </mat-expansion-panel> -->
     </mat-card>
   </section>
 </div>

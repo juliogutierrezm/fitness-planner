@@ -250,7 +250,10 @@
     <div class="left-column">
       <!-- Sidebar de ejercicios -->
       <aside class="exercise-sidebar">
-        <h3>Ejercicios</h3>
+        <h3>
+          <mat-icon>fitness_center</mat-icon>
+          Ejercicios
+        </h3>
 
         <!-- Submenú: a qué día agregar -->
         <mat-menu #addMenu="matMenu">
@@ -262,13 +265,12 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <cdk-virtual-scroll-viewport itemSize="44" class="vs">
+          <cdk-virtual-scroll-viewport itemSize="36" class="vs">
           <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
-              <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
               <div class="row">
                 <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
                 <div class="actions">
@@ -395,7 +397,7 @@
                       />
                     </div>
                     <div class="planner-cell reps-cell">
-                      <input class="sets-input"
+                      <input class="reps-input"
                         matInput
                         type="text"
                         [(ngModel)]="item.reps"
@@ -482,7 +484,7 @@
                           />
                         </div>
                         <div class="planner-cell reps-cell">
-                          <input class="sets-input"
+                          <input class="reps-input"
                             matInput
                             type="text"
                             [(ngModel)]="child.reps"

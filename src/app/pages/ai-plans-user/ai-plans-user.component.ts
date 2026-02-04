@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AiPlanSummary, AiPlansService, AiUserPlansResponse } from '../../services/ai-plans.service';
 import { AuthService } from '../../services/auth.service';
+import { UserApiService } from '../../user-api.service';
 
 @Component({
   selector: 'app-ai-plans-user',
@@ -29,6 +30,7 @@ export class AiPlansUserComponent implements OnInit {
   loading = true;
   unauthorized = false;
   userId = '';
+  userName = '';
   totalPlans = 0;
   plans: AiPlanSummary[] = [];
 
@@ -36,6 +38,7 @@ export class AiPlansUserComponent implements OnInit {
     private route: ActivatedRoute,
     private aiPlansService: AiPlansService,
     private authService: AuthService,
+    private userApi: UserApiService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -47,7 +50,23 @@ export class AiPlansUserComponent implements OnInit {
       this.cdr.markForCheck();
       return;
     }
+    this.loadUserName();
     this.loadPlans();
+  }
+
+  private loadUserName(): void {
+    if (!this.userId) return;
+    this.userApi.getUserById(this.userId).subscribe({
+      next: (user) => {
+        if (user) {
+          this.userName = `${user.givenName || ''} ${user.familyName || ''}`.trim();
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {
+        console.warn('[AI Plans User] Could not load user name');
+      }
+    });
   }
 
   trackByPlan(_: number, plan: AiPlanSummary): string {

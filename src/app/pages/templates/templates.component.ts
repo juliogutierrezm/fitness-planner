@@ -84,6 +84,10 @@ export class TemplatesComponent implements OnInit {
     private templateAssignment: TemplateAssignmentService
   ) {}
 
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
   ngOnInit() {
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
     this.selectedUserId = qpUserId?.trim() || null;

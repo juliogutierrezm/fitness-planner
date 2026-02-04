@@ -26,6 +26,7 @@ import { AuthService, UserRole } from '../../services/auth.service';
 import { isIndependentTenant } from '../../shared/shared-utils';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 
 
@@ -53,14 +54,14 @@ import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-
     MatDividerModule,
     MatTabsModule,
     RouterModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatExpansionModule
   ],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UsersComponent implements OnInit, OnDestroy {
-  @Input() contextRole: 'client' | 'trainer' = 'client';
   users: AppUser[] = [];
   allUsers: AppUser[] = [];
   currentUser: any = null;
@@ -73,16 +74,14 @@ export class UsersComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSaving = false;
   showCreateForm = false;
-  pageTitle = '';
+  pageTitle = 'Clientes';
   isAssigningTrainer = false;
   selectedClientForAssignment: AppUser | null = null;
   @ViewChild('trainerSelectDialog') trainerSelectDialog?: TemplateRef<any>;
-  trainerClientMap: Record<string, AppUser[]> = {};
-  trainerPlanCounts: Record<string, number> = {};
-  trainerMetricsLoading = false;
   deletingUserId: string | null = null;
   togglingStatusUserId: string | null = null;
   selectedTabIndex = 0;
+  searchTerm = '';
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -110,8 +109,6 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.pageTitle = this.getPageTitle();
-
     this.form = this.formFactory();
     this.editForm = this.formFactory();
 
@@ -141,39 +138,63 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get isClientView(): boolean {
-    return this.contextRole === 'client';
+    return true; // Always client view now
   }
 
   /**
-   * Purpose: expose context flag for trainer-only UI.
-   * Input: none. Output: boolean indicator.
-   * Error handling: not applicable.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  get isTrainerView(): boolean {
-    return this.contextRole === 'trainer';
-  }
-
-  /**
-   * Purpose: filter users to only active ones.
+   * Purpose: filter users to only active ones with search term applied.
    * Input: none. Output: filtered AppUser array.
    * Error handling: returns empty array if users is null/undefined.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get activeUsers(): AppUser[] {
     if (!this.users) return [];
-    return this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    const active = this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    return this.applySearchFilter(active);
   }
 
   /**
-   * Purpose: filter users to only inactive ones.
+   * Purpose: filter users to only inactive ones with search term applied.
    * Input: none. Output: filtered AppUser array.
    * Error handling: returns empty array if users is null/undefined.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get inactiveUsers(): AppUser[] {
     if (!this.users) return [];
-    return this.users.filter(u => u.status === 'INACTIVE');
+    const inactive = this.users.filter(u => u.status === 'INACTIVE');
+    return this.applySearchFilter(inactive);
+  }
+
+  /**
+   * Purpose: apply search filter to user list by name, email or phone.
+   * Input: users array. Output: filtered array.
+   * Error handling: returns all users if search term is empty.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private applySearchFilter(users: AppUser[]): AppUser[] {
+    if (!this.searchTerm || this.searchTerm.trim() === '') {
+      return users;
+    }
+    
+    const term = this.searchTerm.toLowerCase().trim();
+    return users.filter(u => {
+      const fullName = `${u.givenName || ''} ${u.familyName || ''}`.toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const phone = (u.telephone || '').toLowerCase();
+      
+      return fullName.includes(term) || email.includes(term) || phone.includes(term);
+    });
+  }
+
+  /**
+   * Purpose: clear search filter.
+   * Input: none. Output: resets search term and triggers change detection.
+   * Error handling: not applicable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.cdr.markForCheck();
   }
 
   /**
@@ -198,20 +219,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  /**
-   * Purpose: determine whether trainer management UI should render.
-   * Input: none. Output: boolean indicator.
-   * Error handling: not applicable.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  get showTrainerManagement(): boolean {
-    return !this.isTrainerView || !this.isIndependentTenant;
-  }
 
-  private getPageTitle(): string {
-    if (this.contextRole === 'trainer') return 'Entrenadores';
-    return 'Clientes';
-  }
 
   /**
    * Purpose: load and filter users for the current tenant and role context.
@@ -227,8 +235,6 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (!canManageUsers) {
       this.users = [];
       this.allUsers = [];
-      this.trainerClientMap = {};
-      this.trainerPlanCounts = {};
       this.isLoading = false;
       this.cdr.markForCheck();
       return;
@@ -243,152 +249,27 @@ export class UsersComponent implements OnInit, OnDestroy {
       next: (list) => {
         this.allUsers = list || [];
         this.users = this.filterUsers(this.allUsers);
-        this.refreshTrainerMetrics();
       },
       error: () => {
         this.users = [];
         this.allUsers = [];
-        this.trainerClientMap = {};
-        this.trainerPlanCounts = {};
         this.snack.open('No se pudieron cargar los usuarios.', 'Cerrar', { duration: 3000 });
       }
     });
   }
 
   /**
-   * Purpose: filter users by role context for the view.
+   * Purpose: filter users to show only clients.
    * Input: full user list. Output: filtered list.
    * Error handling: returns empty list for missing input.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private filterUsers(users: AppUser[] | null | undefined): AppUser[] {
     if (!users || !Array.isArray(users)) return [];
-    return users.filter(u => u.role === this.contextRole);
+    return users.filter(u => u.role === 'client');
   }
 
-  /**
-   * Purpose: refresh trainer-only metrics after user data loads.
-   * Input: none. Output: updates trainer metrics caches.
-   * Error handling: resets metrics when not in trainer context.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private refreshTrainerMetrics(): void {
-    if (!this.isTrainerView) {
-      this.trainerClientMap = {};
-      this.trainerPlanCounts = {};
-      return;
-    }
-    this.buildTrainerClientMap();
-    this.loadTrainerPlanCounts();
-  }
 
-  /**
-   * Purpose: rebuild a map of clients assigned per trainer.
-   * Input: none. Output: updates trainerClientMap cache.
-   * Error handling: falls back to empty map when no users exist.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private buildTrainerClientMap(): void {
-    const map: Record<string, AppUser[]> = {};
-    if (!Array.isArray(this.allUsers)) {
-      this.trainerClientMap = map;
-      return;
-    }
-
-    this.allUsers
-      .filter(user => user.role === 'client' && user.trainerId)
-      .forEach(client => {
-        const trainerId = client.trainerId as string;
-        if (!map[trainerId]) {
-          map[trainerId] = [];
-        }
-        map[trainerId].push(client);
-      });
-
-    this.trainerClientMap = map;
-  }
-
-  /**
-   * Purpose: load and cache plan counts created by each trainer.
-   * Input: none. Output: updates trainerPlanCounts.
-   * Error handling: shows snackbar and clears counts on failure.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private loadTrainerPlanCounts(): void {
-    this.trainerMetricsLoading = true;
-    this.exerciseApi.getPlansForCurrentTenant().pipe(
-      finalize(() => {
-        this.trainerMetricsLoading = false;
-        this.cdr.markForCheck();
-      })
-    ).subscribe({
-      next: (plans) => {
-        const counts: Record<string, number> = {};
-        (plans || [])
-          .filter(plan => plan?.isTemplate !== true)
-          .forEach(plan => {
-            const trainerId = plan?.trainerId;
-            if (!trainerId) return;
-            counts[trainerId] = (counts[trainerId] || 0) + 1;
-          });
-        this.trainerPlanCounts = counts;
-      },
-      error: () => {
-        this.trainerPlanCounts = {};
-        this.snack.open('No se pudieron cargar los planes de entrenadores.', 'Cerrar', { duration: 3000 });
-      }
-    });
-  }
-
-  /**
-   * Purpose: return the assigned client count for a trainer.
-   * Input: trainer user. Output: count number.
-   * Error handling: returns 0 when trainer id missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerClientCount(trainer: AppUser | null | undefined): number {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 0;
-    return this.trainerClientMap[trainerId]?.length || 0;
-  }
-
-  /**
-   * Purpose: summarize assigned clients for display.
-   * Input: trainer user. Output: summary string.
-   * Error handling: returns fallback labels when data missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerClientSummary(trainer: AppUser | null | undefined): string {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 'Sin clientes';
-    const clients = this.trainerClientMap[trainerId] || [];
-    if (clients.length === 0) return 'Sin clientes';
-
-    const names = clients.map(client => {
-      const fullName = `${client.givenName || ''} ${client.familyName || ''}`.trim();
-      return fullName || client.email;
-    }).filter(Boolean);
-
-    const limit = 3;
-    const shown = names.slice(0, limit);
-    const remaining = names.length - shown.length;
-    if (remaining > 0) {
-      return `${shown.join(', ')} y ${remaining} mas`;
-    }
-    return shown.join(', ');
-  }
-
-  /**
-   * Purpose: return the plan count created by a trainer.
-   * Input: trainer user. Output: count number.
-   * Error handling: returns 0 when trainer id missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerPlanCount(trainer: AppUser | null | undefined): number {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 0;
-    return this.trainerPlanCounts[trainerId] || 0;
-  }
 
   private setupInjuriesControl(form: FormGroup) {
     const noInjuriesControl = form.get('noInjuries');
@@ -429,14 +310,13 @@ export class UsersComponent implements OnInit, OnDestroy {
   submit() {
     if (this.form.invalid || this.isSaving) return;
     const formValue = this.form.value;
-    const role = this.contextRole;
     const payload: AppUser = {
       email: formValue.email!,
       givenName: formValue.givenName || '',
       familyName: formValue.familyName || '',
       telephone: formValue.telephone || null,
       gender: formValue.gender || null,
-      role: role,
+      role: 'client',
       dateOfBirth: formValue.dateOfBirth || '',
       noInjuries: formValue.noInjuries,
       injuries: formValue.noInjuries ? null : (formValue.injuries?.trim() || null),
@@ -504,9 +384,6 @@ export class UsersComponent implements OnInit, OnDestroy {
           if (ok !== null) {
             this.users = this.users.filter(x => x.id !== u.id);
             this.allUsers = this.allUsers.filter(x => x.id !== u.id);
-            if (this.isTrainerView) {
-              this.refreshTrainerMetrics();
-            }
             this.snack.open('Usuario eliminado permanentemente', 'Cerrar', { duration: 1800 });
           } else {
             this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });

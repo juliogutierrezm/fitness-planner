@@ -63,6 +63,7 @@ export class AiPlanDetailComponent implements OnInit {
   isSavingTemplate = false;
   userId = '';
   executionId = '';
+  userName = '';
   planSummary: AiPlanSummary | null = null;
   planBody: AiPlanBody | null = null;
   previewPlan: any | null = null;
@@ -76,6 +77,10 @@ export class AiPlanDetailComponent implements OnInit {
   templateNameInput = '';
   @ViewChild('templateNameDialog') templateNameDialog?: TemplateRef<any>;
   private templateNameDialogRef: any = null;
+
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -101,6 +106,7 @@ export class AiPlanDetailComponent implements OnInit {
     }
     this.loadExerciseLibrary();
     this.loadAssignableUsers();
+    this.loadUserName();
     this.loadPlan();
   }
 
@@ -197,6 +203,37 @@ export class AiPlanDetailComponent implements OnInit {
     return progressions as PlanProgressions;
   }
 
+  private loadUserName(): void {
+    if (!this.userId) return;
+    this.userApi.getUserById(this.userId).subscribe({
+      next: (user) => {
+        if (user) {
+          this.userName = `${user.givenName || ''} ${user.familyName || ''}`.trim();
+          this.buildPreviewPlan();
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {
+        console.warn('[AI Plan Detail] Could not load user name');
+      }
+    });
+  }
+
+  private formatPlanDate(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const month = date.toLocaleString('es', { month: 'short' });
+      const day = date.getDate();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month} ${day}, ${hours}:${minutes}, ${year}`;
+    } catch {
+      return dateStr;
+    }
+  }
+
   private buildPreviewPlan(): void {
     if (!this.planBody) return;
     const rawSessions = Array.isArray(this.planBody)
@@ -206,8 +243,12 @@ export class AiPlanDetailComponent implements OnInit {
     const enrichedSessions = enrichPlanSessionsFromLibrary(sessions, this.exerciseLibraryMap);
     const normalizedSessions = normalizePlanSessionsForRender(enrichedSessions);
 
+    const formattedDate = this.formatPlanDate(this.planSummary?.createdAt);
+    const userPart = this.userName ? ` - ${this.userName}` : '';
+    const datePart = formattedDate ? ` (${formattedDate})` : '';
+
     this.previewPlan = {
-      name: this.planSummary ? `Plan IA (${this.planSummary.createdAt})` : 'Plan IA',
+      name: `Plan IA${userPart}${datePart}`,
       date: this.planSummary?.createdAt,
       sessions: normalizedSessions,
       generalNotes: this.planBody.generalNotes,

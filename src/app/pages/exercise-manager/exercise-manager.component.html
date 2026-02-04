@@ -22,6 +22,7 @@
             <app-exercise-filters
               [currentFilters]="currentFilters"
               [filterOptions]="filterOptions"
+              [canModify]="!isGymAdmin"
               (filtersChanged)="onFiltersChanged($event)"
               (createNewClicked)="onCreateNewClicked()"
               (refreshClicked)="onRefreshClicked()">
@@ -32,6 +33,7 @@
               [dataSource]="dataSource"
               [inlineCatalogs]="inlineCatalogs"
               [initialPaginatorState]="paginatorState"
+              [canModify]="!isGymAdmin"
               (editExercise)="onEditExercise($event)"
               (viewDetails)="onViewDetails($event)"
               (openVideoPreview)="onOpenVideo($event)"

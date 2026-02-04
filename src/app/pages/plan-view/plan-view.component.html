@@ -8,7 +8,7 @@
         <mat-icon>arrow_back</mat-icon>
         Volver a planes
       </button>
-      <button mat-fab extended color="primary" [routerLink]="['/planner', planId]" *ngIf="planId">
+      <button *ngIf="!isGymAdmin && planId" mat-fab extended color="primary" [routerLink]="['/planner', planId]">
         <mat-icon>edit</mat-icon>
         Editar plan
       </button>

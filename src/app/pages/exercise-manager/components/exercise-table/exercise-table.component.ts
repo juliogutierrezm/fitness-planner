@@ -62,6 +62,7 @@ export class ExerciseTableComponent implements AfterViewInit {
   @Input() dataSource!: MatTableDataSource<Exercise>;
   @Input() initialPaginatorState: PaginatorState | null = null;
   @Input() inlineCatalogs: InlineEditCatalogs | null = null;
+  @Input() canModify = true;
 
   @Output() editExercise = new EventEmitter<Exercise>();
   @Output() viewDetails = new EventEmitter<Exercise>();

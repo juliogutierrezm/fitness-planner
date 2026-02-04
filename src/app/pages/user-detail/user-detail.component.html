@@ -21,6 +21,7 @@
       <h3></h3>
       <div class="plans-actions" *ngIf="userId as uid">
         <button
+          *ngIf="!isGymAdmin"
           mat-fab extended
           color="primary"
           [routerLink]="['/planner']"
@@ -29,7 +30,7 @@
           <mat-icon>add</mat-icon>
           Crear plan
         </button>
-        <button mat-fab extended color="primary" (click)="openTemplateDialog()">
+        <button *ngIf="!isGymAdmin" mat-fab extended color="primary" (click)="openTemplateDialog()">
           <mat-icon>style</mat-icon>
           Usar plantilla
         </button>
@@ -88,11 +89,11 @@
               </div>
             </div>
             <div class="right">
-              <button mat-mini-fab color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
+              <button *ngIf="!isGymAdmin" mat-mini-fab color="primary" [routerLink]="['/planner', getPlanId(plan)]" matTooltip="Editar">
                 <mat-icon>edit</mat-icon>
               </button>
             <div class="trash-icon">
-              <button mat-mini-fab color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
+              <button *ngIf="!isGymAdmin" mat-mini-fab color="warn" (click)="$event.stopPropagation(); deletePlan(getPlanId(plan))" matTooltip="Eliminar">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>

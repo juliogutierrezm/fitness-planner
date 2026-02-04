@@ -50,7 +50,7 @@
             <mat-icon>refresh</mat-icon>
             Refrescar
         </button>
-        <button mat-fab extended color="primary" (click)="onCreateNew()" [disabled]="isLoading">
+        <button *ngIf="canModify" mat-fab extended color="primary" (click)="onCreateNew()" [disabled]="isLoading">
             <mat-icon>add</mat-icon>
             Nuevo Ejercicio
         </button>

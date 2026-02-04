@@ -38,7 +38,7 @@
     <mat-card class="list-card" *ngIf="!loading">
       <div class="list-header">
         <div>
-          <h3>{{ totalPlans }} planes IA</h3>
+          <h3>{{ totalPlans }} planes IA{{ userName ? ' - ' + userName : '' }}</h3>
           <p>Selecciona un plan para revisar el detalle.</p>
         </div>
       </div>

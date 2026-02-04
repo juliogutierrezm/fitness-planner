@@ -97,6 +97,27 @@
     <div *ngIf="!isLoading && users.length === 0" class="empty">No hay usuarios</div>
     
     <ng-container *ngIf="!isLoading && users.length > 0">
+      <!-- Search filter -->
+      <div class="search-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar cliente</mat-label>
+          <input 
+            matInput 
+            [(ngModel)]="searchTerm" 
+            placeholder="Nombre, email o teléfono"
+            type="text">
+          <mat-icon matPrefix>search</mat-icon>
+          <button 
+            *ngIf="searchTerm" 
+            matSuffix 
+            mat-icon-button 
+            aria-label="Limpiar búsqueda"
+            (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+      </div>
+
       <mat-tab-group [(selectedIndex)]="selectedTabIndex" class="users-tabs">
         <!-- Tab Activos -->
         <mat-tab>

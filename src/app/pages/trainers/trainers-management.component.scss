@@ -120,6 +120,22 @@
   margin-top: 16px;
 }
 
+.search-container {
+  padding: 16px 16px 8px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+
+  .search-field {
+    width: 100%;
+    max-width: 500px;
+    
+    mat-icon[matPrefix] {
+      margin-right: 8px;
+      color: rgba(0, 0, 0, 0.54);
+    }
+  }
+}
+
 .list-header {
   display: flex;
   align-items: center;

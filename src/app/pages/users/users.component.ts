@@ -81,6 +81,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   deletingUserId: string | null = null;
   togglingStatusUserId: string | null = null;
   selectedTabIndex = 0;
+  searchTerm = '';
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -141,25 +142,59 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Purpose: filter users to only active ones.
+   * Purpose: filter users to only active ones with search term applied.
    * Input: none. Output: filtered AppUser array.
    * Error handling: returns empty array if users is null/undefined.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get activeUsers(): AppUser[] {
     if (!this.users) return [];
-    return this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    const active = this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    return this.applySearchFilter(active);
   }
 
   /**
-   * Purpose: filter users to only inactive ones.
+   * Purpose: filter users to only inactive ones with search term applied.
    * Input: none. Output: filtered AppUser array.
    * Error handling: returns empty array if users is null/undefined.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get inactiveUsers(): AppUser[] {
     if (!this.users) return [];
-    return this.users.filter(u => u.status === 'INACTIVE');
+    const inactive = this.users.filter(u => u.status === 'INACTIVE');
+    return this.applySearchFilter(inactive);
+  }
+
+  /**
+   * Purpose: apply search filter to user list by name, email or phone.
+   * Input: users array. Output: filtered array.
+   * Error handling: returns all users if search term is empty.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private applySearchFilter(users: AppUser[]): AppUser[] {
+    if (!this.searchTerm || this.searchTerm.trim() === '') {
+      return users;
+    }
+    
+    const term = this.searchTerm.toLowerCase().trim();
+    return users.filter(u => {
+      const fullName = `${u.givenName || ''} ${u.familyName || ''}`.toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const phone = (u.telephone || '').toLowerCase();
+      
+      return fullName.includes(term) || email.includes(term) || phone.includes(term);
+    });
+  }
+
+  /**
+   * Purpose: clear search filter.
+   * Input: none. Output: resets search term and triggers change detection.
+   * Error handling: not applicable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.cdr.markForCheck();
   }
 
   /**

@@ -87,6 +87,7 @@ export class TrainersManagementComponent implements OnInit, OnDestroy {
   expandedTrainerId: string | null = null;
   trainerAiPlanCounts: Record<string, number> = {};
   aiPlansLoading = false;
+  searchTerm = '';
   readonly MAX_AI_PLANS_PER_TRAINER = 20;
   readonly MAX_TRAINERS_TRIAL = 3;
   private destroy$ = new Subject<void>();
@@ -135,12 +136,34 @@ export class TrainersManagementComponent implements OnInit, OnDestroy {
 
   get activeTrainers(): AppUser[] {
     if (!this.trainers) return [];
-    return this.trainers.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    const active = this.trainers.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    return this.applySearchFilter(active);
   }
 
   get inactiveTrainers(): AppUser[] {
     if (!this.trainers) return [];
-    return this.trainers.filter(u => u.status === 'INACTIVE');
+    const inactive = this.trainers.filter(u => u.status === 'INACTIVE');
+    return this.applySearchFilter(inactive);
+  }
+
+  private applySearchFilter(trainers: AppUser[]): AppUser[] {
+    if (!this.searchTerm || this.searchTerm.trim() === '') {
+      return trainers;
+    }
+    
+    const term = this.searchTerm.toLowerCase().trim();
+    return trainers.filter(u => {
+      const fullName = `${u.givenName || ''} ${u.familyName || ''}`.toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const phone = (u.telephone || '').toLowerCase();
+      
+      return fullName.includes(term) || email.includes(term) || phone.includes(term);
+    });
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.cdr.markForCheck();
   }
 
   canChangeStatus(): boolean {
@@ -197,6 +220,7 @@ export class TrainersManagementComponent implements OnInit, OnDestroy {
   private refreshTrainerMetrics(): void {
     this.buildTrainerClientMap();
     this.loadTrainerPlanCounts();
+    this.loadAllTrainerAiPlanCounts();
   }
 
   private buildTrainerClientMap(): void {
@@ -264,15 +288,26 @@ export class TrainersManagementComponent implements OnInit, OnDestroy {
       this.expandedTrainerId = null;
     } else {
       this.expandedTrainerId = trainer.id;
-      if (this.trainerAiPlanCounts[trainer.id] === undefined) {
-        this.loadTrainerAiPlanCount(trainer.id);
-      }
     }
     this.cdr.markForCheck();
   }
 
   isTrainerExpanded(trainer: AppUser): boolean {
     return this.expandedTrainerId === trainer.id;
+  }
+
+  private loadAllTrainerAiPlanCounts(): void {
+    if (!this.trainers || this.trainers.length === 0) return;
+    
+    this.aiPlansLoading = true;
+    this.cdr.markForCheck();
+    
+    // Cargar conteo de planes IA para todos los entrenadores
+    this.trainers.forEach(trainer => {
+      if (trainer.id) {
+        this.loadTrainerAiPlanCount(trainer.id);
+      }
+    });
   }
 
   private loadTrainerAiPlanCount(trainerId: string): void {

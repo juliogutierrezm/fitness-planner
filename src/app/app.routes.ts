@@ -138,7 +138,7 @@ export const routes: Routes = [
       },
       {
         path: 'trainers',
-        loadComponent: () => import('./pages/trainers/trainers.component').then(m => m.TrainersComponent),
+        loadComponent: () => import('./pages/trainers/trainers-management.component').then(m => m.TrainersManagementComponent),
         canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],
         data: { roles: [UserRole.ADMIN], excludeIndependent: true }
       },

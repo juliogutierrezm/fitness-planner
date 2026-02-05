@@ -153,6 +153,10 @@ export class ExerciseTableComponent implements AfterViewInit {
 
   startEdit(exercise: Exercise, field: EditableField, event?: Event): void {
     event?.stopPropagation();
+    // Prevent inline editing when user cannot modify exercises
+    if (!this.canModify) {
+      return;
+    }
     this.editingCell = { id: exercise.id, field };
     this.ensureRowState(exercise);
     this.cdr.markForCheck();

@@ -280,7 +280,11 @@
               <div class="row">
                 <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
                 <div class="actions">
-                  <button mat-mini-fab (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
+                  <button mat-mini-fab 
+                    (click)="openExercisePreview(ex)" 
+                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseleave)="onVideoLeave()"
+                    [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
                   </button>
 <!--                   <button mat-mini-fab (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
@@ -425,7 +429,11 @@
                             (blur)="persist()" />
                     </div>
                     <div class="planner-cell actions-cell ">
-                      <button mat-mini-fab (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
+                      <button mat-mini-fab 
+                        (click)="openExercisePreview(item)" 
+                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseleave)="onVideoLeave()"
+                        [matTooltip]="'Vista previa'">
                         <mat-icon>play_circle</mat-icon>
                       </button>
                       <div class="trash-icon">
@@ -512,7 +520,11 @@
                                 (blur)="persist()" />
                         </div>
                         <div class="planner-cell actions-cell">
-                          <button mat-mini-fab (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
+                          <button mat-mini-fab 
+                            (click)="openExercisePreview(child)" 
+                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseleave)="onVideoLeave()"
+                            [matTooltip]="'Vista previa'">
                             <mat-icon>play_circle</mat-icon>
                           </button>
                         </div>
@@ -529,6 +541,21 @@
 
 
 
+  </div>
+
+  <!-- Hover Preview Overlay -->
+  <div *ngIf="hoveredExercise"
+       class="hover-preview"
+       [style.left.px]="previewPosition.x"
+       [style.top.px]="previewPosition.y">
+    <img *ngIf="getPreviewUrl(hoveredExercise)"
+         [src]="getPreviewUrl(hoveredExercise)"
+         alt="Vista previa"
+         class="preview-image"
+         loading="lazy">
+    <div *ngIf="!getPreviewUrl(hoveredExercise)" class="preview-fallback">
+      Vista previa no disponible
+    </div>
   </div>
 </div>
 

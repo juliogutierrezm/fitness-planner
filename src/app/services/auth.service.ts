@@ -710,6 +710,17 @@ export class AuthService {
   }
 
   /**
+   * Purpose: check if current user belongs to the System Cognito group.
+   * System users have technical permissions: manage exercises and access diagnostics.
+   * Input: none. Output: boolean.
+   * Error handling: returns false when user or groups are missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  isSystem(): boolean {
+    return this.hasGroup('System');
+  }
+
+  /**
    * Purpose: identify if current user is a Gym Administrator (read-only admin role).
    * Admin-only users have read-only access to plans/templates.
    * Admin+Trainer users have full access.

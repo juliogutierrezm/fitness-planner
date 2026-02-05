@@ -22,12 +22,23 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
+import { PdfGeneratorService } from '../../services/pdf-generator.service';
+import { detectUserLocale } from '../../shared/locale.utils';
 import { TemplateAssignmentService } from '../../services/template-assignment.service';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
 import { finalize } from 'rxjs/operators';
-import { buildPlanOrdinalMap, getPlanKey, getTemplateDisplayName, sortPlansByCreatedAt } from '../../shared/shared-utils';
+import { 
+  buildPlanOrdinalMap, 
+  getPlanKey, 
+  getTemplateDisplayName, 
+  sortPlansByCreatedAt,
+  enrichPlanSessionsFromLibrary,
+  parsePlanSessions
+} from '../../shared/shared-utils';
+import { Exercise } from '../../shared/models';
+import { PlanProgressions } from '../../components/planner/models/planner-plan.model';
 
 @Component({
   selector: 'app-user-detail',
@@ -69,6 +80,8 @@ export class UserDetailComponent implements OnInit {
   @ViewChild('templateSelectDialog') templateSelectDialog?: TemplateRef<any>;
   private templateDialogRef: any = null;
   planOrdinalMap = new Map<string, number>();
+  exerciseLibraryMap = new Map<string, Exercise>();
+  generatingPdfForPlanId: string | null = null;
 
   // filtros
   q = '';
@@ -80,6 +93,7 @@ export class UserDetailComponent implements OnInit {
     private userApi: UserApiService,
     private planApi: ExerciseApiService,
     private authService: AuthService,
+    private pdfGenerator: PdfGeneratorService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
@@ -95,6 +109,7 @@ export class UserDetailComponent implements OnInit {
     this.userId = this.route.snapshot.paramMap.get('id');
     if (!this.userId) return;
 
+    this.loadExerciseLibrary();
     this.loadingPlans = true;
     this.userApi.getWorkoutPlansByUserId(this.userId).subscribe(
       list => {
@@ -326,5 +341,140 @@ export class UserDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Purpose: Load exercise library for enriching plans with youtube_url.
+   * Input: none. Output: updates exerciseLibraryMap.
+   * Error handling: logs warning and continues with empty map on error.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadExerciseLibrary(): void {
+    this.planApi.getExerciseLibrary().subscribe({
+      next: (libraryResponse) => {
+        const rawItems = libraryResponse?.items || [];
+        const exercises = rawItems.map((item: any) => this.flattenDynamoItem(item));
+        this.exerciseLibraryMap = new Map(exercises.map((ex: any) => [ex.id, ex]));
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.warn('[UserDetail] Failed to load exercise library', error);
+        this.exerciseLibraryMap = new Map();
+      }
+    });
+  }
 
+  /**
+   * Purpose: Flatten DynamoDB item format to plain object.
+   */
+  private flattenDynamoItem(raw: any): any {
+    const flattened: any = {};
+    for (const [key, value] of Object.entries(raw || {})) {
+      if (value && typeof value === 'object') {
+        if ('S' in value) {
+          flattened[key] = (value as any).S || '';
+        } else if ('N' in value) {
+          flattened[key] = Number((value as any).N) || 0;
+        } else if ('BOOL' in value) {
+          flattened[key] = (value as any).BOOL;
+        } else if ('L' in value) {
+          const list = (value as any).L || [];
+          flattened[key] = list.map((item: any) => {
+            if (item.S !== undefined) return item.S;
+            if (item.N !== undefined) return Number(item.N);
+            if (item.BOOL !== undefined) return item.BOOL;
+            return item;
+          });
+        } else if ('SS' in value) {
+          flattened[key] = (value as any).SS || [];
+        } else {
+          flattened[key] = value;
+        }
+      } else {
+        flattened[key] = value;
+      }
+    }
+    return flattened;
+  }
+
+  /**
+   * Purpose: Generate and download PDF for a specific plan.
+   * Input: plan object. Output: triggers PDF download.
+   * Error handling: shows snackbar on error and resets loading state.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  async downloadPlanPdf(plan: any): Promise<void> {
+    const planId = this.getPlanId(plan);
+    if (!plan || this.generatingPdfForPlanId) {
+      return;
+    }
+
+    this.generatingPdfForPlanId = planId;
+    this.cdr.markForCheck();
+
+    try {
+      // Parse and enrich sessions with youtube_url from exercise library
+      const rawSessions = parsePlanSessions(plan.sessions);
+      const enrichedSessions = enrichPlanSessionsFromLibrary(rawSessions, this.exerciseLibraryMap);
+
+      // Parse progressions if available
+      let progressions: PlanProgressions | null = null;
+      if (plan.progressions) {
+        if (typeof plan.progressions === 'string') {
+          try {
+            progressions = JSON.parse(plan.progressions);
+          } catch {
+            progressions = null;
+          }
+        } else {
+          progressions = plan.progressions;
+        }
+      }
+
+      // Build plan data for PDF
+      // Use ordinal only (never templateName, plan.name may contain client name)
+      const planOrdinal = this.getPlanOrdinal(plan);
+      const planName = `Plan ${planOrdinal}`;
+      const clientName = this.user 
+        ? `${this.user.givenName || ''} ${this.user.familyName || ''}`.trim() 
+        : '';
+      
+      // Get trainer name from current authenticated user
+      const currentUser = this.authService.getCurrentUser();
+      const trainerName = currentUser 
+        ? `${currentUser.givenName || ''} ${currentUser.familyName || ''}`.trim() 
+        : '';
+
+      // Build filename: Plan_X_ClientName_Date
+      const planDate = plan.date ? new Date(plan.date) : new Date();
+      const dateStr = planDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const safeClientName = clientName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+      const pdfFilename = `Plan_${planOrdinal}_${safeClientName}_${dateStr}`;
+
+      const pdfPlanData = this.pdfGenerator.buildPdfPlanData(
+        planName,
+        plan.date || new Date().toISOString(),
+        enrichedSessions,
+        {
+          objective: plan.objective,
+          generalNotes: plan.generalNotes,
+          progressions
+        }
+      );
+
+      await this.pdfGenerator.generatePlanPdf({
+        plan: pdfPlanData,
+        clientName,
+        trainerName,
+        locale: detectUserLocale(),
+        filename: pdfFilename
+      });
+
+      this.snackBar.open('PDF descargado correctamente.', 'Cerrar', { duration: 2500 });
+    } catch (error) {
+      console.error('[UserDetail] PDF generation failed', error);
+      this.snackBar.open('Error al generar el PDF. Inténtalo de nuevo.', 'Cerrar', { duration: 3000 });
+    } finally {
+      this.generatingPdfForPlanId = null;
+      this.cdr.markForCheck();
+    }
+  }
 }

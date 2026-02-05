@@ -265,7 +265,7 @@
   }
 
   .field-sessions {
-    flex: 0 0 120px;
+    flex: 0 0 95px;
   }
 }
 
@@ -282,13 +282,19 @@
 
 .compact-field {
   .mat-mdc-form-field-infix {
-    padding-top: 6px;
-    padding-bottom: 6px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    min-height: 40px;
   }
 
   .mat-mdc-form-field-subscript-wrapper {
     min-height: 0;
     margin-top: 0;
+  }
+
+  .mat-mdc-text-field-wrapper {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }
 
@@ -412,12 +418,24 @@
   }
 }
 
+.filters-and-sessions-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
 .filters-section {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   justify-content: center;
-  margin-bottom: 1rem;
+  flex: 1;
   padding: 0.75rem 1rem;
   background: var(--bg-0);
   border-radius: var(--radius-sm);
@@ -450,12 +468,19 @@
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: space-evenly;
     width: 100%;
   }
 
   .search-field {
-    flex: 1 1 220px;
+    flex: 1 1 260px;
+    max-width: 380px;
+  }
+
+  .filters-row .compact-field {
+    flex: 0 0 auto;
+    width: 160px;
+    min-width: 130px;
   }
 
   // Responsive design for mobile
@@ -469,6 +494,35 @@
     .filters-row {
       flex-direction: column;
       gap: 0.75rem;
+    }
+  }
+}
+
+.sessions-wrapper-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-0);
+  border-radius: var(--radius-sm);
+  border: 1px solid #e5e7eb;
+  min-height: 100%;
+
+  .field-sessions-inline {
+    width: 95px;
+    margin: 0;
+    
+    .mat-mdc-text-field-wrapper {
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    width: 100%;
+    
+    .field-sessions-inline {
+      width: 100%;
     }
   }
 }
@@ -954,7 +1008,6 @@ $planner-control-size: 28px;
 .planner-cell {
   padding: 0 0.125rem;
   display: flex;
-  justify-content: center;
   align-items: center;
   text-align: center;
   min-width: 0;

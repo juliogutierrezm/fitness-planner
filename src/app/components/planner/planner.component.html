@@ -114,11 +114,6 @@
           <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
           <mat-datepicker #planDatePicker></mat-datepicker>
         </mat-form-field>
-
-        <mat-form-field appearance="outline" class="field-sessions compact-field">
-          <mat-label>Sesiones</mat-label>
-          <input matInput type="number" formControlName="sessionCount" min="1"/>
-        </mat-form-field>
       </div>
     </div>
   </form>
@@ -183,18 +178,19 @@
     </ng-template>
   </mat-expansion-panel>
 
-  <!-- Filtros -->
-  <div class="filters-section">
-    <div class="filters-header">
-      <h3 class="filters-title">Filtro de ejercicios</h3>
-      <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
-        <mat-icon>filter_alt_off</mat-icon>
-        Limpiar filtros
-      </button>
-    </div>
-    <div class="filters-row">
+  <!-- Filtros y Sesiones -->
+  <div class="filters-and-sessions-row">
+    <div class="filters-section">
+      <div class="filters-header">
+        <h3 class="filters-title">Filtro de ejercicios</h3>
+        <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
+          <mat-icon>filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      </div>
+      <div class="filters-row">
       <mat-form-field appearance="outline" class="search-field compact-field">
-        <mat-label>Buscar por nombre</mat-label>
+        <mat-label>Nombre</mat-label>
         <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
@@ -240,6 +236,16 @@
       </mat-form-field> -->
     </div>
   </div>
+
+  <!-- Campo de sesiones (compacto) -->
+  <form [formGroup]="form" class="sessions-wrapper-inline">
+    <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
+      <mat-label>Sesiones</mat-label>
+      <input matInput type="number" formControlName="sessionCount" min="1"/>
+      <mat-icon matSuffix>event_available</mat-icon>
+    </mat-form-field>
+  </form>
+</div>
 
 
 

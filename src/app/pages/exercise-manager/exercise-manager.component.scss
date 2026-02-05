@@ -17,6 +17,21 @@
     }
   }
 }
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  gap: 16px;
+
+  p {
+    color: rgba(0, 0, 0, 0.6);
+    margin: 0;
+  }
+}
+
   .header-card {
     border-radius: 14px;
     margin-bottom: 1.5rem;

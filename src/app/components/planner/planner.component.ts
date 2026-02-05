@@ -139,6 +139,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
   exerciseListConnectedTo: string[] = [];
   sessionsConnectedTo: Record<string, string[]> = {};
 
+  // Video hover preview state
+  hoveredExercise: Exercise | PlanItem | null = null;
+  previewPosition = { x: 0, y: 0 };
+
   @ViewChild('saveTemplateDialog') saveTemplateDialog?: TemplateRef<any>;
 
   planId: string | null = null;
@@ -1227,6 +1231,47 @@ export class PlannerComponent implements OnInit, OnDestroy {
       maxHeight: '80vh',
       data: { exercise }
     });
+  }
+
+  /**
+   * Purpose: show thumbnail preview on hover over video button.
+   * Input: Exercise or PlanItem, MouseEvent. Output: sets hover state and position.
+   * Error handling: none; graceful no-op if element not found.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    this.hoveredExercise = exercise;
+    this.previewPosition = {
+      x: rect.right + 10,
+      y: rect.top
+    };
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: clear thumbnail preview on mouse leave.
+   * Input: none. Output: clears hover state.
+   * Error handling: none.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onVideoLeave(): void {
+    this.hoveredExercise = null;
+    this.previewPosition = { x: 0, y: 0 };
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: get thumbnail or preview URL for an exercise or plan item.
+   * Input: Exercise or PlanItem. Output: URL string or null.
+   * Error handling: returns null if no preview available.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPreviewUrl(exercise: Exercise | PlanItem): string | null {
+    const ex = exercise as any;
+    return ex.thumbnail || ex.preview_url || null;
   }
 
   /**

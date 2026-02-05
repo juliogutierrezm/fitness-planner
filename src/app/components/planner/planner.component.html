@@ -114,11 +114,6 @@
           <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
           <mat-datepicker #planDatePicker></mat-datepicker>
         </mat-form-field>
-
-        <mat-form-field appearance="outline" class="field-sessions compact-field">
-          <mat-label>Sesiones</mat-label>
-          <input matInput type="number" formControlName="sessionCount" min="1"/>
-        </mat-form-field>
       </div>
     </div>
   </form>
@@ -183,18 +178,19 @@
     </ng-template>
   </mat-expansion-panel>
 
-  <!-- Filtros -->
-  <div class="filters-section">
-    <div class="filters-header">
-      <h3 class="filters-title">Filtro de ejercicios</h3>
-      <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
-        <mat-icon>filter_alt_off</mat-icon>
-        Limpiar filtros
-      </button>
-    </div>
-    <div class="filters-row">
+  <!-- Filtros y Sesiones -->
+  <div class="filters-and-sessions-row">
+    <div class="filters-section">
+      <div class="filters-header">
+        <h3 class="filters-title">Filtro de ejercicios</h3>
+        <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
+          <mat-icon>filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      </div>
+      <div class="filters-row">
       <mat-form-field appearance="outline" class="search-field compact-field">
-        <mat-label>Buscar por nombre</mat-label>
+        <mat-label>Nombre</mat-label>
         <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
@@ -241,6 +237,16 @@
     </div>
   </div>
 
+  <!-- Campo de sesiones (compacto) -->
+  <form [formGroup]="form" class="sessions-wrapper-inline">
+    <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
+      <mat-label>Sesiones</mat-label>
+      <input matInput type="number" formControlName="sessionCount" min="1"/>
+      <mat-icon matSuffix>event_available</mat-icon>
+    </mat-form-field>
+  </form>
+</div>
+
 
 
   <!-- Body -->
@@ -250,7 +256,10 @@
     <div class="left-column">
       <!-- Sidebar de ejercicios -->
       <aside class="exercise-sidebar">
-        <h3>Ejercicios</h3>
+        <h3>
+          <mat-icon>fitness_center</mat-icon>
+          Ejercicios
+        </h3>
 
         <!-- Submenú: a qué día agregar -->
         <mat-menu #addMenu="matMenu">
@@ -262,17 +271,20 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <cdk-virtual-scroll-viewport itemSize="44" class="vs">
+          <cdk-virtual-scroll-viewport itemSize="36" class="vs">
           <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
-              <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
               <div class="row">
                 <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
                 <div class="actions">
-                  <button mat-mini-fab (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
+                  <button mat-mini-fab 
+                    (click)="openExercisePreview(ex)" 
+                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseleave)="onVideoLeave()"
+                    [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
                   </button>
 <!--                   <button mat-mini-fab (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
@@ -395,7 +407,7 @@
                       />
                     </div>
                     <div class="planner-cell reps-cell">
-                      <input class="sets-input"
+                      <input class="reps-input"
                         matInput
                         type="text"
                         [(ngModel)]="item.reps"
@@ -417,7 +429,11 @@
                             (blur)="persist()" />
                     </div>
                     <div class="planner-cell actions-cell ">
-                      <button mat-mini-fab (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
+                      <button mat-mini-fab 
+                        (click)="openExercisePreview(item)" 
+                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseleave)="onVideoLeave()"
+                        [matTooltip]="'Vista previa'">
                         <mat-icon>play_circle</mat-icon>
                       </button>
                       <div class="trash-icon">
@@ -482,7 +498,7 @@
                           />
                         </div>
                         <div class="planner-cell reps-cell">
-                          <input class="sets-input"
+                          <input class="reps-input"
                             matInput
                             type="text"
                             [(ngModel)]="child.reps"
@@ -504,7 +520,11 @@
                                 (blur)="persist()" />
                         </div>
                         <div class="planner-cell actions-cell">
-                          <button mat-mini-fab (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
+                          <button mat-mini-fab 
+                            (click)="openExercisePreview(child)" 
+                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseleave)="onVideoLeave()"
+                            [matTooltip]="'Vista previa'">
                             <mat-icon>play_circle</mat-icon>
                           </button>
                         </div>
@@ -521,6 +541,21 @@
 
 
 
+  </div>
+
+  <!-- Hover Preview Overlay -->
+  <div *ngIf="hoveredExercise"
+       class="hover-preview"
+       [style.left.px]="previewPosition.x"
+       [style.top.px]="previewPosition.y">
+    <img *ngIf="getPreviewUrl(hoveredExercise)"
+         [src]="getPreviewUrl(hoveredExercise)"
+         alt="Vista previa"
+         class="preview-image"
+         loading="lazy">
+    <div *ngIf="!getPreviewUrl(hoveredExercise)" class="preview-fallback">
+      Vista previa no disponible
+    </div>
   </div>
 </div>
 

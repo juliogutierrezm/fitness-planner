@@ -5,6 +5,7 @@ import { AuthFlowGuard } from './guards/auth-flow.guard';
 import { OnboardingGuard } from './guards/onboarding.guard';
 import { PostLoginRedirectGuard } from './guards/post-login-redirect.guard';
 import { RoleGuard } from './guards/role.guard';
+import { SystemGuard } from './guards/system.guard';
 import { UserRole } from './services/auth.service';
 
 export const routes: Routes = [
@@ -115,8 +116,7 @@ export const routes: Routes = [
       {
         path: 'diagnostics',
         loadComponent: () => import('./pages/diagnostics/diagnostics.component').then(m => m.DiagnosticsComponent),
-        canActivate: [AuthGuard, PostLoginRedirectGuard, RoleGuard],
-        data: { roles: [UserRole.ADMIN, UserRole.TRAINER] }
+        canActivate: [AuthGuard, PostLoginRedirectGuard, SystemGuard]
       },
       {
         path: 'ai-plans',

@@ -80,6 +80,17 @@ export class LayoutComponent implements OnInit {
   }
 
   /**
+   * Purpose: check if user belongs to System group for technical features.
+   * System users can access diagnostics and manage exercises.
+   * Input: none. Output: boolean.
+   * Error handling: returns false for unauthenticated users.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get isSystem(): boolean {
+    return this.authService.isSystem();
+  }
+
+  /**
    * Purpose: identify if current user is a Gym Administrator for UI badge display.
    * Input: none. Output: boolean.
    * Error handling: returns false for unauthenticated users.

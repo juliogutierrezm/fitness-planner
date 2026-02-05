@@ -81,6 +81,17 @@ export class ExerciseManagerComponent implements OnInit {
     return this.authService.isGymAdmin();
   }
 
+  /**
+   * Purpose: determine if current user can modify exercises (create/edit/delete).
+   * Only users belonging to the System Cognito group have modification permissions.
+   * Input: none. Output: boolean.
+   * Error handling: returns false when user lacks System group.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get canModifyExercises(): boolean {
+    return this.authService.isSystem();
+  }
+
   ngOnInit(): void {
     this.loadFiltersFromStorage();
     this.loadExercises();

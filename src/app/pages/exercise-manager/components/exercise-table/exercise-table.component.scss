@@ -122,6 +122,27 @@ tr.mdc-data-table__row {
   gap: 4px;
 }
 
+/* Action button styling - consistent with users component */
+button[mat-icon-button] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  line-height: 32px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-500),
+    var(--primary-color, #1976d2)
+  );
+  
+  mat-icon {
+    color: #e4e6eb;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
 /* No video indicator */
 .no-video {
   color: #999;

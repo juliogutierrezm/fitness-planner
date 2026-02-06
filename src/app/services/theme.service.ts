@@ -137,6 +137,13 @@ export class ThemeService {
   }
 
   /**
+   * Get raw theme from backend without defaults (for PDF generation)
+   */
+  getRawTheme(): ThemeConfig | null {
+    return this.themeSubject.value;
+  }
+
+  /**
    * Update theme in memory
    */
   setThemeInMemory(config: ThemeConfig): void {

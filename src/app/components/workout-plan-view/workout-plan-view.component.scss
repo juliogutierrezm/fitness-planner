@@ -4,6 +4,56 @@
   padding: 1rem;
 }
 
+.progressions-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.progressions-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  color: #2e7d32;
+  font-size: 1.1rem;
+
+  mat-icon {
+    color: #4caf50;
+  }
+}
+
+.progressions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.progression-week {
+  background: white;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.week-header {
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.week-title {
+  color: #666;
+  font-weight: normal;
+}
+
+.week-note {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.4;
+}
+
 .session-block {
   margin-top: 1.5rem;
   padding: 1rem;

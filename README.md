@@ -1,10 +1,10 @@
 # Fitness Planner
 
-Angular 19 fitness planning application with AWS Cognito Hosted UI authentication and API integration.
+Angular 19 fitness planning application with custom AWS Cognito authentication and API integration.
 
 ## Features
 
-- 🔐 AWS Cognito Hosted UI authentication with JWT tokens
+- 🔐 Custom AWS Cognito authentication (signup, confirmación, login, reset)
 - 🛡️ Protected routes with AuthGuard (`/planner`, `/plans`, `/exercise-manager`, `/diagnostics`)
 - 🌐 JWT token-based API authentication (auto-attached to API calls)
 - 🔧 SSR (Server-Side Rendering) compatible
@@ -26,16 +26,9 @@ The application will be available at `http://localhost:4200`
 
 ### 3. Test Authentication Flow
 
-**Option A: Direct Hosted UI URL**
-Navigate to the Cognito Hosted UI directly:
-```
-https://fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com/oauth2/authorize?client_id=1t134cjf2t07f018cruflg41rk&response_type=code&scope=email+openid+profile&redirect_uri=http%3A%2F%2Flocalhost%3A4200%2Fcallback
-```
-
-**Option B: Protected Route Redirect**
-1. Navigate to `http://localhost:4200/planner`
-2. You'll be automatically redirected to Cognito Hosted UI
-3. After login, you'll be redirected back to `/callback` then to `/dashboard`
+1. Navigate to `http://localhost:4200/login`
+2. Crea una cuenta en `/signup` y confirma el código
+3. Inicia sesión para llegar a `/dashboard` (los guards redirigen a onboarding/unauthorized según grupos)
 
 ### 4. Verify Everything Works
 1. After login, visit `http://localhost:4200/diagnostics`
@@ -56,8 +49,7 @@ export const environment = {
   cognito: {
     domain: 'fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_8jk4VBnTQ',
-    clientId: '1t134cjf2t07f018cruflg41rk',
-    redirectUri: 'http://localhost:4200/callback'
+    clientId: '1t134cjf2t07f018cruflg41rk'
   }
 };
 ```
@@ -65,10 +57,11 @@ export const environment = {
 ## Architecture
 
 ### Authentication Components
-- **AuthService**: Core authentication logic (login, logout, token management)
+- **AuthService**: Core authentication logic (signup, login, reset, tokens)
 - **AuthGuard**: Route protection for authenticated-only pages
+- **AuthFlowGuard**: Idempotent access for auth routes and steps
 - **AuthInterceptor**: Auto-attaches Bearer tokens to API requests
-- **CallbackComponent**: Handles OAuth callback after Cognito login
+- **Auth UI**: login, signup, confirm-signup, forgot/reset password, force-change-password
 
 ### Protected Routes
 - `/planner` - Workout planning interface
@@ -85,15 +78,12 @@ export const environment = {
 ## Authentication Flow
 
 ```
-1. User visits protected route (e.g., /planner)
-2. AuthGuard checks authentication status
-3. If not logged in → Redirect to Cognito Hosted UI
-4. User completes login in Cognito
-5. Cognito redirects to /callback with authorization code
-6. CallbackComponent exchanges code for JWT tokens
-7. Tokens stored in localStorage
-8. User redirected to /dashboard
-9. All subsequent API calls include Bearer token automatically
+1. User visits /login or a protected route
+2. AuthGuard/AuthFlowGuard valida la sesión con Cognito (Amplify)
+3. Login/signup se realizan con forms custom
+4. Cognito entrega tokens y Amplify los mantiene en sesión
+5. Guards redirigen a /dashboard o a /onboarding/unauthorized según grupos
+6. Todas las llamadas al API incluyen Authorization: Bearer <token>
 ```
 
 ## Development Commands
@@ -121,28 +111,14 @@ npm run serve:ssr:fitness-planner
 ## Testing
 
 ### Unit Tests
-- Mock utilities provided in `src/app/auth/test-utils.ts`
-- Tests avoid real network calls and Cognito API
-- localStorage and window.location properly mocked
-
 ```bash
 # Run all tests
 npm test
-
-# Run auth tests only
-npm test -- --include="**/auth/**/*.spec.ts"
 ```
 
 ## Troubleshooting
 
 ### Common Issues
-
-#### ❌ "Invalid callback URL" error
-**Problem**: Cognito rejects the callback URL
-**Solution**: 
-1. Check that `http://localhost:4200/callback` is configured in Cognito App Client settings
-2. Verify the port number matches your dev server (default: 4200)
-3. Ensure no trailing slashes in the callback URL
 
 #### ❌ Token missing or 401 Unauthorized
 **Problem**: API calls fail with authentication errors
@@ -212,6 +188,5 @@ window.location.href = '/';
 ## Production Deployment
 
 For production deployment, update `src/environments/environment.prod.ts`:
-- Change `redirectUri` to your production domain
 - Update `apiBase` to production API URL
-- Ensure Cognito User Pool is configured with production callback URLs
+- Verifica el dominio y clientId del User Pool según tu entorno

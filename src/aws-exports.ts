@@ -5,13 +5,6 @@ export const awsExports = {
   aws_cognito_region: 'us-east-1',
   aws_user_pools_id: 'us-east-1_8jk4VBnTQ',
   aws_user_pools_web_client_id: '1t134cjf2t07f018cruflg41rk',
-  oauth: {
-    domain: 'fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com',
-    scope: ['email', 'openid', 'profile'],
-    redirectSignIn: 'http://localhost:4200/callback',
-    redirectSignOut: 'http://localhost:4200/',
-    responseType: 'code'
-  },
   federationTarget: 'COGNITO_USER_POOLS',
   aws_cognito_username_attributes: ['email'],
   aws_cognito_social_providers: [],

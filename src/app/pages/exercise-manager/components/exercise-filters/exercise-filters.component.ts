@@ -27,6 +27,7 @@ export class ExerciseFiltersComponent {
   @Input() currentFilters!: ExerciseFilters;
   @Input() filterOptions!: FilterOptions;
   @Input() isLoading = false;
+  @Input() canModify = true;
 
   @Output() filtersChanged = new EventEmitter<ExerciseFilters>();
   @Output() createNewClicked = new EventEmitter<void>();

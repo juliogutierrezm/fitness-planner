@@ -1,0 +1,20 @@
+.app-splash {
+  height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  background: var(--surface-200);
+  color: #ffffff;
+}
+
+.app-splash__logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  justify-self: center;
+}
+
+.app-splash__text {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}

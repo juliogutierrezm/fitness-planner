@@ -401,18 +401,25 @@ export function getPlanCreatedAtTime(plan: { createdAt?: string; created_at?: st
 }
 
 /**
- * Purpose: return a new plan array sorted by createdAt ascending.
- * Input: plans array. Output: new sorted array.
+ * Purpose: return a new plan array sorted by createdAt (default newest first).
+ * Input: plans array + optional order. Output: new sorted array.
  * Error handling: treats non-array input as empty array.
  * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
-export function sortPlansByCreatedAt<T extends { createdAt?: string; created_at?: string }>(plans: T[]): T[] {
+export function sortPlansByCreatedAt<T extends { createdAt?: string; created_at?: string }>(
+  plans: T[],
+  order: 'asc' | 'desc' = 'desc'
+): T[] {
   const list = Array.isArray(plans) ? plans.slice() : [];
-  return list.sort((a, b) => getPlanCreatedAtTime(a) - getPlanCreatedAtTime(b));
+  return list.sort((a, b) => {
+    const aTime = getPlanCreatedAtTime(a);
+    const bTime = getPlanCreatedAtTime(b);
+    return order === 'desc' ? bTime - aTime : aTime - bTime;
+  });
 }
 
 /**
- * Purpose: build a plan ordinal map from createdAt order for visual numbering.
+ * Purpose: build a plan ordinal map from createdAt ascending order for visual numbering.
  * Input: plans array. Output: Map of planKey -> ordinal (1-based).
  * Error handling: skips plans without a stable key.
  * Standards Check: SRP OK | DRY OK | Tests Pending.
@@ -421,7 +428,7 @@ export function buildPlanOrdinalMap<T extends { planId?: string; id?: string; SK
   plans: T[]
 ): Map<string, number> {
   const map = new Map<string, number>();
-  const ordered = sortPlansByCreatedAt(plans);
+  const ordered = sortPlansByCreatedAt(plans, 'asc');
 
   ordered.forEach((plan, index) => {
     const key = getPlanKey(plan);

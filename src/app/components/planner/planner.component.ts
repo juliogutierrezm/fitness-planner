@@ -1,8 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy, TemplateRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, FormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router'; // Import ActivatedRoute and Router
-import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { ReactiveFormsModule, FormGroup, FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -28,15 +28,21 @@ import { switchMap, catchError, tap, finalize } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
-import { PreviousPlansDialogComponent } from './previous-plans-dialog.component';
-import { PlanPreviewDialogComponent } from './plan-preview-dialog.component';
-import { AiPromptDialogComponent } from './ai-prompt-dialog.component';
-import { AiParametricDialogComponent } from './ai-parametric-dialog.component';
-import { AiGenerationDialogComponent } from './ai-generation-dialog.component';
-import { ExercisePreviewDialogComponent } from './exercise-preview-dialog.component';
+import { PreviousPlansDialogComponent } from './dialogs/previous-plans-dialog.component';
+import { PlanPreviewDialogComponent } from './dialogs/plan-preview-dialog.component';
+import { AiPromptDialogComponent } from './ai/ai-prompt-dialog.component';
+import { AiParametricDialogComponent } from './ai/ai-parametric-dialog.component';
+import { AiGenerationDialogComponent } from './ai/ai-generation-dialog.component';
+import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialog.component';
 import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
+import { PlanAssignmentService } from '../../services/plan-assignment.service';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
+import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
+import { PlannerFormService } from './services/planner-form.service';
+import { PlannerExerciseFilterService } from './services/planner-exercise-filter.service';
+import { PlannerDragDropService } from './services/planner-drag-drop.service';
+import { PlannerStateService } from './services/planner-state.service';
 import {
   calculateAge,
   buildPlanOrdinalMap,
@@ -51,19 +57,6 @@ import {
   parsePlanSessions,
   sortPlansByCreatedAt
 } from '../../shared/shared-utils';
-
-interface ProgressionWeek {
-  week: number;
-  title?: string;
-  note: string;
-}
-
-interface PlanProgressions {
-  showProgressions: boolean;
-  totalWeeks: number;
-  weeks: ProgressionWeek[];
-}
-
 
 @Component({
   selector: 'app-planner',
@@ -113,14 +106,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: ''
+    equipmentTypeFilter: '',
+    difficultyFilter: '',
+    groupTypeFilter: ''
   };
 
   // Filter options populated from data
   filterOptions: FilterOptions = {
     categoryOptions: [],
     muscleGroupOptions: [],
-    equipmentTypeOptions: []
+    equipmentTypeOptions: [],
+    difficultyOptions: [],
+    groupTypeOptions: []
   };
   private readonly functionalCategoryLabel = 'Funcional';
 
@@ -141,6 +138,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
   sessions: Session[] = [];
   exerciseListConnectedTo: string[] = [];
   sessionsConnectedTo: Record<string, string[]> = {};
+
+  // Video hover preview state
+  hoveredExercise: Exercise | PlanItem | null = null;
+  previewPosition = { x: 0, y: 0 };
 
   @ViewChild('saveTemplateDialog') saveTemplateDialog?: TemplateRef<any>;
 
@@ -178,6 +179,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   isGenerating: boolean = false;
   currentAiStep?: AiStep;
   private pollingSub?: Subscription;
+  private planAssignmentSub?: Subscription;
   private currentUserId: string | null = null;
   currentExecutionId!: string;
   private aiGenDialogRef: any = null;
@@ -199,7 +201,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
 
   constructor(
-    private fb: FormBuilder,
+    private formService: PlannerFormService,
+    private exerciseFilterService: PlannerExerciseFilterService,
+    private dragDropService: PlannerDragDropService,
+    private stateService: PlannerStateService,
     private cdr: ChangeDetectorRef,
     private api: ExerciseApiService,
     private authService: AuthService,
@@ -207,7 +212,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private userApi: UserApiService
+    private userApi: UserApiService,
+    private planAssignmentService: PlanAssignmentService
   ) {
     console.log('PlannerComponent constructor called');
   }
@@ -316,11 +322,14 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private applyPlanToPlanner(aiPlan: any): void {
+    // Handle new format with meta + plan, or legacy format with sessions array
     const sessions = Array.isArray(aiPlan)
       ? aiPlan
-      : Array.isArray(aiPlan?.sessions)
-        ? aiPlan.sessions
-        : [];
+      : Array.isArray(aiPlan?.plan)
+        ? aiPlan.plan
+        : Array.isArray(aiPlan?.sessions)
+          ? aiPlan.sessions
+          : [];
     const patch: Partial<{ userName: string; objective: string; sessionCount: number; notes: string }> = {
       sessionCount: sessions.length
     };
@@ -350,6 +359,38 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.applyUiState();
 
     this.snackBar.open('Plan de IA cargado exitosamente!', undefined, { duration: 2000 });
+    this.cdr.markForCheck();
+  }
+
+  private applyPlanToPlannerFromData(aiPlan: any): void {
+    if (!aiPlan) return;
+
+    // Handle new format with meta + plan, or legacy format with sessions array
+    const sessions = Array.isArray(aiPlan.plan)
+      ? aiPlan.plan
+      : Array.isArray(aiPlan.sessions)
+        ? aiPlan.sessions
+        : [];
+    const patch: Partial<{ objective: string; sessionCount: number; notes: string }> = {
+      sessionCount: sessions.length,
+      objective: aiPlan.objective,
+      notes: aiPlan.generalNotes
+    };
+
+    this.form.patchValue(patch);
+    if (aiPlan.progressions) {
+      this.setProgressionsFromPlan(aiPlan.progressions);
+    }
+
+    const enrichedSessions = enrichPlanSessionsFromLibrary(sessions, this.exerciseLibraryMap);
+    const normalizedSessions = normalizePlanSessionsForRender(enrichedSessions);
+
+    this.sessions = normalizedSessions;
+    this.rebuildDropLists();
+    this.persist();
+    this.applyUiState();
+
+    this.snackBar.open('Plan de IA cargado para asignar.', undefined, { duration: 2000 });
     this.cdr.markForCheck();
   }
 
@@ -393,14 +434,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   private applyTemplateNameValidators(): void {
-    const control = this.form?.get('templateName');
-    if (!control) return;
-    if (this.isTemplateMode) {
-      control.setValidators([Validators.required]);
-    } else {
-      control.clearValidators();
-    }
-    control.updateValueAndValidity({ emitEvent: false });
+    this.formService.applyTemplateNameValidators(this.form, this.isTemplateMode);
   }
 
   /**
@@ -614,6 +648,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    this.planAssignmentService.clearPlanData();
+    if (this.planAssignmentSub) {
+      this.planAssignmentSub.unsubscribe();
+    }
   }
 
 
@@ -726,20 +764,20 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.planLoaded = !this.isEditMode && !hasTemplateParam;
     this.userLoaded = true;
     this.initialLoadComplete = false;
-    this.form = this.fb.group({
-      userName: [''],
-      templateName: [''],
-      sessionCount: [3],
-      notes: [''],
-      targetUserId: [''],
-      objective: [''],
-      date: [new Date()]
-    });
+    this.form = this.formService.createPlannerForm();
     this.resetTemplateState();
     if (this.isCreateTemplateMode) {
       this.isTemplateMode = true;
     }
     this.applyTemplateNameValidators();
+
+    this.planAssignmentSub = this.planAssignmentService.currentPlanData.subscribe(data => {
+      if (data && data.user && data.user.id && data.plan) {
+        this.loadUser(data.user.id);
+        this.applyPlanToPlannerFromData(data.plan);
+        this.planAssignmentService.clearPlanData();
+      }
+    });
 
     // Read userId from queryParams and load user immediately if valid
     const qpUserId = this.route.snapshot.queryParamMap.get('userId');
@@ -921,12 +959,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   clearFilters() {
-    this.currentFilters = {
-      searchValue: '',
-      categoryFilter: '',
-      muscleGroupFilter: '',
-      equipmentTypeFilter: ''
-    };
+    this.currentFilters = this.exerciseFilterService.getDefaultFilters();
     this.applyCombinedFilter();
   }
 
@@ -954,105 +987,26 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   private populateFilterOptions(): void {
-    const categories = new Set<string>();
-    const muscleGroups = new Set<string>();
-    const equipmentTypes = new Set<string>();
-
-    this.exercises.forEach(ex => {
-      const category = this.getFieldValue(ex, 'category');
-      const muscleGroup = this.getFieldValue(ex, 'muscle_group');
-      const equipmentType = this.getFieldValue(ex, 'equipment_type');
-
-      if (category) categories.add(category);
-      if (muscleGroup) muscleGroups.add(muscleGroup);
-      if (equipmentType) equipmentTypes.add(equipmentType);
-    });
-
-    categories.add(this.functionalCategoryLabel);
-
-    this.filterOptions = {
-      categoryOptions: Array.from(categories).sort(),
-      muscleGroupOptions: Array.from(muscleGroups).sort(),
-      equipmentTypeOptions: Array.from(equipmentTypes).sort()
-    };
+    this.filterOptions = this.exerciseFilterService.buildFilterOptions(
+      this.exercises,
+      this.functionalCategoryLabel
+    );
   }
 
   private loadFiltersFromStorage(): void {
-    try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
-      if (saved) {
-        const filters = JSON.parse(saved);
-        this.currentFilters = {
-          searchValue: filters.searchValue || '',
-          categoryFilter: filters.categoryFilter || '',
-          muscleGroupFilter: filters.muscleGroupFilter || '',
-          equipmentTypeFilter: filters.equipmentTypeFilter || ''
-        };
-      }
-    } catch (error) {
-      console.warn('Failed to load filters from storage:', error);
-    }
-  }
-
-  private saveFiltersToStorage(): void {
-    try {
-      const filters = this.currentFilters;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filters));
-    } catch (error) {
-      console.warn('Failed to save filters to storage:', error);
-    }
-  }
-
-  getFieldValue(exercise: Exercise, field: string): any {
-    // Handle field fallbacks for legacy data
-    switch (field) {
-      case 'name_es':
-        return exercise.name_es || '';
-      case 'equipment_type':
-        return exercise.equipment_type || '';
-      case 'muscle_group':
-        return exercise.muscle_group || exercise.muscle;
-      case 'exercise_type':
-        return exercise.exercise_type || exercise.category;
-      default:
-        return (exercise as any)[field];
-    }
-  }
-
-  private isFunctionalExercise(exercise: Exercise): boolean {
-    const functionalValue = (exercise as any).functional;
-    if (functionalValue === true) return true;
-    if (typeof functionalValue === 'string') return functionalValue.trim().length > 0;
-    return false;
+    this.currentFilters = this.exerciseFilterService.loadFiltersFromStorage(
+      this.STORAGE_KEY,
+      this.exerciseFilterService.getDefaultFilters()
+    );
   }
 
   private applyCombinedFilter(): void {
-    // Combine all filters and apply to data source
-    this.filteredExercises = this.exercises.filter(exercise => {
-      // Text search on name_es only
-      const matchesSearch = !this.currentFilters.searchValue.trim() ||
-        (this.getFieldValue(exercise, 'name_es') || '').toLowerCase()
-          .includes(this.currentFilters.searchValue.toLowerCase());
-
-      // Category filter
-      const selectedCategory = this.currentFilters.categoryFilter;
-      const matchesCategory = !selectedCategory ||
-        (selectedCategory === this.functionalCategoryLabel
-          ? this.isFunctionalExercise(exercise)
-          : this.getFieldValue(exercise, 'category') === selectedCategory);
-
-      // Muscle group filter
-      const matchesMuscleGroup = !this.currentFilters.muscleGroupFilter ||
-        this.getFieldValue(exercise, 'muscle_group') === this.currentFilters.muscleGroupFilter;
-
-      // Equipment type filter
-      const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
-        this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
-
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
-    });
-
-    this.saveFiltersToStorage();
+    this.filteredExercises = this.exerciseFilterService.applyCombinedFilter(
+      this.exercises,
+      this.currentFilters,
+      this.functionalCategoryLabel,
+      this.STORAGE_KEY
+    );
   }
 
   private createDefaultProgressions(showProgressions: boolean): PlanProgressions {
@@ -1133,20 +1087,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   private applyUiState() {
-    try {
-      const key = this.getUiKey();
-      const raw = localStorage.getItem(key);
-      if (!raw) return;
-      const ui = JSON.parse(raw) as Array<{ id: number; collapsed?: boolean }>;
-      const map = new Map(ui.map(x => [x.id, x]));
-      this.sessions = this.sessions.map(s => ({ ...s, ...map.get(s.id) }));
-    } catch {}
+    this.sessions = this.stateService.applyUiState(this.sessions, this.getUiKey());
   }
 
   private persistUiState() {
-    const key = this.getUiKey();
-    const minimal = this.sessions.map((s: any) => ({ id: s.id, collapsed: s.collapsed }));
-    localStorage.setItem(key, JSON.stringify(minimal));
+    this.stateService.persistUiState(this.sessions, this.getUiKey());
   }
 
   private transformExercises(rawItems: any[]): Exercise[] {
@@ -1289,6 +1234,47 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Purpose: show thumbnail preview on hover over video button.
+   * Input: Exercise or PlanItem, MouseEvent. Output: sets hover state and position.
+   * Error handling: none; graceful no-op if element not found.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    this.hoveredExercise = exercise;
+    this.previewPosition = {
+      x: rect.right + 10,
+      y: rect.top
+    };
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: clear thumbnail preview on mouse leave.
+   * Input: none. Output: clears hover state.
+   * Error handling: none.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onVideoLeave(): void {
+    this.hoveredExercise = null;
+    this.previewPosition = { x: 0, y: 0 };
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Purpose: get thumbnail or preview URL for an exercise or plan item.
+   * Input: Exercise or PlanItem. Output: URL string or null.
+   * Error handling: returns null if no preview available.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getPreviewUrl(exercise: Exercise | PlanItem): string | null {
+    const ex = exercise as any;
+    return ex.thumbnail || ex.preview_url || null;
+  }
+
+  /**
    * Purpose: initialize empty sessions for a new plan flow.
    * Input: none (uses form sessionCount). Output: updates sessions and UI state.
    * Error handling: defaults to 1 session when count is invalid.
@@ -1304,139 +1290,57 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
 
   private updateSessions(count: number) {
-    const currentSessions = this.sessions || [];
-    this.sessions = Array.from({ length: count }, (_, i) => ({
-      id: i + 1,
-      name: `Sesión ${i + 1}`,
-      items: currentSessions[i]?.items || []
-    }));
+    this.sessions = this.formService.buildSessionsFromCount(this.sessions || [], count);
     this.rebuildDropLists();
     this.cdr.markForCheck();
   }
 
   private rebuildDropLists() {
     if (!this.sessions) return;
-    this.exerciseListConnectedTo = this.sessions.map(s => `session-${s.id}`);
-    this.sessionsConnectedTo = this.sessions.reduce((acc, s) => {
-      acc[`session-${s.id}`] = [
-        'exerciseList',
-        ...this.sessions.filter(x => x.id !== s.id).map(x => `session-${x.id}`)
-      ];
-      return acc;
-    }, {} as any);
+    const connections = this.dragDropService.buildDropListConnections(this.sessions);
+    this.exerciseListConnectedTo = connections.exerciseListConnectedTo;
+    this.sessionsConnectedTo = connections.sessionsConnectedTo;
   }
 
   private buildPlanItemFromExercise(ex: Exercise, overrides: Partial<PlanItem> = {}): PlanItem {
-    const defaults: Partial<PlanItem> = {
-      sets: 3,
-      reps: 10,
-      rest: 60,
-      weight: undefined,
-      selected: false,
-      isGroup: false
-    };
-
-    return {
-      ...ex,
-      ...defaults,
-      ...overrides,
-      id: ex.id,
-      name: ex.name_es || ex.name || 'Ejercicio sin nombre',
-      name_es: ex.name_es,
-      equipment_type: ex.equipment_type || ''
-    } as PlanItem;
+    return this.stateService.buildPlanItemFromExercise(ex, overrides);
   }
 
   dropSession(event: CdkDragDrop<Session[]>) {
-    if (event.previousContainer === event.container) {
-      moveItemInArray(this.sessions, event.previousIndex, event.currentIndex);
-      this.sessions.forEach((s, i) => {
-        s.id = i + 1;
-        s.name = `Sesión ${i + 1}`;
-      });
-      this.rebuildDropLists();
-      this.persist();
-      this.cdr.markForCheck();
-    }
+    const reordered = this.dragDropService.reorderSessions(event, this.sessions);
+    if (!reordered) return;
+    this.rebuildDropLists();
+    this.persist();
+    this.cdr.markForCheck();
   }
 
   drop(event: CdkDragDrop<any, any>, session?: Session) {
-    const prevId = event.previousContainer.id;
-    const currId = event.container.id;
-    const draggedItem = event.item.data;
+    const result = this.dragDropService.handleDrop(
+      event,
+      session!,
+      this.sessions,
+      (exercise) => this.buildPlanItemFromExercise(exercise)
+    );
 
-    // Handle child items being dragged out of groups
-    if (this.isChildItem(draggedItem, session!)) {
-      this.handleChildDrop(draggedItem, event, session!);
-      return;
-    }
+    if (!result.handled) return;
 
-    if (prevId === currId && session) {
-      moveItemInArray(session.items, event.previousIndex, event.currentIndex);
-      session.items = [...session.items];
-      this.persist();
-      this.cdr.detectChanges();
-      return;
-    }
-
-    if (prevId === 'exerciseList' && session) {
-      const ex = event.item.data as Exercise;
-      const newItem = this.buildPlanItemFromExercise(ex);
-      session.items.splice(event.currentIndex, 0, newItem);
-      session.items = [...session.items];
-      this.persist();
-      this.cdr.detectChanges();
-      this.addRecent(ex);
-      this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
-      return;
-    }
-
-    if (prevId.startsWith('session-') && currId.startsWith('session-') && session) {
-      transferArrayItem(event.previousContainer.data, session.items, event.previousIndex, event.currentIndex);
-      const fromId = parseInt(prevId.split('-')[1], 10);
-      const fromSession = this.sessions.find(s => s.id === fromId)!;
-      session.items = [...session.items];
-      fromSession.items = [...fromSession.items];
-      this.persist();
-      this.cdr.detectChanges();
-    }
-  }
-
-  private isChildItem(item: any, session: Session): boolean {
-    return session.items.some(group => group.isGroup && group.children?.includes(item));
-  }
-
-  private handleChildDrop(child: PlanItem, event: CdkDragDrop<any, any>, session: Session) {
-    // Find the group containing this child
-    const group = session.items.find(g => g.isGroup && g.children?.includes(child));
-    if (!group) return;
-
-    const childIndex = group.children!.indexOf(child);
-    group.children!.splice(childIndex, 1);
-
-    // If group becomes empty, remove it
-    if (group.children!.length === 0) {
-      const groupIndex = session.items.indexOf(group);
-      session.items.splice(groupIndex, 1);
-    }
-
-    // Insert child as normal item at target position
-    session.items.splice(event.currentIndex, 0, child);
-    session.items = [...session.items];
     this.persist();
     this.cdr.detectChanges();
+
+    if (result.addedExercise) {
+      this.addRecent(result.addedExercise);
+      this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
+    }
   }
 
   removeItem(session: Session, idx: number) {
-    const removed = session.items[idx];
-    session.items.splice(idx, 1);
-    session.items = [...session.items];
+    const removed = this.stateService.removeItem(session, idx);
+    if (!removed) return;
     this.persist();
     this.cdr.detectChanges();
     const ref = this.snackBar.open('Ejercicio eliminado', 'Deshacer', { duration: 4000 });
     ref.onAction().subscribe(() => {
-      session.items.splice(idx, 0, removed);
-      session.items = [...session.items];
+      this.stateService.restoreItem(session, idx, removed);
       this.persist();
       this.cdr.markForCheck();
       this.liveAnnounce('Ejercicio restaurado');
@@ -1450,21 +1354,16 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   toggleAllSelection(session: Session) {
-    const allSelected = this.allSelected(session);
-    session.items.forEach(item => {
-      if (!item.isGroup) {
-        item.selected = !allSelected;
-      }
-    });
+    this.stateService.toggleAllSelection(session);
     this.cdr.detectChanges();
   }
 
   allSelected(session: Session): boolean {
-    return session.items.every(item => item.isGroup || item.selected);
+    return this.stateService.allSelected(session);
   }
 
   someSelected(session: Session): boolean {
-    return session.items.some(item => !item.isGroup && item.selected);
+    return this.stateService.someSelected(session);
   }
 
   updateSelection(session: Session) {
@@ -1472,54 +1371,28 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   hasSelectedItems(session: Session): boolean {
-    return session.items.filter(item => !item.isGroup && item.selected).length >= 2;
+    return this.stateService.hasSelectedItems(session);
   }
 
   hasSelectedGroup(session: Session): boolean {
-    return session.items.some(item => item.isGroup && item.selected);
+    return this.stateService.hasSelectedGroup(session);
   }
 
   groupSelected(session: Session) {
-    const selectedItems = session.items.filter(item => !item.isGroup && item.selected);
-    if (selectedItems.length < 2) return;
-
-    let newId = Date.now();
-    while (session.items.some(item => Number(item.id) === newId)) {
-      newId += 1;
-    }
-
-    const group: PlanItem = {
-      id: newId.toString(),
-      name: 'Superserie',
-      sets: 0,
-      reps: 0,
-      rest: 0,
-      isGroup: true,
-      children: selectedItems.map(item => ({ ...item, selected: false }))
-    };
-
-    const firstIndex = session.items.findIndex(item => !item.isGroup && item.selected);
-    session.items = session.items.filter(item => item.isGroup || !item.selected);
-    session.items.splice(firstIndex, 0, group);
-
+    const grouped = this.stateService.groupSelected(session);
+    if (!grouped) return;
     this.persist();
     this.cdr.detectChanges();
   }
 
   ungroupSelected(session: Session) {
-    const group = session.items.find(item => item.isGroup && item.selected);
-    if (!group || !group.children) return;
-
-    const idx = session.items.indexOf(group);
-    const snapshot: any = JSON.parse(JSON.stringify(group));
-    session.items.splice(idx, 1, ...group.children);
-
+    const result = this.stateService.ungroupSelected(session);
+    if (!result) return;
     this.persist();
     this.cdr.detectChanges();
     const ref = this.snackBar.open('Superserie deshecha', 'Deshacer', { duration: 4000 });
     ref.onAction().subscribe(() => {
-      session.items.splice(idx, snapshot.children!.length, snapshot);
-      session.items = [...session.items];
+      this.stateService.restoreGroup(session, result.index, result.snapshot);
       this.persist();
       this.cdr.markForCheck();
     });
@@ -1527,22 +1400,13 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   ungroupGroup(session: Session, index: number) {
-    const group = session.items[index];
-    if (!group.isGroup || !group.children) return;
-
-    const snapshot: any = JSON.parse(JSON.stringify(group));
-    session.items = [
-      ...session.items.slice(0, index),
-      ...group.children,
-      ...session.items.slice(index + 1)
-    ];
-
+    const result = this.stateService.ungroupGroup(session, index);
+    if (!result) return;
     this.persist();
     this.cdr.detectChanges();
     const ref = this.snackBar.open('Superserie deshecha', 'Deshacer', { duration: 4000 });
     ref.onAction().subscribe(() => {
-      session.items.splice(index, snapshot.children!.length, snapshot);
-      session.items = [...session.items];
+      this.stateService.restoreGroup(session, result.index, result.snapshot);
       this.persist();
       this.cdr.markForCheck();
     });
@@ -1550,45 +1414,38 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   canDragGroup(item: PlanItem): boolean {
-    return true; // Superserie blocks are now draggable as units
+    return this.stateService.canDragGroup(); // Superserie blocks are now draggable as units
   }
 
   removeGroup(session: Session, idx: number) {
-    const removed = session.items[idx];
-    session.items.splice(idx, 1);
-    session.items = [...session.items];
+    const removed = this.stateService.removeGroup(session, idx);
+    if (!removed) return;
     this.persist();
     this.cdr.detectChanges();
     const ref = this.snackBar.open('Superserie eliminada', 'Deshacer', { duration: 4000 });
     ref.onAction().subscribe(() => {
-      session.items.splice(idx, 0, removed);
-      session.items = [...session.items];
+      this.stateService.restoreItem(session, idx, removed);
       this.persist();
       this.cdr.markForCheck();
     });
   }
 
   addExerciseToSession(session: Session, ex: Exercise) {
-    const item = this.buildPlanItemFromExercise(ex, { weight: undefined });
-    session.items = [item, ...session.items];
+    this.stateService.addExerciseToSession(session, ex);
     this.persist();
     this.cdr.markForCheck();
     this.addRecent(ex);
-    this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
-    this.liveAnnounce('Ejercicio añadido');
+    this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
+    this.liveAnnounce('Ejercicio a¤adido');
   }
 
   toggleFavorite(ex: Exercise) {
-    const exists = this.favorites.find(f => f.id === ex.id);
-    this.favorites = exists
-      ? this.favorites.filter(f => f.id !== ex.id)
-      : [ex, ...this.favorites].slice(0, 50);
-    localStorage.setItem('fp_favorites', JSON.stringify(this.favorites));
+    this.favorites = this.stateService.toggleFavorite(this.favorites, ex);
     this.cdr.markForCheck();
   }
 
   isFavorite(ex: Exercise): boolean {
-    return this.favorites.some(f => f.id === ex.id);
+    return this.stateService.isFavorite(this.favorites, ex);
   }
 
   onOpenAddMenu(ex: Exercise) {
@@ -1596,25 +1453,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   private addRecent(ex: Exercise) {
-    this.recents = [ex, ...this.recents.filter(r => r.id !== ex.id)].slice(0, 12);
-    localStorage.setItem('fp_recents', JSON.stringify(this.recents));
+    this.recents = this.stateService.addRecent(this.recents, ex);
   }
 
   toggleCollapse(session: any) {
-    session.collapsed = !session.collapsed;
+    this.stateService.toggleCollapse(session);
     this.persistUiState();
     this.cdr.markForCheck();
   }
 
   // Drag auto-scroll near viewport edges
   onDragMoved(event: any) {
-    const y = event.pointerPosition?.y ?? 0;
-    const threshold = 80;
-    if (y < threshold) {
-      window.scrollBy({ top: -20, behavior: 'smooth' });
-    } else if (y > (window.innerHeight - threshold)) {
-      window.scrollBy({ top: 20, behavior: 'smooth' });
-    }
+    this.dragDropService.handleDragMoved(event);
   }
 
 
@@ -1756,6 +1606,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     }
 
+    if (!this.validateSessionsHaveItems(enrichedSessions)) {
+      return null;
+    }
+
     const incompleteItems = findIncompletePlanItems(enrichedSessions);
     if (incompleteItems.length === 0) {
       return enrichedSessions;
@@ -1776,6 +1630,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
       : 'Hay ejercicios incompletos. Recarga la biblioteca o reemplazalos antes de guardar.';
     this.snackBar.open(message, 'Cerrar', { duration: 4500 });
     return null;
+  }
+
+  /**
+   * Purpose: enforce that every session has at least one exercise before save.
+   * Input: sessions array. Output: boolean indicating validation pass/fail.
+   * Error handling: logs details and shows snackbar when empty sessions are found.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private validateSessionsHaveItems(sessions: Session[]): boolean {
+    const emptySessions = (sessions || []).filter(session => !session?.items || session.items.length === 0);
+    if (emptySessions.length === 0) {
+      return true;
+    }
+
+    console.warn('[Planner] Empty sessions detected before save', {
+      emptySessionIds: emptySessions.map(session => session.id),
+      emptySessionNames: emptySessions.map(session => session.name),
+      totalSessions: sessions?.length || 0
+    });
+    this.snackBar.open(
+      'Cada sesion debe tener al menos un ejercicio. Completa o elimina las sesiones vacias antes de guardar.',
+      'Cerrar',
+      { duration: 4500 }
+    );
+    return false;
   }
 
   /**
@@ -1919,3 +1798,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
   }
 }
+
+
+
+
+

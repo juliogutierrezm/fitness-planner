@@ -1,0 +1,107 @@
+@use '../users/users.component.scss';
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  justify-items: center;
+}
+
+.metric-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-0);
+  text-align: center;
+  width: 100%;
+}
+
+.metric-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    #1976d2,
+    var(--primary-color, #d2195d)
+  );
+  color: #fff;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 0 0 0 rgba(34, 211, 238, 0.45);
+}
+
+.metric-icon mat-icon {
+  color: #fff;
+}
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--ink-500);
+}
+
+.list-card h3 {
+  margin: 0 0 4px 0;
+}
+
+.list-card p {
+  margin: 0;
+  color: var(--ink-500);
+  font-size: 13px;
+}
+
+.row-actions button {
+  background: linear-gradient(
+    135deg,
+    var(--accent-500),
+    var(--primary-color, #1976d2)
+  );
+  color: #e4e6eb;
+  font-weight: 600;
+}
+
+.unauthorized .actions {
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.arrow-back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  mat-icon {
+    color: #fff;
+    font-size: 30px;
+    width: 30px;
+    height: 30px;
+  }
+
+  button {
+    margin-right: 1rem;
+    color: #e4e6eb;
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+  }
+}

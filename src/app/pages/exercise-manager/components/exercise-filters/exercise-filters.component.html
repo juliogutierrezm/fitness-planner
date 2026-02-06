@@ -29,12 +29,28 @@
         </mat-select>
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+        <mat-label>Dificultad</mat-label>
+        <mat-select [(ngModel)]="currentFilters.difficultyFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="">Todas</mat-option>
+            <mat-option *ngFor="let diff of filterOptions.difficultyOptions" [value]="diff">{{ diff }}</mat-option>
+        </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+        <mat-label>Tipo de Grupo</mat-label>
+        <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="">Todos</mat-option>
+            <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
+        </mat-select>
+    </mat-form-field>
+
     <div class="action-buttons">
-        <button mat-raised-button color="info" (click)="onRefresh()" [disabled]="isLoading">
+        <button mat-fab extended color="info" (click)="onRefresh()" [disabled]="isLoading">
             <mat-icon>refresh</mat-icon>
             Refrescar
         </button>
-        <button mat-raised-button color="primary" (click)="onCreateNew()" [disabled]="isLoading">
+        <button *ngIf="canModify" mat-fab extended color="primary" (click)="onCreateNew()" [disabled]="isLoading">
             <mat-icon>add</mat-icon>
             Nuevo Ejercicio
         </button>

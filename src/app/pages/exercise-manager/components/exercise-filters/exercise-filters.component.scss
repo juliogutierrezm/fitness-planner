@@ -11,6 +11,25 @@
   display: flex;
   gap: 0.5rem;
   margin-left: auto;
+
+  button[mat-fab] {
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+    color: #e4e6eb;
+    font-weight: 600;
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    mat-icon {
+      color: #e4e6eb;
+    }
+  }
 }
 
 // Responsive design for mobile

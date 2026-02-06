@@ -1,0 +1,207 @@
+<div class="body-metrics-page" *ngIf="clientId">
+  
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>accessibility_new</mat-icon>
+        Composición corporal de {{ client?.givenName || 'Cliente' }} {{ client?.familyName || '' }}
+      </mat-card-title>
+      <mat-card-subtitle>    <div class="identity">
+        <h1></h1>
+        <p class="role">Histórico de mediciones</p>
+      </div></mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+  <section class="hero">
+    <button mat-mini-fab color="primary" aria-label="Volver" [routerLink]="['/users']">
+      <mat-icon>arrow_back</mat-icon>
+    </button>    
+  </section>
+  
+  <section class="history-section">
+    <mat-card class="summary-card">
+      <div class="summary-header">
+        <div class="form-row">
+          <mat-icon>timeline</mat-icon>
+          <p class="eyebrow">Última medición</p>
+        </div>
+        <span class="count-badge" *ngIf="metricsHistory.length">
+          {{ metricsHistory.length }} medición{{ metricsHistory.length === 1 ? '' : 'es' }}
+        </span>
+      </div>
+
+      <div *ngIf="loadingMetrics" class="loading-row" role="status" aria-live="polite" [attr.aria-busy]="loadingMetrics">
+        <mat-spinner diameter="28"></mat-spinner>
+        <span>Cargando historial...</span>
+      </div>
+
+      <div *ngIf="!loadingMetrics">
+        <div *ngIf="latestMetricRows.length > 0" class="metrics-summary-grid">
+          <article class="summary-row" *ngFor="let row of latestMetricRows">
+            <div class="label">{{ row.label }}</div>
+            <div class="value">{{ row.value }} <span class="unit" *ngIf="row.unit">{{ row.unit }}</span></div>
+          </article>
+        </div>
+        <p class="empty-state" *ngIf="latestMetricRows.length === 0">Sin mediciones registradas.</p>
+        <mat-divider></mat-divider>
+        <div class="table-wrapper">
+          <mat-table [dataSource]="metricsHistory" class="metrics-table">
+            <ng-container matColumnDef="date">
+              <mat-header-cell *matHeaderCellDef>Fecha</mat-header-cell>
+              <mat-cell *matCellDef="let metric">
+                {{ metric.measurementDate | date: 'dd/MM/yy' }}
+              </mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="weightKg">
+              <mat-header-cell *matHeaderCellDef>Peso kg</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.weightKg ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="heightCm">
+              <mat-header-cell *matHeaderCellDef>Altura cm</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.heightCm ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="bodyFatPercentage">
+              <mat-header-cell *matHeaderCellDef>Grasa %</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.bodyFatPercentage ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="muscleMassKg">
+              <mat-header-cell *matHeaderCellDef>Musculo kg</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.muscleMassKg ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="musclePercentage">
+              <mat-header-cell *matHeaderCellDef>Musculo %</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.musclePercentage ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="visceralFatLevel">
+              <mat-header-cell *matHeaderCellDef>Visceral</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.visceralFatLevel ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="bmi">
+              <mat-header-cell *matHeaderCellDef>IMC</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.bmi ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="basalMetabolicRate">
+              <mat-header-cell *matHeaderCellDef>TMB kcal</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.basalMetabolicRate ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="metabolicAge">
+              <mat-header-cell *matHeaderCellDef>Edad metab.</mat-header-cell>
+              <mat-cell *matCellDef="let metric">{{ metric.metabolicAge ?? '—' }}</mat-cell>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <mat-header-cell *matHeaderCellDef></mat-header-cell>
+              <mat-cell *matCellDef="let metric">
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Eliminar medición"
+                  (click)="confirmDeleteMetric(metric)"
+                  [disabled]="loadingMetrics || deletingMeasurementDate === metric.measurementDate"
+                  aria-label="Eliminar medición"
+                >
+                  <mat-progress-spinner
+                    *ngIf="deletingMeasurementDate === metric.measurementDate"
+                    mode="indeterminate"
+                    diameter="20"
+                  ></mat-progress-spinner>
+                  <mat-icon *ngIf="deletingMeasurementDate !== metric.measurementDate">delete</mat-icon>
+                </button>
+              </mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+          </mat-table>
+          <p class="empty-state" *ngIf="!loadingMetrics && metricsHistory.length === 0">Registra la primera medición.</p>
+        </div>
+      </div>
+    </mat-card>
+  </section>
+
+  <section class="form-section">
+    <mat-card>
+      <mat-card-header>
+        <div>
+          <div class="form-row">
+            <mat-icon>note_add</mat-icon>
+            <p class="eyebrow">Nueva medición</p>
+          </div>
+          <p class="eyebrow">Registrar datos físicos</p>
+          <p class="empty-state" *ngIf="latestMetricRows.length === 0">El IMC se calcula automáticamente a partir de peso y altura.</p>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="metricForm" (ngSubmit)="submitMetric()">
+          <div class="form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Peso</mat-label>
+              <input matInput formControlName="weightKg" type="number" inputmode="decimal" />
+              <span matSuffix>kg</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Altura</mat-label>
+              <input matInput formControlName="heightCm" type="number" inputmode="decimal" />
+              <span matSuffix>cm</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Grasa corporal</mat-label>
+              <input matInput formControlName="bodyFatPercentage" type="number" inputmode="decimal" />
+              <span matSuffix>%</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Masa muscular</mat-label>
+              <input matInput formControlName="muscleMassKg" type="number" inputmode="decimal" />
+              <span matSuffix>kg</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Porcentaje muscular</mat-label>
+              <input matInput formControlName="musclePercentage" type="number" inputmode="decimal" />
+              <span matSuffix>%</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Nivel grasa visceral</mat-label>
+              <input matInput formControlName="visceralFatLevel" type="number" inputmode="decimal" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>IMC estimado</mat-label>
+              <input matInput [value]="computedBmiDisplay" disabled />
+              <span matSuffix>kg/m²</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Metabolismo basal</mat-label>
+              <input matInput formControlName="basalMetabolicRate" type="number" inputmode="decimal" />
+              <span matSuffix>kcal</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Edad metabólica</mat-label>
+              <input matInput formControlName="metabolicAge" type="number" inputmode="decimal" />
+              <span matSuffix>años</span>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Fecha de medición</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="measurementDate" />
+              <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+          </div>
+          <div class="form-actions">
+            <button mat-raised-button color="primary" type="submit" [disabled]="savingMetric || !canSubmitMetric">
+              <mat-progress-spinner *ngIf="savingMetric" mode="indeterminate" diameter="20"></mat-progress-spinner>
+              <span *ngIf="!savingMetric">Guardar medición</span>
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </section>
+</div>

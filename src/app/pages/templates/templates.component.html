@@ -2,7 +2,7 @@
   <mat-card class="header-card">
     <mat-card-header>
       <mat-card-title>
-        <mat-icon>view_list</mat-icon>
+        <mat-icon>style</mat-icon>
         Plantillas
       </mat-card-title>
       <mat-card-subtitle>Gestión de plantillas de entrenamiento reutilizables</mat-card-subtitle>
@@ -10,7 +10,7 @@
   </mat-card>
 
   <div class="plans-actions">
-    <button mat-raised-button color="primary" (click)="createTemplate()">
+    <button *ngIf="!isGymAdmin" mat-fab extended color="primary" (click)="createTemplate()">
       <mat-icon>add</mat-icon>
       Crear plantilla nueva
     </button>
@@ -35,16 +35,6 @@
         <input matInput [matDatepicker]="toPicker" [(ngModel)]="dateTo" (dateChange)="applyFilters()" />
         <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
         <mat-datepicker #toPicker></mat-datepicker>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="user-select" *ngIf="assignableUsers.length > 0">
-        <mat-label>Usuario destino</mat-label>
-        <mat-select [(ngModel)]="selectedUserId">
-          <mat-option value="">Selecciona un usuario</mat-option>
-          <mat-option *ngFor="let user of assignableUsers; trackBy: trackByUserId" [value]="user.id">
-            {{ user | userDisplayName }}
-          </mat-option>
-        </mat-select>
       </mat-form-field>
 
       <button mat-button color="primary" (click)="clearFilters()">
@@ -79,15 +69,17 @@
               </div>
             </div>
             <div class="right">
-              <button mat-icon-button color="primary" [routerLink]="['/planner', getPlanId(template)]" matTooltip="Editar">
+              <button *ngIf="!isGymAdmin" mat-mini-fab color="primary" [routerLink]="['/planner', getPlanId(template)]" matTooltip="Editar">
                 <mat-icon>edit</mat-icon>
               </button>
-              <button mat-icon-button color="accent" (click)="assignTemplate(template)" matTooltip="Asignar a usuario">
+              <button *ngIf="!isGymAdmin" mat-mini-fab color="accent" (click)="assignTemplate(template)" matTooltip="Asignar a usuario">
                 <mat-icon>person_add</mat-icon>
               </button>
-              <button mat-icon-button color="warn" (click)="deleteTemplate(getPlanId(template))" matTooltip="Eliminar">
+              <div class="trash-icon">
+              <button *ngIf="!isGymAdmin" mat-mini-fab color="warn" (click)="deleteTemplate(getPlanId(template))" matTooltip="Eliminar">
                 <mat-icon>delete</mat-icon>
               </button>
+              </div>
             </div>
           </div>
         </mat-expansion-panel-header>

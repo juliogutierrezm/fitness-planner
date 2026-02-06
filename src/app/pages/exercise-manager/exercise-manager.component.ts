@@ -9,12 +9,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
-import { Exercise, ExerciseFilters, FilterOptions, PaginatorState } from '../../shared/models';
+import { AuthService } from '../../services/auth.service';
+import { Exercise, ExerciseFilters, FilterOptions, InlineEditCatalogs, PaginatorState, EXERCISE_DIFFICULTY_OPTIONS, EXERCISE_MUSCLE_TYPE_OPTIONS } from '../../shared/models';
 import { FeedbackConfig, ExerciseMessages, ErrorMapper, DevLogger } from '../../shared/feedback-utils';
 import { ExerciseFiltersComponent } from './components/exercise-filters/exercise-filters.component';
 import { ExerciseTableComponent } from './components/exercise-table/exercise-table.component';
 import { ExerciseVideoDialogComponent } from './components/exercise-video-dialog/exercise-video-dialog.component';
 import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
+import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
 
 @Component({
   selector: 'app-exercise-manager',
@@ -43,29 +45,52 @@ export class ExerciseManagerComponent implements OnInit {
     searchValue: '',
     categoryFilter: '',
     muscleGroupFilter: '',
-    equipmentTypeFilter: ''
+    equipmentTypeFilter: '',
+    difficultyFilter: '',
+    groupTypeFilter: ''
   };
 
   // Filter options populated from data
   filterOptions: FilterOptions = {
     categoryOptions: [],
     muscleGroupOptions: [],
-    equipmentTypeOptions: []
+    equipmentTypeOptions: [],
+    difficultyOptions: [],
+    groupTypeOptions: []
   };
 
   // Pagination state
   paginatorState: PaginatorState | null = null;
+
+  inlineCatalogs: InlineEditCatalogs | null = null;
 
   // Persistence key
   private readonly STORAGE_KEY = 'exercise-manager-filters';
 
   constructor(
     private api: ExerciseApiService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private router: Router,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private inlineOptionsService: InlineEditOptionsService
   ) {}
+
+  get isGymAdmin(): boolean {
+    return this.authService.isGymAdmin();
+  }
+
+  /**
+   * Purpose: determine if current user can modify exercises (create/edit/delete).
+   * Only users belonging to the System Cognito group have modification permissions.
+   * Input: none. Output: boolean.
+   * Error handling: returns false when user lacks System group.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get canModifyExercises(): boolean {
+    return this.authService.isSystem();
+  }
 
   ngOnInit(): void {
     this.loadFiltersFromStorage();
@@ -81,7 +106,9 @@ export class ExerciseManagerComponent implements OnInit {
           searchValue: filters.searchValue || '',
           categoryFilter: filters.categoryFilter || '',
           muscleGroupFilter: filters.muscleGroupFilter || '',
-          equipmentTypeFilter: filters.equipmentTypeFilter || ''
+          equipmentTypeFilter: filters.equipmentTypeFilter || '',
+          difficultyFilter: filters.difficultyFilter || '',
+          groupTypeFilter: filters.groupTypeFilter || ''
         };
       }
     } catch (error) {
@@ -116,7 +143,9 @@ export class ExerciseManagerComponent implements OnInit {
     this.filterOptions = {
       categoryOptions: Array.from(categories).sort(),
       muscleGroupOptions: Array.from(muscleGroups).sort(),
-      equipmentTypeOptions: Array.from(equipmentTypes).sort()
+      equipmentTypeOptions: Array.from(equipmentTypes).sort(),
+      difficultyOptions: EXERCISE_DIFFICULTY_OPTIONS,
+      groupTypeOptions: EXERCISE_MUSCLE_TYPE_OPTIONS
     };
   }
 
@@ -151,6 +180,16 @@ export class ExerciseManagerComponent implements OnInit {
 
         // Populate filter options from data
         this.populateFilterOptions();
+
+        // Build inline edit catalogs from backend data/cache
+        const catalogs = this.inlineOptionsService.buildCatalogs(
+          this.exercises,
+          EXERCISE_DIFFICULTY_OPTIONS
+        );
+        this.inlineCatalogs = {
+          ...catalogs,
+          exerciseTypeOptions: [...EXERCISE_MUSCLE_TYPE_OPTIONS]
+        };
 
         // Apply combined filtering
         this.applyCombinedFilter();
@@ -222,7 +261,16 @@ export class ExerciseManagerComponent implements OnInit {
       const matchesEquipmentType = !this.currentFilters.equipmentTypeFilter ||
         this.getFieldValue(exercise, 'equipment_type') === this.currentFilters.equipmentTypeFilter;
 
-      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType;
+      // Difficulty filter
+      const matchesDifficulty = !this.currentFilters.difficultyFilter ||
+        this.getFieldValue(exercise, 'difficulty') === this.currentFilters.difficultyFilter;
+
+      // Group type filter
+      const matchesGroupType = !this.currentFilters.groupTypeFilter ||
+      this.getFieldValue(exercise, 'exercise_type') === this.currentFilters.groupTypeFilter;
+
+
+      return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesDifficulty && matchesGroupType;
     });
 
     this.dataSource.data = filteredData;

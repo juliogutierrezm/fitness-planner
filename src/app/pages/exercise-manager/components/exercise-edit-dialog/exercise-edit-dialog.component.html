@@ -120,6 +120,6 @@
   </form>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
-  <button mat-button (click)="onClose()">Cancelar</button>
-  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="editForm.invalid || isUploading">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</button>
+  <button mat-fab extended (click)="onClose()">Cancelar</button>
+  <button mat-fab extended color="primary" (click)="onSave()" [disabled]="editForm.invalid || isUploading">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</button>
 </mat-dialog-actions>

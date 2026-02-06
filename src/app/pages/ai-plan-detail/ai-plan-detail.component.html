@@ -1,0 +1,142 @@
+<div class="users-page">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>auto_awesome</mat-icon>
+        Detalle del plan IA
+      </mat-card-title>
+      <mat-card-subtitle>
+        Revisa el plan generado por IA y sus sesiones.
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <div class="arrow-back-button">
+    <button
+      mat-mini-fab
+      [routerLink]="['/ai-plans/user', userId]"
+      matTooltip="Volver al historial IA"
+    >
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  </div>
+
+  <section *ngIf="unauthorized" class="unauthorized">
+    <mat-card class="list-card">
+      <div class="empty">No autorizado. Regresa al historial.</div>
+      <div class="actions">
+        <button mat-raised-button color="primary" routerLink="/ai-plans">Volver</button>
+      </div>
+    </mat-card>
+  </section>
+
+  <section *ngIf="!unauthorized">
+    <div *ngIf="loading" class="loading-container">
+      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    </div>
+
+    <mat-card class="list-card" *ngIf="!loading">
+      <div class="list-header">
+        <div>
+          <h3>Plan IA{{ userName ? ' - ' + userName : '' }}</h3>
+        </div>
+        <div class="header-actions">
+          <button *ngIf="!isGymAdmin" mat-fab extended color="primary" (click)="saveAsTemplate()" [disabled]="isSavingTemplate || !hasPreviewPlan">
+            <mat-icon>style</mat-icon>
+            Guardar como plantilla
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!hasPlanBody" class="empty">No hay detalle disponible para este plan.</div>
+
+      <section *ngIf="hasPlanBody" class="plan-content">
+        <div class="plan-section" *ngIf="planBody?.objective">
+          <h4>Objetivo</h4>
+          <p>{{ planBody?.objective }}</p>
+        </div>
+        <div class="plan-section" *ngIf="planBody?.generalNotes">
+          <h4>Notas generales</h4>
+          <p>{{ planBody?.generalNotes }}</p>
+        </div>
+        <div class="plan-section" *ngIf="progressions?.weeks?.length">
+          <h4>Progresiones</h4>
+          <div class="progressions-list">
+            <div class="progression-card" *ngFor="let week of progressions?.weeks">
+              <div class="progression-header">
+                <span class="week-label">Semana {{ week.week }}</span>
+                <span class="week-title" *ngIf="week.title">{{ week.title }}</span>
+              </div>
+              <p class="week-note">{{ week.note }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="hasPreviewPlan" class="preview-section">
+        <app-workout-plan-view [plan]="previewPlan"></app-workout-plan-view>
+      </section>
+
+<!--       <mat-expansion-panel class="json-panel" *ngIf="hasPlanBody">
+        <mat-expansion-panel-header>
+          <mat-panel-title>Ver JSON completo</mat-panel-title>
+        </mat-expansion-panel-header>
+        <pre>{{ planBody | json }}</pre>
+      </mat-expansion-panel> -->
+    </mat-card>
+  </section>
+</div>
+
+<ng-template #userSelectDialog>
+  <h2 mat-dialog-title>Asignar plan IA</h2>
+  <mat-dialog-content>
+    <div *ngIf="assignableUsers.length === 0" class="no-users">
+      No hay usuarios disponibles.
+    </div>
+    <div *ngIf="assignableUsers.length > 0" class="dialog-search">
+      <mat-form-field appearance="outline">
+        <mat-label>Buscar usuario</mat-label>
+        <input matInput [(ngModel)]="userSearch" (ngModelChange)="applyUserFilter()" placeholder="Nombre o email" />
+      </mat-form-field>
+    </div>
+    <div *ngIf="assignableUsers.length > 0 && filteredAssignableUsers.length === 0" class="no-users">
+      No hay usuarios que coincidan con el filtro.
+    </div>
+    <mat-list *ngIf="filteredAssignableUsers.length > 0">
+      <div
+        mat-list-item
+        class="user-row"
+        tabindex="0"
+        *ngFor="let user of filteredAssignableUsers"
+        (click)="selectUserForAssignment(user)"
+        (keydown.enter)="selectUserForAssignment(user)"
+        (keydown.space)="selectUserForAssignment(user)"
+      >
+        <div matLine>{{ user.givenName }} {{ user.familyName }}</div>
+        <div matLine class="secondary">{{ user.email }}</div>
+      </div>
+    </mat-list>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #templateNameDialog>
+  <h2 mat-dialog-title>Guardar plantilla</h2>
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" class="template-name-field">
+      <mat-label>Nombre de la plantilla</mat-label>
+      <input
+        matInput
+        [(ngModel)]="templateNameInput"
+        placeholder="Ej. Fuerza 4 semanas"
+        (keydown.enter)="confirmTemplateName()"
+      />
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" (click)="confirmTemplateName()">Guardar</button>
+  </mat-dialog-actions>
+</ng-template>

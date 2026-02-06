@@ -14,16 +14,20 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 
 import { ExerciseApiService } from '../../exercise-api.service';
-import { UserApiService, AppUser } from '../../user-api.service';
+import { UserApiService, AppUser, UserStatus } from '../../user-api.service';
 import { AuthService, UserRole } from '../../services/auth.service';
 import { isIndependentTenant } from '../../shared/shared-utils';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 
 
 
@@ -47,15 +51,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatDialogModule,
     MatProgressSpinnerModule,
     MatListModule,
+    MatDividerModule,
+    MatTabsModule,
     RouterModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatExpansionModule
   ],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UsersComponent implements OnInit, OnDestroy {
-  @Input() contextRole: 'client' | 'trainer' = 'client';
   users: AppUser[] = [];
   allUsers: AppUser[] = [];
   currentUser: any = null;
@@ -68,13 +74,14 @@ export class UsersComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSaving = false;
   showCreateForm = false;
-  pageTitle = '';
+  pageTitle = 'Clientes';
   isAssigningTrainer = false;
   selectedClientForAssignment: AppUser | null = null;
   @ViewChild('trainerSelectDialog') trainerSelectDialog?: TemplateRef<any>;
-  trainerClientMap: Record<string, AppUser[]> = {};
-  trainerPlanCounts: Record<string, number> = {};
-  trainerMetricsLoading = false;
+  deletingUserId: string | null = null;
+  togglingStatusUserId: string | null = null;
+  selectedTabIndex = 0;
+  searchTerm = '';
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -102,8 +109,6 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.pageTitle = this.getPageTitle();
-
     this.form = this.formFactory();
     this.editForm = this.formFactory();
 
@@ -133,33 +138,88 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   get isClientView(): boolean {
-    return this.contextRole === 'client';
+    return true; // Always client view now
   }
 
   /**
-   * Purpose: expose context flag for trainer-only UI.
-   * Input: none. Output: boolean indicator.
-   * Error handling: not applicable.
+   * Purpose: filter users to only active ones with search term applied.
+   * Input: none. Output: filtered AppUser array.
+   * Error handling: returns empty array if users is null/undefined.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  get isTrainerView(): boolean {
-    return this.contextRole === 'trainer';
+  get activeUsers(): AppUser[] {
+    if (!this.users) return [];
+    const active = this.users.filter(u => (u.status || 'ACTIVE') === 'ACTIVE');
+    return this.applySearchFilter(active);
   }
 
   /**
-   * Purpose: determine whether trainer management UI should render.
-   * Input: none. Output: boolean indicator.
+   * Purpose: filter users to only inactive ones with search term applied.
+   * Input: none. Output: filtered AppUser array.
+   * Error handling: returns empty array if users is null/undefined.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  get inactiveUsers(): AppUser[] {
+    if (!this.users) return [];
+    const inactive = this.users.filter(u => u.status === 'INACTIVE');
+    return this.applySearchFilter(inactive);
+  }
+
+  /**
+   * Purpose: apply search filter to user list by name, email or phone.
+   * Input: users array. Output: filtered array.
+   * Error handling: returns all users if search term is empty.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private applySearchFilter(users: AppUser[]): AppUser[] {
+    if (!this.searchTerm || this.searchTerm.trim() === '') {
+      return users;
+    }
+    
+    const term = this.searchTerm.toLowerCase().trim();
+    return users.filter(u => {
+      const fullName = `${u.givenName || ''} ${u.familyName || ''}`.toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const phone = (u.telephone || '').toLowerCase();
+      
+      return fullName.includes(term) || email.includes(term) || phone.includes(term);
+    });
+  }
+
+  /**
+   * Purpose: clear search filter.
+   * Input: none. Output: resets search term and triggers change detection.
    * Error handling: not applicable.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  get showTrainerManagement(): boolean {
-    return !this.isTrainerView || !this.isIndependentTenant;
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.cdr.markForCheck();
   }
 
-  private getPageTitle(): string {
-    if (this.contextRole === 'trainer') return 'Entrenadores';
-    return 'Clientes';
+  /**
+   * Purpose: check if current user can change user status (Admin only).
+   * Input: none. Output: boolean.
+   * Error handling: returns false if not admin.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  canChangeStatus(): boolean {
+    return this.isAdmin;
   }
+
+  /**
+   * Purpose: open the create form and close edit views.
+   * Input: none. Output: toggles view state.
+   * Error handling: not applicable.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  openCreateForm(): void {
+    this.showCreateForm = true;
+    this.editingId = null;
+    this.cdr.markForCheck();
+  }
+
+
 
   /**
    * Purpose: load and filter users for the current tenant and role context.
@@ -175,8 +235,6 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (!canManageUsers) {
       this.users = [];
       this.allUsers = [];
-      this.trainerClientMap = {};
-      this.trainerPlanCounts = {};
       this.isLoading = false;
       this.cdr.markForCheck();
       return;
@@ -191,152 +249,27 @@ export class UsersComponent implements OnInit, OnDestroy {
       next: (list) => {
         this.allUsers = list || [];
         this.users = this.filterUsers(this.allUsers);
-        this.refreshTrainerMetrics();
       },
       error: () => {
         this.users = [];
         this.allUsers = [];
-        this.trainerClientMap = {};
-        this.trainerPlanCounts = {};
         this.snack.open('No se pudieron cargar los usuarios.', 'Cerrar', { duration: 3000 });
       }
     });
   }
 
   /**
-   * Purpose: filter users by role context for the view.
+   * Purpose: filter users to show only clients.
    * Input: full user list. Output: filtered list.
    * Error handling: returns empty list for missing input.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private filterUsers(users: AppUser[] | null | undefined): AppUser[] {
     if (!users || !Array.isArray(users)) return [];
-    return users.filter(u => u.role === this.contextRole);
+    return users.filter(u => u.role === 'client');
   }
 
-  /**
-   * Purpose: refresh trainer-only metrics after user data loads.
-   * Input: none. Output: updates trainer metrics caches.
-   * Error handling: resets metrics when not in trainer context.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private refreshTrainerMetrics(): void {
-    if (!this.isTrainerView) {
-      this.trainerClientMap = {};
-      this.trainerPlanCounts = {};
-      return;
-    }
-    this.buildTrainerClientMap();
-    this.loadTrainerPlanCounts();
-  }
 
-  /**
-   * Purpose: rebuild a map of clients assigned per trainer.
-   * Input: none. Output: updates trainerClientMap cache.
-   * Error handling: falls back to empty map when no users exist.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private buildTrainerClientMap(): void {
-    const map: Record<string, AppUser[]> = {};
-    if (!Array.isArray(this.allUsers)) {
-      this.trainerClientMap = map;
-      return;
-    }
-
-    this.allUsers
-      .filter(user => user.role === 'client' && user.trainerId)
-      .forEach(client => {
-        const trainerId = client.trainerId as string;
-        if (!map[trainerId]) {
-          map[trainerId] = [];
-        }
-        map[trainerId].push(client);
-      });
-
-    this.trainerClientMap = map;
-  }
-
-  /**
-   * Purpose: load and cache plan counts created by each trainer.
-   * Input: none. Output: updates trainerPlanCounts.
-   * Error handling: shows snackbar and clears counts on failure.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private loadTrainerPlanCounts(): void {
-    this.trainerMetricsLoading = true;
-    this.exerciseApi.getPlansForCurrentTenant().pipe(
-      finalize(() => {
-        this.trainerMetricsLoading = false;
-        this.cdr.markForCheck();
-      })
-    ).subscribe({
-      next: (plans) => {
-        const counts: Record<string, number> = {};
-        (plans || [])
-          .filter(plan => plan?.isTemplate !== true)
-          .forEach(plan => {
-            const trainerId = plan?.trainerId;
-            if (!trainerId) return;
-            counts[trainerId] = (counts[trainerId] || 0) + 1;
-          });
-        this.trainerPlanCounts = counts;
-      },
-      error: () => {
-        this.trainerPlanCounts = {};
-        this.snack.open('No se pudieron cargar los planes de entrenadores.', 'Cerrar', { duration: 3000 });
-      }
-    });
-  }
-
-  /**
-   * Purpose: return the assigned client count for a trainer.
-   * Input: trainer user. Output: count number.
-   * Error handling: returns 0 when trainer id missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerClientCount(trainer: AppUser | null | undefined): number {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 0;
-    return this.trainerClientMap[trainerId]?.length || 0;
-  }
-
-  /**
-   * Purpose: summarize assigned clients for display.
-   * Input: trainer user. Output: summary string.
-   * Error handling: returns fallback labels when data missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerClientSummary(trainer: AppUser | null | undefined): string {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 'Sin clientes';
-    const clients = this.trainerClientMap[trainerId] || [];
-    if (clients.length === 0) return 'Sin clientes';
-
-    const names = clients.map(client => {
-      const fullName = `${client.givenName || ''} ${client.familyName || ''}`.trim();
-      return fullName || client.email;
-    }).filter(Boolean);
-
-    const limit = 3;
-    const shown = names.slice(0, limit);
-    const remaining = names.length - shown.length;
-    if (remaining > 0) {
-      return `${shown.join(', ')} y ${remaining} mas`;
-    }
-    return shown.join(', ');
-  }
-
-  /**
-   * Purpose: return the plan count created by a trainer.
-   * Input: trainer user. Output: count number.
-   * Error handling: returns 0 when trainer id missing.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTrainerPlanCount(trainer: AppUser | null | undefined): number {
-    const trainerId = trainer?.id;
-    if (!trainerId) return 0;
-    return this.trainerPlanCounts[trainerId] || 0;
-  }
 
   private setupInjuriesControl(form: FormGroup) {
     const noInjuriesControl = form.get('noInjuries');
@@ -377,14 +310,13 @@ export class UsersComponent implements OnInit, OnDestroy {
   submit() {
     if (this.form.invalid || this.isSaving) return;
     const formValue = this.form.value;
-    const role = this.contextRole;
     const payload: AppUser = {
       email: formValue.email!,
       givenName: formValue.givenName || '',
       familyName: formValue.familyName || '',
       telephone: formValue.telephone || null,
       gender: formValue.gender || null,
-      role: role,
+      role: 'client',
       dateOfBirth: formValue.dateOfBirth || '',
       noInjuries: formValue.noInjuries,
       injuries: formValue.noInjuries ? null : (formValue.injuries?.trim() || null),
@@ -408,25 +340,168 @@ export class UsersComponent implements OnInit, OnDestroy {
     });
   }
 
-  remove(u: AppUser) {
-    if (!u.id) return;
-    this.api.deleteUser(u.id).subscribe(ok => {
-      if (ok !== null) {
-        this.users = this.users.filter(x => x.id !== u.id);
-        this.allUsers = this.allUsers.filter(x => x.id !== u.id);
-        if (this.isTrainerView) {
-          this.refreshTrainerMetrics();
-        }
-        this.cdr.markForCheck();
-        this.snack.open('Usuario eliminado', 'Cerrar', { duration: 1800 });
-      } else {
-        this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+  /**
+   * Purpose: confirm and delete a user with UI feedback.
+   * Input: user entity. Output: removes user from local lists when successful.
+   * Error handling: shows snackbar and logs errors if deletion fails.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  remove(u: AppUser): void {
+    if (!u?.id || this.deletingUserId) return;
+
+    // Block deletion if user is not INACTIVE
+    const userStatus = u.status || 'ACTIVE';
+    if (userStatus !== 'INACTIVE') {
+      this.snack.open('Solo se pueden eliminar usuarios inactivos.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Eliminar ${roleLabel} permanentemente`,
+        message: `¿Eliminar ${label} permanentemente? Esta acción no se puede deshacer y se perderán todos los datos asociados.`,
+        confirmLabel: 'Eliminar permanentemente',
+        cancelLabel: 'Cancelar',
+        icon: 'delete_forever'
       }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.deletingUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.deleteUser(u.id!, u.status).pipe(
+        finalize(() => {
+          this.deletingUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (ok) => {
+          if (ok !== null) {
+            this.users = this.users.filter(x => x.id !== u.id);
+            this.allUsers = this.allUsers.filter(x => x.id !== u.id);
+            this.snack.open('Usuario eliminado permanentemente', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('deleteUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo eliminar', 'Cerrar', { duration: 2500 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Purpose: deactivate a user with confirmation dialog.
+   * Input: user entity. Output: updates user status to INACTIVE.
+   * Error handling: shows snackbar on success/failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  deactivateUser(u: AppUser): void {
+    if (!u?.id || this.togglingStatusUserId || !this.canChangeStatus()) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Desactivar ${roleLabel}`,
+        message: `¿Desactivar a ${label}? El usuario no podrá acceder al sistema pero sus datos se conservarán.`,
+        confirmLabel: 'Desactivar',
+        cancelLabel: 'Cancelar',
+        icon: 'block'
+      }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.togglingStatusUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.deactivateUser(u.id!).pipe(
+        finalize(() => {
+          this.togglingStatusUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (res) => {
+          if (res !== null) {
+            // Update local user status
+            this.users = this.users.map(x => x.id === u.id ? { ...x, status: 'INACTIVE' as UserStatus } : x);
+            this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, status: 'INACTIVE' as UserStatus } : x);
+            this.snack.open('Usuario desactivado', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo desactivar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('deactivateUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo desactivar', 'Cerrar', { duration: 2500 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Purpose: activate a user with confirmation dialog.
+   * Input: user entity. Output: updates user status to ACTIVE.
+   * Error handling: shows snackbar on success/failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  activateUser(u: AppUser): void {
+    if (!u?.id || this.togglingStatusUserId || !this.canChangeStatus()) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+    const roleLabel = u.role === 'trainer' ? 'entrenador' : 'cliente';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `Activar ${roleLabel}`,
+        message: `¿Activar a ${label}? El usuario podrá volver a acceder al sistema.`,
+        confirmLabel: 'Activar',
+        cancelLabel: 'Cancelar',
+        icon: 'check_circle'
+      }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.togglingStatusUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.activateUser(u.id!).pipe(
+        finalize(() => {
+          this.togglingStatusUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (res) => {
+          if (res !== null) {
+            // Update local user status
+            this.users = this.users.map(x => x.id === u.id ? { ...x, status: 'ACTIVE' as UserStatus } : x);
+            this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, status: 'ACTIVE' as UserStatus } : x);
+            this.snack.open('Usuario activado', 'Cerrar', { duration: 1800 });
+          } else {
+            this.snack.open('No se pudo activar', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('activateUser failed', { userId: u.id, error });
+          this.snack.open('No se pudo activar', 'Cerrar', { duration: 2500 });
+        }
+      });
     });
   }
 
   startEdit(u: AppUser) {
     if (!u) return;
+    this.showCreateForm = false;
     this.editingId = u.id || null;
     this.editForm.reset({
       email: u.email || '',
@@ -451,9 +526,10 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   saveEdit(u: AppUser) {
     if (!this.editingId || !u?.id || this.editForm.invalid || this.isSaving) return;
+    const userId = u.id;
     const editFormValue = this.editForm.value;
     const payload: AppUser = {
-      id: u.id,
+      id: userId,
       email: u.email!, // Keep original email, don't allow changes
       givenName: editFormValue.givenName || '',
       familyName: editFormValue.familyName || '',
@@ -473,8 +549,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       })
     ).subscribe(res => {
       if (res !== null) {
-        this.users = this.users.map(x => x.id === u.id ? { ...x, ...payload } : x);
-        this.allUsers = this.allUsers.map(x => x.id === u.id ? { ...x, ...payload } : x);
+        this.users = this.users.map(x => x.id === userId ? { ...x, ...payload } : x);
+        this.allUsers = this.allUsers.map(x => x.id === userId ? { ...x, ...payload } : x);
         this.editingId = null;
         this.cdr.markForCheck();
         this.snack.open('Usuario actualizado', 'Cerrar', { duration: 1800 });
@@ -494,7 +570,11 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (this.isIndependentTenant) return [];
     const currentUser = this.auth.getCurrentUser();
     const companyId = currentUser?.companyId || 'INDEPENDENT';
-    return this.allUsers.filter(u => u.role === 'trainer' && (u.companyId === companyId || u.companyId === 'INDEPENDENT'));
+    return this.allUsers.filter(u => 
+      u.role === 'trainer' && 
+      (u.companyId === companyId || u.companyId === 'INDEPENDENT') &&
+      (u.status || 'ACTIVE') === 'ACTIVE'  // Exclude inactive trainers
+    );
   }
 
   assignTrainer(client: AppUser) {

@@ -13,6 +13,7 @@ export interface Exercise {
   category?: string;
   exercise_type?: string;
   difficulty?: string;
+  group_type?: string;
   training_goal?: string;
   description_es?: string;
   description_en?: string;
@@ -95,15 +96,16 @@ export interface AiPlanRequest {
   sessionDuration: number;
   availableEquipment: string[];
   excludeMuscles: string[];
-  includeSupersets: boolean;
-  includeMobility: boolean;
   expectedExercisesPerSession: number;
   sessionBlueprint: {
     name: string;
     targets: string[];
+    includeSupersets: boolean;
   }[];
   generalNotes: string;
+  companyId: string;
   userId?: string;
+  trainerId?: string | null;
   age?: number;
   userContext?: {
     injuries?: string;
@@ -131,6 +133,8 @@ export interface ExerciseFilters {
   categoryFilter: string;
   muscleGroupFilter: string;
   equipmentTypeFilter: string;
+  difficultyFilter: string;
+  groupTypeFilter: string;
   functionalOnly?: boolean;
 }
 
@@ -138,6 +142,8 @@ export interface FilterOptions {
   categoryOptions: string[];
   muscleGroupOptions: string[];
   equipmentTypeOptions: string[];
+  difficultyOptions: string[];
+  groupTypeOptions: string[];
 }
 
 export interface ExerciseTableEvent {
@@ -149,3 +155,14 @@ export interface PaginatorState {
   pageIndex: number;
   pageSize: number;
 }
+
+export interface InlineEditCatalogs {
+  categoryOptions: string[];
+  muscleGroupOptions: string[];
+  equipmentTypeOptions: string[];
+  exerciseTypeOptions: string[];
+  difficultyOptions: string[];
+}
+
+export const EXERCISE_DIFFICULTY_OPTIONS = ['Principiante', 'Intermedio', 'Avanzado'];
+export const EXERCISE_MUSCLE_TYPE_OPTIONS = ['Aislado', 'Compuesto'];

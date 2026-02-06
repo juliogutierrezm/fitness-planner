@@ -1,20 +1,82 @@
-.shell-container {
+:host {
+  --sidebar-rail-width: 64px;
+  --sidebar-expanded-width: 240px;
+  --sidebar-item-padding-y: 10px;
+  --sidebar-item-padding-x: 16px;
+  --sidebar-icon-gap: 12px;
+  --sidebar-transition: 0.25s ease;
+  --toolbar-height: 64px;
+}
+
+.shell {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .app-toolbar {
-  background: var(--surface-200);
-  color: #ffffff;
-  box-shadow: var(--shadow-2);
-  .mat-icon { color: #ffffff; }
-  .title { color: #ffffff; }
+  background: #0f172a;
+  color: #f1f5f9;
+  box-shadow: 0 1px 0 rgba(56, 189, 248, 0.1);
+  position: relative;
+  z-index: 1000;
+  width: 100%;
+  min-height: var(--toolbar-height);
+  height: var(--toolbar-height);
+  .mat-icon { color: #38bdf8; }
+  .title { color: #f1f5f9; }
+}
+
+.brand-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .sidenav {
-  width: 280px;
-  /* Match navbar color and remove any rounding */
-  background: var(--surface-200);
+  width: var(--sidebar-rail-width);
+  background: transparent;
   color: #e5e7eb;
+  overflow: visible;
+  z-index: 100!important;
+}
+
+.sidenav-rail {
+  width: var(--sidebar-rail-width);
+  height: calc(100vh - var(--toolbar-height));
+  background: #0f172a;
+  box-shadow: 1px 0 0 rgba(56, 189, 248, 0.1);
+  overflow: hidden;
+  transition: width var(--sidebar-transition);
+  will-change: width;
+  position: fixed;
+  left: 0;
+  top: var(--toolbar-height);
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.sidenav-rail:hover {
+  width: var(--sidebar-expanded-width);
 }
 
 /* Ensure the Angular Material drawer has sharp corners */
@@ -29,9 +91,44 @@
   border-radius: 0 !important;
 }
 
+:host ::ng-deep .mat-drawer-container,
+:host ::ng-deep .mat-sidenav-container {
+  overflow: visible !important;
+  z-index: 0;
+}
+
+:host ::ng-deep .mat-drawer,
+:host ::ng-deep .mat-sidenav {
+  overflow: visible;
+  z-index: 1000 !important;
+}
+
+:host ::ng-deep .mat-drawer.mat-drawer-side,
+:host ::ng-deep .mat-sidenav.mat-drawer-side {
+  z-index: 1000 !important;
+}
+
+:host ::ng-deep .sidenav .mat-drawer-inner-container {
+  position: relative;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+:host ::ng-deep .mat-drawer-content,
+:host ::ng-deep .mat-sidenav-content {
+  position: relative;
+  z-index: 0 !important;
+  overflow-x: visible !important;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  :host {
+    --toolbar-height: 56px;
+  }
+}
+
 /* Sidebar nav items without rounded corners for consistency */
-
-
 
 .shell-content {
   padding: 1rem;
@@ -41,18 +138,18 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 1rem;
 }
 
 .app-logo {
-  height: 48px;
+  height: 40px;
   width: auto;
+  border-radius: 8px;
 }
 
 .app-name {
   font-size: 24px;
   font-weight: 600;
-  color: #ffffff;
+  color: #f1f5f9;
   letter-spacing: 0.5px;
 }
 
@@ -61,59 +158,294 @@
 }
 
 .sidebar-item {
-  padding: 12px;
+  padding: 12px 0;
+  width: 100%;
+
   .nav-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    justify-content: center;
+    width: calc(100% - 20px);
+    padding: var(--sidebar-item-padding-y) 0;
     color: #e5e7eb;
     text-decoration: none;
-    border-radius: 0; /* keep sharp to match sidebar */
-    transition: background-color .15s ease, color .15s ease;
+    position: relative;
+    border-radius: 10px;
+    margin: 6px 10px;
+
+    /* ✅ Se mantiene TU gradiente inactivo (única diferencia) */
+    background: linear-gradient(
+      135deg,
+      var(--accent-500),
+      var(--primary-color, #1976d2)
+    );
+
+    /* ✅ Copiado del estilo IA (misma estética/efectos) */
+    overflow: hidden;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-sizing: border-box;
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.25),
+      0 0 0 0 rgba(34, 211, 238, 0.6);
+
+    /* ✅ Misma transición que IA + conservando tu transición de padding */
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      background 0.4s ease,
+      background-color .15s ease,
+      color .15s ease,
+      padding var(--sidebar-transition);
+
+    /* ✅ Sheen igual al IA */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.35),
+        transparent 70%
+      );
+      opacity: 0;
+      transform: translateX(-100%);
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
   }
+
+  /* ✅ Hover idéntico al IA */
   .nav-link:hover {
-    background: var(--surface-300);
+    transform: translateY(-1px) scale(1.01);
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.35),
+      0 0 24px rgba(34, 211, 238, 0.6);
+
+    &::before {
+      opacity: 1;
+      transform: translateX(100%);
+      transition: transform 0.8s ease;
+    }
   }
-  .nav-link.active {
-    background: var(--primary-600);
+
+  /* ✅ Active (click) idéntico al IA */
+  .nav-link:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-link mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    margin-right: 0;
+    transition: margin-right var(--sidebar-transition), color .15s ease;
     color: #ffffff;
   }
+
+  .nav-link span {
+    display: inline-block;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
+    color: #ffffff;
+  }
+
+  /* ✅ Active (route) debe ser igual al IA: solo difiere cuando está INACTIVO */
+  .nav-link.active {
+    background: linear-gradient(135deg, #0b1220, #0a1327);
+    color: #ffffff;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.4),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+      0 0 18px rgba(255, 255, 255, 0.2);
+  }
+
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    inset: -28% -32%;
+    background: radial-gradient(
+      circle at 45% 40%,
+      rgba(255, 255, 255, 0.75),
+      rgba(255, 255, 255, 0.28) 42%,
+      transparent 72%
+    );
+    opacity: 1;
+    animation: liquidPulse 3s ease-in-out infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+
+  .nav-link.active mat-icon {
+    color: #ffffff;
+  }
+
+  .nav-link.active::before {
+    display: none;
+  }
+
+  .ai-nav-link {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+      135deg,
+      #1976d2,
+      var(--primary-color, #d2195d)
+    );
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border-radius: 10px;
+    margin: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-sizing: border-box;
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.25),
+      0 0 0 0 rgba(34, 211, 238, 0.6);
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      background 0.4s ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.35),
+        transparent 70%
+      );
+      opacity: 0;
+      transform: translateX(-100%);
+      transition: opacity 0.3s ease;
+    }
+
+    mat-icon,
+    span {
+      color: #fff;
+    }
+
+    &:hover {
+      transform: translateY(-1px) scale(1.01);
+      box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.35),
+        0 0 24px rgba(34, 211, 238, 0.6);
+
+      &::before {
+        opacity: 1;
+        transform: translateX(100%);
+        transition: transform 0.8s ease;
+      }
+    }
+
+    &:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  .ai-nav-link.active {
+    background: linear-gradient(135deg, #0b1220, #0a1327);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.4),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+      0 0 18px rgba(255, 255, 255, 0.2);
+  }
+
+  .ai-nav-link.active::after {
+    content: '';
+    position: absolute;
+    inset: -28% -32%;
+    background: radial-gradient(
+      circle at 45% 40%,
+      rgba(255, 255, 255, 0.75),
+      rgba(255, 255, 255, 0.28) 42%,
+      transparent 72%
+    );
+    opacity: 1;
+    animation: liquidPulse 3s ease-in-out infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+}
+
+@keyframes liquidPulse {
+  0%,
+  100% {
+    transform: translate3d(-8%, -8%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.05);
+  }
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link {
+  justify-content: flex-start;
+  padding: var(--sidebar-item-padding-y) calc(var(--sidebar-item-padding-x) + 6px);
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link mat-icon {
+  margin-right: var(--sidebar-icon-gap);
+}
+
+.sidenav-rail:hover .sidebar-item .nav-link span {
+  opacity: 1;
+  max-width: 200px;
 }
 
 .auth-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
-  
+
   .user-badge {
     display: flex;
     align-items: center;
     gap: 8px;
     color: #ffffff;
-    
+
     mat-icon {
       font-size: 20px;
       width: 20px;
       height: 20px;
     }
-    
+
     span {
       font-size: 14px;
       color: #ffffff;
     }
-    
+
     button { color: #ffffff; }
   }
 }
 
 /* High-contrast toolbar actions */
 .login-btn {
-  background: #10b981; /* emerald-500 */
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
   color: #ffffff !important;
 }
 
 .logout-btn {
-  background: var(--warn-500);
+  background: linear-gradient(
+  135deg,
+  var(--accent-500),
+  var(--primary-color, #1976d2)
+    ); /* emerald-500 */
+  color: #ffffff !important;
   color: #ffffff !important;
 }

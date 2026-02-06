@@ -1,25 +1,19 @@
 # Fitness Planner
 
 ## Descripción general
-Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra un sistema de autenticación híbrido con AWS Cognito (OAuth 2.0 + PKCE + Amplify) y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR), rutas protegidas con control de acceso basado en roles (Admin, Trainer, Client), y funcionalidades administrativas avanzadas.
+Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra autenticación custom con AWS Cognito (Amplify Auth) y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR), rutas protegidas con control de acceso basado en roles (Admin, Trainer, Client), y funcionalidades administrativas avanzadas.
 Tambien incluye configuracion de apariencia por tenant (branding, colores, tipografia, modo claro/oscuro y logo) con vista previa para administradores.
 
 ## Arquitectura de Autenticación y AWS Cognito
 
-### Sistema Híbrido de Autenticación
-La aplicación implementa un sistema de autenticación híbrido que combina las mejores características de OAuth 2.0 directo con AWS Amplify para proporcionar una experiencia segura y rica en funcionalidades:
+### Sistema Custom de Autenticación
+La aplicación implementa autenticación 100% custom con AWS Cognito y Amplify Auth, sin Hosted UI ni redirects.
 
-#### 1. **Servicio de OAuth 2.0 Personalizado** (`src/app/auth/auth.service.ts`)
-- **PKCE (Proof Key for Code Exchange)**: Implementación completa para mayor seguridad en aplicaciones públicas
-- **Intercambio directo de tokens**: Comunicación directa con los endpoints OAuth 2.0 de Cognito
-- **Gestión de tokens personalizada**: Almacenamiento seguro en localStorage/sessionStorage con validación de expiración
-- **Manejo de callbacks**: Procesamiento robusto de respuestas de autenticación con manejo de errores
-
-#### 2. **Servicio AWS Amplify** (`src/app/services/auth.service.ts`)
-- **Control de acceso basado en roles**: Sistema jerárquico con tres roles (Admin, Trainer, Client)
-- **Gestión de perfiles de usuario**: Atributos personalizados y metadatos de usuario
-- **Sesiones avanzadas**: Manejo automático de refresh tokens y estados de autenticación
-- **Integración con grupos de Cognito**: Extracción automática de roles desde grupos y atributos personalizados
+#### Componentes principales
+- **AuthService** (`src/app/services/auth.service.ts`): manejo de signup/login/reset, tokens, grupos y estado del flujo
+- **AuthFlowGuard** (`src/app/guards/auth-flow.guard.ts`): control de rutas públicas según el paso de auth
+- **AuthFlowState**: persistencia temporal en `sessionStorage` para confirmación y reset
+- **UI de autenticación**: login, signup, confirm-signup, forgot/reset password, force-change-password
 
 ### Configuración de AWS Cognito
 
@@ -51,33 +45,23 @@ Resources:
 - **Trainer**: Gestión de clientes y planes de entrenamiento
 - **Client**: Acceso básico a planes asignados
 
-#### Flujo de OAuth 2.0 con PKCE
-1. **Inicio de autenticación**: Generación de code_verifier y code_challenge
-2. **Redirección a Hosted UI**: Usuario autenticado en Cognito
-3. **Callback processing**: Intercambio de código por tokens usando PKCE
-4. **Token storage**: Almacenamiento seguro de ID Token y Access Token
-5. **Role extraction**: Determinación de roles desde tokens y grupos
+#### Flujo de Autenticación
+1. **Inicio de sesión/registro**: Formularios custom con Amplify Auth
+2. **nextStep**: Confirmación de cuenta, reset o cambio de contraseña obligatorio
+3. **AuthFlowState**: El estado se guarda temporalmente para recuperar el flujo en navegación
+4. **Sesión Cognito**: Amplify mantiene los tokens en storage seguro
+5. **Guards**: Redirección a dashboard/onboarding/unauthorized según grupos
 
 ### Seguridad Implementada
-
-#### PKCE Implementation
-```typescript
-// Generación segura de code verifier (RFC 7636)
-private generateCodeVerifier(length: number = 64): string {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  // Implementación crypto-safe con fallback
-}
-```
-
-#### Token Management
-- **Validación de expiración**: Verificación automática de tokens expirados
-- **Refresh automático**: Manejo transparente de refresh tokens
-- **Storage seguro**: Uso de localStorage con validaciones de integridad
+- **Amplify Auth**: manejo de tokens y refresh automático
+- **Storage seguro**: tokens gestionados por Amplify
+- **Roles por grupos Cognito**: extracción directa desde tokens
 
 #### Guards y Autorización
 - **AuthGuard**: Protección básica de rutas autenticadas
 - **RoleGuard**: Control de acceso basado en roles específicos
 - **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
+- **AuthFlowGuard**: Routing de pantallas públicas según el paso de autenticación
 
 ### Roles y Permisos
 
@@ -86,6 +70,36 @@ private generateCodeVerifier(length: number = 64): string {
 | **Admin** | Acceso completo a usuarios, planes, ejercicios y configuraciones del sistema |
 | **Trainer** | Gestión de sus clientes asignados, creación de planes, acceso al catálogo de ejercicios |
 | **Client** | Acceso a sus propios planes asignados y perfil personal |
+
+## User Initialization & Onboarding
+
+### userType (solo onboarding)
+- userType indica el contexto operativo del usuario y no es un rol.
+- Valores soportados: GYM_OWNER, INDEPENDENT_TRAINER.
+- Se usa solo en la UI de onboarding y en el body de POST /users/initialize.
+- No se persiste en el perfil ni se usa para permisos.
+
+### Estado de inicializacion (groups only)
+- Usuario inicializado para planner = pertenece a Admin o Trainer.
+- Fuente de verdad: grupos de Cognito (cognito:groups).
+
+### companyId (aislamiento de tenant)
+- companyId se asigna en backend durante /users/initialize.
+- INDEPENDENT_TRAINER -> INDEPENDENT
+- GYM_OWNER -> GYM#<uuid>
+
+### Rol vs estado
+- Role (admin/trainer/client) controla permisos de acceso y se deriva de grupos.
+- userType solo define contexto de negocio durante onboarding.
+
+### Por que el onboarding es post-login
+- El onboarding requiere un JWT valido para llamar POST /users/initialize.
+- Evita mostrar onboarding antes de autenticar al usuario.
+
+### Guards deciden
+- AuthGuard solo valida autenticacion.
+- OnboardingGuard permite /onboarding solo si el usuario autenticado no tiene grupos Admin/Trainer; si los tiene, redirige a /dashboard.
+- PostLoginRedirectGuard redirige a /onboarding cuando el usuario autenticado no tiene grupos Admin/Trainer.
 
 ### Integración con API Backend
 ```typescript
@@ -110,25 +124,30 @@ export class AuthInterceptor implements HttpInterceptor {
 fitness-planner/
 ├── .editorconfig
 ├── .gitignore
+├── AGENT_RULES.md
 ├── angular.json
+├── APPEARANCE_SETTINGS_DOCS.md
 ├── cognito-setup.yaml
-├── cognito-ui.css
+├── DEVELOPER..md
 ├── DOCUMENTATION.md
-├── exercise-video-flow.json
 ├── package-lock.json
 ├── package.json
 ├── proxy.conf.json
 ├── README.md
-├── scripts/
-│   └── smoke-api.mjs
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.spec.json
 ├── public/
 │   └── favicon.ico
+├── scripts/
+│   └── smoke-api.mjs
 ├── src/
 │   ├── aws-exports.ts
 │   ├── index.html
 │   ├── main.server.ts
 │   ├── main.ts
 │   ├── server.ts
+│   ├── stepFunctionExample.json
 │   ├── styles.scss
 │   ├── app/
 │   │   ├── .auth.json
@@ -141,44 +160,78 @@ fitness-planner/
 │   │   ├── app.routes.server.ts
 │   │   ├── app.routes.ts
 │   │   ├── exercise-api.service.ts
+│   │   ├── models/
+│   │   │   └── body-metrics.model.ts
 │   │   ├── user-api.service.ts
 │   │   ├── assets/
-│   │   │   └── tempLogo.png
+│   │   │   ├── tempLogo.png
 │   │   │   └── TrainGrid.png
-│   │   ├── auth/
-│   │   │   ├── auth.guard.spec.ts
-│   │   │   ├── auth.guard.ts
-│   │   │   ├── auth.interceptor.spec.ts
-│   │   │   ├── auth.interceptor.ts
-│   │   │   ├── auth.service.spec.ts
-│   │   │   ├── auth.service.ts
-│   │   │   └── test-utils.ts
 │   │   ├── components/
 │   │   │   ├── callback/
 │   │   │   │   ├── callback.component.html
 │   │   │   │   ├── callback.component.scss
 │   │   │   │   └── callback.component.ts
+│   │   │   ├── confirm-code/
+│   │   │   │   ├── confirm-code.component.html
+│   │   │   │   ├── confirm-code.component.scss
+│   │   │   │   └── confirm-code.component.ts
 │   │   │   ├── confirm-dialog/
 │   │   │   │   ├── confirm-dialog.component.html
 │   │   │   │   ├── confirm-dialog.component.scss
 │   │   │   │   └── confirm-dialog.component.ts
+│   │   │   ├── force-new-password/
+│   │   │   │   ├── force-new-password.component.html
+│   │   │   │   ├── force-new-password.component.scss
+│   │   │   │   └── force-new-password.component.ts
+│   │   │   ├── forgot-password/
+│   │   │   │   ├── forgot-password.component.html
+│   │   │   │   ├── forgot-password.component.scss
+│   │   │   │   └── forgot-password.component.ts
 │   │   │   ├── login/
 │   │   │   │   ├── login.component.html
 │   │   │   │   ├── login.component.scss
 │   │   │   │   └── login.component.ts
+│   │   │   ├── reset-password/
+│   │   │   │   ├── reset-password.component.html
+│   │   │   │   ├── reset-password.component.scss
+│   │   │   │   └── reset-password.component.ts
+│   │   │   ├── signup/
+│   │   │   │   ├── signup.component.html
+│   │   │   │   ├── signup.component.scss
+│   │   │   │   └── signup.component.ts
 │   │   │   ├── planner/
-│   │   │   │   ├── ai-prompt-dialog.component.html
-│   │   │   │   ├── ai-prompt-dialog.component.scss
-│   │   │   │   ├── ai-prompt-dialog.component.ts
-│   │   │   │   ├── exercise-preview-dialog.component.ts
-│   │   │   │   ├── plan-preview-dialog.component.ts
+│   │   │   │   ├── ai/
+│   │   │   │   │   ├── ai-generation-dialog.component.ts
+│   │   │   │   │   ├── ai-parametric-dialog.component.html
+│   │   │   │   │   ├── ai-parametric-dialog.component.scss
+│   │   │   │   │   ├── ai-parametric-dialog.component.ts
+│   │   │   │   │   ├── ai-prompt-dialog.component.html
+│   │   │   │   │   ├── ai-prompt-dialog.component.scss
+│   │   │   │   │   └── ai-prompt-dialog.component.ts
+│   │   │   │   ├── dialogs/
+│   │   │   │   │   ├── exercise-preview-dialog.component.ts
+│   │   │   │   │   ├── plan-preview-dialog.component.ts
+│   │   │   │   │   ├── previous-plans-dialog.component.html
+│   │   │   │   │   ├── previous-plans-dialog.component.scss
+│   │   │   │   │   └── previous-plans-dialog.component.ts
+│   │   │   │   ├── models/
+│   │   │   │   │   ├── planner-column.model.ts
+│   │   │   │   │   ├── planner-exercise.model.ts
+│   │   │   │   │   ├── planner-plan.model.ts
+│   │   │   │   │   └── planner-session.model.ts
 │   │   │   │   ├── planner.component.html
 │   │   │   │   ├── planner.component.scss
 │   │   │   │   ├── planner.component.spec.ts
 │   │   │   │   ├── planner.component.ts
-│   │   │   │   ├── previous-plans-dialog.component.html
-│   │   │   │   ├── previous-plans-dialog.component.scss
-│   │   │   │   └── previous-plans-dialog.component.ts
+│   │   │   │   └── services/
+│   │   │   │       ├── planner-drag-drop.service.spec.ts
+│   │   │   │       ├── planner-drag-drop.service.ts
+│   │   │   │       ├── planner-exercise-filter.service.spec.ts
+│   │   │   │       ├── planner-exercise-filter.service.ts
+│   │   │   │       ├── planner-form.service.spec.ts
+│   │   │   │       ├── planner-form.service.ts
+│   │   │   │       ├── planner-state.service.spec.ts
+│   │   │   │       └── planner-state.service.ts
 │   │   │   ├── test/
 │   │   │   │   ├── test.component.html
 │   │   │   │   ├── test.component.scss
@@ -194,7 +247,10 @@ fitness-planner/
 │   │   │       ├── workout-plan-view.component.spec.ts
 │   │   │       └── workout-plan-view.component.ts
 │   │   ├── guards/
+│   │   │   ├── auth-flow.guard.ts
 │   │   │   ├── auth.guard.ts
+│   │   │   ├── onboarding.guard.ts
+│   │   │   ├── post-login-redirect.guard.ts
 │   │   │   └── role.guard.ts
 │   │   ├── interceptors/
 │   │   │   └── auth.interceptor.ts
@@ -203,6 +259,14 @@ fitness-planner/
 │   │   │   ├── layout.component.scss
 │   │   │   └── layout.component.ts
 │   │   ├── pages/
+│   │   │   ├── client-body-metrics/
+│   │   │   │   ├── client-body-metrics.component.html
+│   │   │   │   ├── client-body-metrics.component.scss
+│   │   │   │   └── client-body-metrics.component.ts
+│   │   │   ├── clients/
+│   │   │   │   ├── clients.component.html
+│   │   │   │   ├── clients.component.scss
+│   │   │   │   └── clients.component.ts
 │   │   │   ├── dashboard/
 │   │   │   │   ├── dashboard.component.html
 │   │   │   │   ├── dashboard.component.scss
@@ -251,6 +315,10 @@ fitness-planner/
 │   │   │   │   ├── templates.component.scss
 │   │   │   │   ├── templates.component.spec.ts
 │   │   │   │   └── templates.component.ts
+│   │   │   ├── trainers/
+│   │   │   │   ├── trainers.component.html
+│   │   │   │   ├── trainers.component.scss
+│   │   │   │   └── trainers.component.ts
 │   │   │   ├── user-detail/
 │   │   │   │   ├── user-detail.component.html
 │   │   │   │   ├── user-detail.component.scss
@@ -264,17 +332,26 @@ fitness-planner/
 │   │   │       ├── users.component.scss
 │   │   │       └── users.component.ts
 │   │   ├── services/
-│   │       ├── auth.service.ts
-│   │       └── theme.service.ts
-│   │   └── shared/
-│   │       ├── feedback-utils.ts
-│   │       ├── models.ts
-│   │       ├── shared-utils.ts
-│   │       └── user-display-name.pipe.ts
-│   └── environments/
-│       ├── environment.prod.ts
-│       ├── environment.test.ts
-│       └── environment.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── client-body-metrics.service.ts
+│   │   │   ├── client-body-metrics.service.spec.ts
+│   │   │   ├── template-assignment.service.ts
+│   │   │   ├── theme.service.ts
+│   │   │   └── user-initialization.service.ts
+│   │   ├── shared/
+│   │   │   ├── ai-generation-timeline.component.html
+│   │   │   ├── ai-generation-timeline.component.scss
+│   │   │   ├── ai-generation-timeline.component.ts
+│   │   │   ├── auth-error-utils.ts
+│   │   │   ├── auth-validators.ts
+│   │   │   ├── feedback-utils.ts
+│   │   │   ├── models.ts
+│   │   │   ├── shared-utils.ts
+│   │   │   └── user-display-name.pipe.ts
+│   │   └── environments/
+│   │       ├── environment.prod.ts
+│   │       ├── environment.test.ts
+│   │       └── environment.ts
 └── tsconfig.json
 ```
 
@@ -319,8 +396,7 @@ export const environment = {
   cognito: {
     domain: 'tu-cognito-domain.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_XXXXXXXXX',
-    clientId: 'XXXXXXXXXXXXXXXXXXXXX',
-    redirectUri: 'http://localhost:4200/callback'
+    clientId: 'XXXXXXXXXXXXXXXXXXXXX'
   }
 };
 ```
@@ -332,11 +408,9 @@ ng serve
 La aplicación estará disponible en `http://localhost:4200`.
 
 ## Funcionalidades
-- **Sistema de Autenticación Híbrido**: OAuth 2.0 con PKCE + AWS Amplify para máxima seguridad y funcionalidades
+- **Autenticación custom con AWS Cognito**: Signup/login/reset con UI propia
 - **Control de Acceso Basado en Roles**: Tres niveles jerárquicos (Admin, Trainer, Client) con permisos granulares
-- **Autenticación con AWS Cognito**: Login/logout seguro vía Hosted UI con validación automática de tokens
-- **PKCE (Proof Key for Code Exchange)**: Protección avanzada contra ataques de interceptación en aplicaciones públicas
-- **Gestión de Sesiones**: Refresh automático de tokens y manejo de expiración transparente
+- **Gestión de Sesiones con Amplify**: Refresh automático de tokens y manejo de expiración transparente
 - **Grupos de Cognito**: Integración con User Groups para asignación automática de roles
 - **Atributos Personalizados**: Soporte para companyId, trainerIds y otros metadatos de usuario
 - **Rutas protegidas**: Guards avanzados con verificación de autenticación y roles específicos
@@ -365,34 +439,25 @@ La aplicación estará disponible en `http://localhost:4200`.
 - **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
 - **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
 - **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
+- **Métricas corporales de clientes**: Seguimiento histórico de composición corporal (peso, grasa corporal, masa muscular, IMC, metabolismo basal, edad metabólica) con gráficos y gestión de mediciones
+- **Interfaz unificada de usuario**: Arquitectura simplificada donde todos los roles acceden a través de la aplicación principal sin interfaces separadas
+- **Flujo de autenticación controlado**: Pantallas públicas con guard de flujo, persistencia temporal en `sessionStorage` y redirecciones claras
 
 ## Modulos de usuarios por rol
-- **Clientes**: Vista dedicada para usuarios con role = client, con asignacion/cambio de entrenador (solo admin).
+- **Clientes**: Gestión de usuarios con role = client, con asignación/cambio de entrenador (solo admin). Los clientes acceden a través de la aplicación principal según sus permisos.
 - **Entrenadores**: Vista dedicada para usuarios con role = trainer, con conteo de clientes asignados y planes creados.
 - **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
-- **Plantillas**: La asignacion de plantillas filtra solo clientes.
+- **Plantillas**: La asignación de plantillas filtra solo clientes.
+
+## Estado actual del desarrollo
+
+
 
 ## Ejemplos de uso
-### Iniciar sesión con OAuth 2.0 + PKCE
+### Iniciar sesión custom
 ```typescript
-// Ejemplo del AuthService personalizado (src/app/auth/auth.service.ts)
-async login(): Promise<void> {
-  const codeVerifier = this.generateCodeVerifier();
-  const codeChallenge = await this.generateCodeChallenge(codeVerifier);
-
-  // Store verifier for token exchange
-  sessionStorage.setItem('pkce_verifier', codeVerifier);
-
-  const authUrl = `https://${domain}/oauth2/authorize` +
-    `?client_id=${clientId}` +
-    `&response_type=code` +
-    `&scope=email+openid+profile` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&code_challenge_method=S256` +
-    `&code_challenge=${encodeURIComponent(codeChallenge)}`;
-
-  window.location.href = authUrl;
-}
+// Ejemplo con AuthService (src/app/services/auth.service.ts)
+await this.authService.signInUser(email, password);
 ```
 
 ### Realizar llamadas a la API
@@ -415,15 +480,10 @@ this.router.navigate(['/plan', planId]);
 
 ### Verificar estado de autenticación y roles
 ```typescript
-// Uso del AuthGuard (src/app/auth/auth.guard.ts)
-canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
-  if (this.authService.isLoggedIn()) {
-    return true;
-  }
-  // Redirect to Cognito Hosted UI for login
-  this.authService.login();
-  return false;
-}
+// Uso del AuthGuard (src/app/guards/auth.guard.ts)
+return from(this.authService.checkAuthState()).pipe(
+  switchMap(() => this.authService.isAuthenticated$)
+);
 
 // Uso del RoleGuard para control de acceso basado en roles
 canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
@@ -631,6 +691,7 @@ export class AiGenerationDialogComponent {
 
 ## Estado actual del desarrollo
 - **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
+- **Pantallas de autenticación**: Completo - Login, signup, confirmación, reset y cambio de contraseña
 - **Dashboard principal**: Completo - Navegación básica implementada
 - **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
 - **Generación de planes con IA**: Completo - Diálogo parametric avanzado con timeline visual, perfiles de usuario detallados y polling en tiempo real para generación de planes con Claude 3
@@ -660,19 +721,17 @@ export class AiGenerationDialogComponent {
 
 ## Cambios recientes (ultimos commits)
 
-### Ultimas actualizaciones implementadas:
-- **Panel de apariencia y branding**: Configuracion visual para admin con preview, colores, tipografia y carga de logo con URL pre-firmada
-- **Separacion de clientes y entrenadores**: Nuevas vistas dedicadas con logica por rol y sin selector de rol en formularios
-- **Metricas de entrenadores**: Conteo de clientes asignados y planes creados por entrenador en la vista
-- **Plantillas para clientes**: Asignacion de plantillas filtrada solo a clientes con busqueda en dialogo
-- **Asignación de usuarios a plantillas**: Implementación completa de funcionalidad para asignar usuarios a plantillas con soporte de diálogos
-- **Funcionalidad de guardado de plantillas**: Adición de capacidad para guardar plantillas con actualizaciones de UI
-- **Mejoras en visualización de planes**: Renderizado mejorado y mejor gestión de sesiones de entrenamiento
-- **Mejoras en generación de planes con IA**: Optimizaciones en formularios IA y gestión de usuarios
-- **Diálogo parametric de IA**: Implementación completa para planes de entrenamiento personalizados
-- **Layout de superseries**: Mejoras en el layout visual y adición de flags de agrupamiento en modelos
-- **Sidebar de ejercicios**: Mejoras en la sidebar y vista de planes con detalles adicionales
-- **Filtros y UI de gestión de ejercicios**: Mejoras en filtros y interfaz de usuario para gestión de ejercicios
+### Ultimas actualizaciones implementadas (últimos 10 commits):
+- **2dbc23f**: added new login page (merge)
+- **2ad115c**: added new login page
+- **4e242fe**: merge PR session requires exercise
+- **e7e9c71**: fixed ui and auth bugs (merge)
+- **ad767fc**: fixed ui and auth bugs
+- **eadabff**: merge PR planner default session one
+- **2046802**: fixed styles and bugs
+- **435613b**: fixed auth routing logs
+- **85af0c1**: implemented onboarding auth
+- **9950266**: update documentation
 
 ## Mejoras Pendientes
 
@@ -686,3 +745,51 @@ export class AiGenerationDialogComponent {
 - **Virtualización de listas**: Aplicar virtualización a listas largas de ejercicios
 - **Lazy loading**: Implementar carga diferida para módulos no críticos
 - **Optimización de API**: Mejorar eficiencia de llamadas a servicios backend
+
+## Entrenador asignado vs entrenador actual (decisión de arquitectura)
+
+El sistema distingue explícitamente entre dos conceptos relacionados con entrenadores y clientes, los cuales cumplen propósitos distintos y no deben confundirse.
+
+### Entrenador asignado (administrativo)
+
+- Representa una asignación organizativa dentro del gimnasio.
+- Se almacena de forma explícita en el perfil del usuario:
+  - `USERS.trainerId`
+- Es gestionado únicamente por el administrador / gym owner.
+- Se utiliza para:
+  - Vistas administrativas
+  - Organización interna del gimnasio
+  - Conteo de clientes por entrenador
+  - Reporting y métricas de gestión
+- No representa actividad reciente ni autoría de planes.
+
+### Entrenador actual (operativo)
+
+- Representa al entrenador que más recientemente creó un plan para el cliente.
+- **No se almacena como estado fijo**.
+- Se deriva dinámicamente a partir del último plan de entrenamiento:
+  - `WorkoutPlans` ordenados por fecha descendente.
+- Se utiliza para:
+  - Experiencia de usuario del cliente
+  - Personalización de la interfaz
+  - Contexto operativo en vistas de entrenador y cliente
+- Un cliente puede tener planes creados por múltiples entrenadores a lo largo del tiempo.
+
+### Relación entre ambos conceptos
+
+- El entrenador asignado **no limita** la creación de planes.
+- Cualquier entrenador del mismo gimnasio puede crear planes para cualquier cliente del tenant.
+- El entrenador actual puede cambiar de forma natural sin intervención administrativa.
+- El historial de planes conserva siempre la autoría original.
+
+### Estado de implementación
+
+- El backend soporta completamente esta separación de responsabilidades.
+- La lógica de derivación del entrenador actual está implementada a nivel de datos.
+- La UI actual utiliza principalmente la asignación administrativa.
+- La exposición completa del entrenador actual en UI (cliente, entrenador, administrador) queda planificada para una implementación posterior.
+
+Esta separación permite flexibilidad operativa, colaboración entre entrenadores y una experiencia de usuario fluida, sin comprometer el control administrativo del gimnasio.
+
+
+

@@ -12,60 +12,80 @@
       </p>
     </div>
   </div>
-  <div class="planner-actions">
-    <div class="actions-left">
-      <button mat-icon-button (click)="goBack()" matTooltip="Volver a la lista de planes">
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-    </div>
-    <div class="user-label">
-      <span class="user-name">{{ getPlannerHeaderLabel() }}</span>
-    </div>
-    <div class="spacer"></div>
-    <div class="actions-right">
-      <ng-container *ngIf="!isEditMode">
-        <mat-progress-spinner
-          *ngIf="isUserLoading"
-          mode="indeterminate"
-          diameter="24"
-        ></mat-progress-spinner>
-        <button
-          *ngIf="!isUserLoading"
-          mat-stroked-button
-          color="accent"
-          (click)="openAIDialog()"
-          [disabled]="!userProfile?.id"
-          [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+  
+  <div class="arrow-back-button">
+    <button mat-mini-fab (click)="goBack()" matTooltip="Volver a la lista de planes">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+            <button
+          *ngIf="!isTemplateMode"
+          mat-fab extended
+          color="primary"
+          (click)="openSaveTemplateDialog()"
+          matTooltip="Guardar el plan actual como plantilla"
+          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
         >
-          <mat-icon>psychology</mat-icon>
-          Generar plan
+          <mat-icon>style</mat-icon>
+          Guardar como plantilla
         </button>
-      </ng-container>
-      <button
-        *ngIf="!isTemplateMode"
-        mat-stroked-button
-        color="primary"
-        (click)="openSaveTemplateDialog()"
-        matTooltip="Guardar el plan actual como plantilla"
-        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
-      >
-        <mat-icon>bookmark_add</mat-icon>
-        Guardar como plantilla
-      </button>
-      <button
-        mat-raised-button
-        color="primary"
-        (click)="submitPlan()"
-        [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
-        [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading || (isTemplateMode && form.get('templateName')!.invalid)"
-      >
-        <mat-icon>save</mat-icon>
-        {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
-      </button>
-    </div>
   </div>
+    <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>person</mat-icon>
+        {{ getPlannerHeaderLabel() }}
+      </mat-card-title>
+      <mat-card-subtitle>Puedes crear tus planes con IA</mat-card-subtitle>
+      <div class="actions-right">
+        <ng-container *ngIf="!isEditMode">
+          <mat-progress-spinner
+            *ngIf="isUserLoading"
+            mode="indeterminate"
+            diameter="24"
+          ></mat-progress-spinner>
+          <button class="ia-button"
+            *ngIf="!isUserLoading && !isTemplateMode"
+            mat-fab extended
+            color="accent"
+            (click)="openAIDialog()"
+            [disabled]="!userProfile?.id"
+            [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+          >
+          <mat-icon>auto_awesome</mat-icon>
+            Generar plan IA
+          </button>
+        </ng-container>
+        <button
+          mat-fab extended
+          color="primary"
+          (click)="submitPlan()"
+          [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
+          [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
+        >
+          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'list_alt' : 'list_alt') }}</mat-icon>
+          {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
+        </button>
+      </div>
+    </mat-card-header>
+  </mat-card>
+    <div class="spacer"></div>
+  
 
   <form [formGroup]="form" class="planner-header">
+    <div class="header-group header-group-meta">
+      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
+        <mat-label>Nombre de plantilla</mat-label>
+        <input
+          matInput
+          formControlName="templateName"
+          placeholder="Ej: Fuerza base"
+          required
+        />
+        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
+          El nombre de la plantilla es obligatorio.
+        </mat-error>
+      </mat-form-field>
+    </div>
     <div class="header-group header-group-text">
       <mat-form-field appearance="outline" class="field-objective compact-textarea">
         <mat-label>Objetivo</mat-label>
@@ -94,35 +114,17 @@
           <mat-datepicker-toggle matSuffix [for]="planDatePicker"></mat-datepicker-toggle>
           <mat-datepicker #planDatePicker></mat-datepicker>
         </mat-form-field>
-
-        <mat-form-field appearance="outline" class="field-sessions compact-field">
-          <mat-label>Sesiones</mat-label>
-          <input matInput type="number" formControlName="sessionCount" min="1"/>
-        </mat-form-field>
       </div>
-    </div>
-
-    <div class="header-group header-group-meta">
-      <mat-form-field *ngIf="isTemplateMode" appearance="outline" class="field-template-name compact-field">
-        <mat-label>Nombre de plantilla</mat-label>
-        <input
-          matInput
-          formControlName="templateName"
-          placeholder="Ej: Fuerza base"
-          required
-        />
-        <mat-error *ngIf="form.get('templateName')!.hasError('required')">
-          El nombre de la plantilla es obligatorio.
-        </mat-error>
-      </mat-form-field>
-
-
     </div>
   </form>
 
   <mat-expansion-panel class="progressions-panel">
     <mat-expansion-panel-header>
-      <mat-panel-title>Progresion semanal (guia)</mat-panel-title>
+      
+      <mat-panel-title class="progression-title">
+        <mat-icon>show_chart</mat-icon>
+          Progresion semanal (guia)
+      </mat-panel-title>
       <mat-panel-description>
         <mat-checkbox
           class="progressions-toggle"
@@ -176,18 +178,19 @@
     </ng-template>
   </mat-expansion-panel>
 
-  <!-- Filtros -->
-  <div class="filters-section">
-    <div class="filters-header">
-      <h3 class="filters-title">Filtro de ejercicios</h3>
-      <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
-        <mat-icon>filter_alt_off</mat-icon>
-        Limpiar filtros
-      </button>
-    </div>
-    <div class="filters-row">
+  <!-- Filtros y Sesiones -->
+  <div class="filters-and-sessions-row">
+    <div class="filters-section">
+      <div class="filters-header">
+        <h3 class="filters-title">Filtro de ejercicios</h3>
+        <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
+          <mat-icon>filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      </div>
+      <div class="filters-row">
       <mat-form-field appearance="outline" class="search-field compact-field">
-        <mat-label>Buscar por nombre</mat-label>
+        <mat-label>Nombre</mat-label>
         <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
@@ -215,8 +218,34 @@
           <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" class="compact-field">
+        <mat-label>Dificultad</mat-label>
+        <mat-select [(ngModel)]="currentFilters.difficultyFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todas</mat-option>
+          <mat-option *ngFor="let diff of filterOptions.difficultyOptions" [value]="diff">{{ diff }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+<!--       <mat-form-field appearance="outline" class="compact-field">
+        <mat-label>Tipo de Grupo</mat-label>
+        <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
+        </mat-select>
+      </mat-form-field> -->
     </div>
   </div>
+
+  <!-- Campo de sesiones (compacto) -->
+  <form [formGroup]="form" class="sessions-wrapper-inline">
+    <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
+      <mat-label>Sesiones</mat-label>
+      <input matInput type="number" formControlName="sessionCount" min="1"/>
+      <mat-icon matSuffix>event_available</mat-icon>
+    </mat-form-field>
+  </form>
+</div>
 
 
 
@@ -227,7 +256,10 @@
     <div class="left-column">
       <!-- Sidebar de ejercicios -->
       <aside class="exercise-sidebar">
-        <h3>Ejercicios</h3>
+        <h3>
+          <mat-icon>fitness_center</mat-icon>
+          Ejercicios
+        </h3>
 
         <!-- Submenú: a qué día agregar -->
         <mat-menu #addMenu="matMenu">
@@ -239,23 +271,26 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <cdk-virtual-scroll-viewport itemSize="44" class="vs">
+          <cdk-virtual-scroll-viewport itemSize="36" class="vs">
           <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
-              <div class="aliases">{{ ex.aliases ? ex.aliases.join(', ') : '' }}</div>
               <div class="row">
                 <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
                 <div class="actions">
-                  <button mat-icon-button (click)="openExercisePreview(ex)" [matTooltip]="'Vista previa'">
+                  <button mat-mini-fab 
+                    (click)="openExercisePreview(ex)" 
+                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseleave)="onVideoLeave()"
+                    [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
                   </button>
-                  <button mat-icon-button (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
+<!--                   <button mat-mini-fab (click)="toggleFavorite(ex)" [matTooltip]="'Favorito'">
                     <mat-icon>{{ isFavorite(ex) ? 'star' : 'star_border' }}</mat-icon>
-                  </button>
-                  <button mat-icon-button [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()" [matTooltip]="'Añadir a sesión'">
+                  </button> -->
+                  <button mat-mini-fab [matMenuTriggerFor]="addMenu" (click)="onOpenAddMenu(ex); $event.stopPropagation()" [matTooltip]="'Añadir a sesión'">
                     <mat-icon>playlist_add</mat-icon>
                   </button>
                 </div>
@@ -320,174 +355,185 @@
           <mat-card-header class="name-cursor">
             <mat-card-title>{{ s.name }}</mat-card-title>
             <div class="session-actions">
-              <button mat-icon-button (click)="toggleCollapse(s)" [matTooltip]="s.collapsed ? 'Expandir' : 'Colapsar'">
+              <button mat-mini-fab (click)="toggleCollapse(s)" [matTooltip]="s.collapsed ? 'Expandir' : 'Colapsar'">
                 <mat-icon>{{ s.collapsed ? 'unfold_more' : 'unfold_less' }}</mat-icon>
               </button>
             </div>
           </mat-card-header>
           <mat-card-content *ngIf="!s.collapsed">
-            <table class="mat-table session-table">
-              <thead>
-                <tr class="mat-header-row">
-                  <th class="mat-header-cell">
-                    <mat-icon class="superserie-header-icon"
-                              [ngClass]="{'superserie-header-icon-active': hasSelectedItems(s)}"
-                              (click)="groupSelected(s)"
-                              [style.cursor]="hasSelectedItems(s) ? 'pointer' : 'not-allowed'"
-                              [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
-                              matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">link</mat-icon>
-                  </th>
-                  <th class="mat-header-cell">Ejercicio</th>
-                  <th class="mat-header-cell">Equipo</th>
-                  <th class="mat-header-cell">Sets</th>
-                  <th class="mat-header-cell">Reps</th>
-                  <th class="mat-header-cell">Rest</th>
-                  <th class="mat-header-cell">Peso</th>
-                  <th class="mat-header-cell">Acciones</th>
-                  <th class="mat-header-cell"></th>
-                </tr>
-              </thead>
+            <div class="planner-table">
+              <div class="planner-grid planner-row header-row">
+                <div class="planner-header-cell control-cell">
+                  <mat-icon class="superserie-header-icon"
+                            [ngClass]="{'superserie-header-icon-active': hasSelectedItems(s)}"
+                            (click)="groupSelected(s)"
+                            [style.cursor]="hasSelectedItems(s) ? 'pointer' : 'not-allowed'"
+                            [style.opacity]="hasSelectedItems(s) ? '1' : '0.4'"
+                            matTooltip="Crear superserie (selecciona al menos 2 ejercicios)">offline_bolt</mat-icon>
+                </div>
+                <div class="planner-header-cell name-cell">Ejercicio</div>
+                <div class="planner-header-cell">Equipo</div>
+                <div class="planner-header-cell sets-cell">Sets</div>
+                <div class="planner-header-cell reps-cell">Reps</div>
+                <div class="planner-header-cell rest-cell">Rest</div>
+                <div class="planner-header-cell weight-cell">Peso</div>
+                <div class="planner-header-cell actions-cell">Acciones</div>
+              </div>
 
-              <tbody>
-                <ng-container *ngFor="let item of s.items; let i = index; trackBy: trackByItem">
-                  <ng-container *ngIf="!item.isGroup">
-                    <tr cdkDrag
-                        [cdkDragData]="item"
-                        (cdkDragMoved)="onDragMoved($event)">
-                      <td class="mat-cell select-cell">
-                        <mat-checkbox
-                          [(ngModel)]="item.selected"
-                          (change)="updateSelection(s)"
-                        ></mat-checkbox>
-                      </td>
-                      <td class="mat-cell name-cell">
-                        <span class="exercise-name-text" [matTooltip]="getDisplayName(item)">{{ getDisplayName(item) }}</span>
-                      </td>
-                      <td class="mat-cell">
-                        {{ getEquipmentLabel(item) }}
-                      </td>
-                      <td class="mat-cell">
-                        <input class="sets-input"
-                          matInput
-                          type="number"
-                          [(ngModel)]="item.sets"
-                          (blur)="persist()"
-                        />
-                      </td>
-                      <td class="mat-cell">
-                        <input class="sets-input"
-                          matInput
-                          type="text"
-                          [(ngModel)]="item.reps"
-                          (blur)="persist()"
-                        />
-                      </td>
-                      <td class="mat-cell">
-                        <input class="sets-input"
-                          matInput
-                          type="text"
-                          [(ngModel)]="item.rest"
-                          (blur)="persist()"
-                        />
-                      </td>
-                      <td class="mat-cell">
-                        <input matInput class="sets-input"
-                              type="text"
-                              [(ngModel)]="item.weight"
-                              (blur)="persist()" />
-                      </td>
-                      <td class="mat-cell">
-                        <button mat-icon-button (click)="openExercisePreview(item)" [matTooltip]="'Vista previa'">
-                          <mat-icon>play_circle</mat-icon>
+              <ng-container *ngFor="let item of s.items; let i = index; trackBy: trackByItem">
+                <ng-container *ngIf="!item.isGroup">
+                  <div class="planner-grid planner-row exercise-row"
+                       cdkDrag
+                       [cdkDragData]="item"
+                       (cdkDragMoved)="onDragMoved($event)">
+                    <div class="planner-cell control-cell">
+                      <mat-checkbox
+                        [(ngModel)]="item.selected"
+                        (change)="updateSelection(s)"
+                      ></mat-checkbox>
+                    </div>
+                    <div class="planner-cell name-cell">
+                      <span class="exercise-name-text" [matTooltip]="getDisplayName(item)">{{ getDisplayName(item) }}</span>
+                    </div>
+                    <div class="planner-cell">
+                      {{ getEquipmentLabel(item) }}
+                    </div>
+                    <div class="planner-cell sets-cell">
+                      <input class="sets-input"
+                        matInput
+                        type="number"
+                        [(ngModel)]="item.sets"
+                        (blur)="persist()"
+                      />
+                    </div>
+                    <div class="planner-cell reps-cell">
+                      <input class="reps-input"
+                        matInput
+                        type="text"
+                        [(ngModel)]="item.reps"
+                        (blur)="persist()"
+                      />
+                    </div>
+                    <div class="planner-cell rest-cell">
+                      <input class="sets-input"
+                        matInput
+                        type="text"
+                        [(ngModel)]="item.rest"
+                        (blur)="persist()"
+                      />
+                    </div>
+                    <div class="planner-cell weight-cell">
+                      <input matInput class="sets-input"
+                            type="text"
+                            [(ngModel)]="item.weight"
+                            (blur)="persist()" />
+                    </div>
+                    <div class="planner-cell actions-cell ">
+                      <button mat-mini-fab 
+                        (click)="openExercisePreview(item)" 
+                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseleave)="onVideoLeave()"
+                        [matTooltip]="'Vista previa'">
+                        <mat-icon>play_circle</mat-icon>
+                      </button>
+                      <div class="trash-icon">
+                      <button  mat-mini-fab  (click)="removeItem(s, i)">
+                        <mat-icon>delete</mat-icon>
+                      </button></div>
+                    </div>
+                  </div>
+                </ng-container>
+
+                <ng-container *ngIf="item.isGroup">
+                  <!-- Superserie block rendered inline -->
+                  <div class="superserie-wrapper" cdkDrag [cdkDragData]="item" (cdkDragMoved)="onDragMoved($event)">
+                    <div class="planner-grid planner-row superserie-header">
+                      <div class="planner-cell control-cell trash-icon">
+                        <button mat-mini-fab color="warn" (click)="ungroupGroup(s, i)" matTooltip="Desagrupar superserie">
+                          <mat-icon>link_off</mat-icon>
                         </button>
-                        <button mat-icon-button color="warn" (click)="removeItem(s, i)">
+                      </div>
+                      <div class="planner-cell name-cell">
+                        <!-- Empty for spacing -->
+                      </div>
+                      <div class="planner-cell">
+                        <mat-icon>flash_on</mat-icon>
+                        <span class="superserie-label">Superserie</span>
+                      </div>
+                      <div class="planner-cell sets-cell">
+                        <!-- Empty for spacing -->
+                      </div>
+                      <div class="planner-cell reps-cell">
+                        <!-- Empty for spacing -->
+                      </div>
+                      <div class="planner-cell rest-cell">
+                        <!-- Empty for spacing -->
+                      </div>
+                      <div class="planner-cell weight-cell">
+                        <!-- Empty for spacing -->
+                      </div>
+                      <div class="planner-cell actions-cell trash-icon">
+                        <button mat-mini-fab color="warn" (click)="removeItem(s, i)" matTooltip="Eliminar superserie">
                           <mat-icon>delete</mat-icon>
                         </button>
-                      </td>
-                      <td class="mat-cell"></td>
-                    </tr>
-                  </ng-container>
-
-                  <ng-container *ngIf="item.isGroup">
-                    <!-- Superserie block rendered inline -->
-                    <tr class="superserie-block-row">
-                      <td colspan="9" class="superserie-block-cell">
-                        <div class="superserie-block" cdkDrag [cdkDragData]="item" (cdkDragMoved)="onDragMoved($event)">
-                          <div class="superserie-header">
-                            <span class="superserie-label">🔗 Superserie</span>
-                            <div class="superserie-actions">
-                              <button mat-icon-button color="warn" (click)="ungroupGroup(s, i)" matTooltip="Desagrupar superserie">
-                                <mat-icon>link_off</mat-icon>
-                              </button>
-                              <button mat-icon-button color="warn" (click)="removeItem(s, i)" matTooltip="Eliminar superserie">
-                                <mat-icon>delete</mat-icon>
-                              </button>
-                            </div>
-                          </div>
-                          <div class="superserie-body">
-                            <table class="superserie-table">
-                              <tbody>
-                                <ng-container *ngFor="let child of item.children; let childIndex = index; trackBy: trackByChild">
-                                <tr class="superserie-child-row">
-                                    <td class="mat-cell select-cell">
-                                      <!-- No checkbox for child rows -->
-                                    </td>
-                                    <td class="mat-cell name-cell">
-                                      <span class="exercise-name-text" [matTooltip]="getDisplayName(child)">{{ getDisplayName(child) }}</span>
-                                    </td>
-                                    <td class="mat-cell">
-                                      {{ getEquipmentLabel(child) }}
-                                    </td>
-                                    <td class="mat-cell">
-                                      <input class="sets-input"
-                                        matInput
-                                        type="number"
-                                        [(ngModel)]="child.sets"
-                                        (blur)="persist()"
-                                      />
-                                    </td>
-                                    <td class="mat-cell">
-                                      <input class="sets-input"
-                                        matInput
-                                        type="text"
-                                        [(ngModel)]="child.reps"
-                                        (blur)="persist()"
-                                      />
-                                    </td>
-                                    <td class="mat-cell">
-                                      <input class="sets-input"
-                                        matInput
-                                        type="text"
-                                        [(ngModel)]="child.rest"
-                                        (blur)="persist()"
-                                      />
-                                    </td>
-                                    <td class="mat-cell">
-                                      <input matInput class="sets-input"
-                                            type="text"
-                                            [(ngModel)]="child.weight"
-                                            (blur)="persist()" />
-                                    </td>
-                                    <td class="mat-cell">
-                                      <button mat-icon-button (click)="openExercisePreview(child)" [matTooltip]="'Vista previa'">
-                                        <mat-icon>play_circle</mat-icon>
-                                      </button>
-                                    </td>
-                                    <td class="mat-cell">
-                                      <!-- No delete action for child rows -->
-                                    </td>
-                                  </tr>
-                                </ng-container>
-                              </tbody>
-                            </table>
-                          </div>
+                      </div>
+                    </div>
+                    <ng-container *ngFor="let child of item.children; let childIndex = index; trackBy: trackByChild">
+                      <div class="planner-grid planner-row superserie-child-row">
+                        <div class="planner-cell control-cell">
+                          <mat-icon class="superserie-child-indicator" matTooltip="Parte de una superserie">link</mat-icon>
                         </div>
-                      </td>
-                    </tr>
-                  </ng-container>
+                        <div class="planner-cell name-cell">
+                          <span class="exercise-name-text" [matTooltip]="getDisplayName(child)">{{ getDisplayName(child) }}</span>
+                        </div>
+                        <div class="planner-cell">
+                          {{ getEquipmentLabel(child) }}
+                        </div>
+                        <div class="planner-cell sets-cell">
+                          <input class="sets-input"
+                            matInput
+                            type="number"
+                            [(ngModel)]="child.sets"
+                            (blur)="persist()"
+                          />
+                        </div>
+                        <div class="planner-cell reps-cell">
+                          <input class="reps-input"
+                            matInput
+                            type="text"
+                            [(ngModel)]="child.reps"
+                            (blur)="persist()"
+                          />
+                        </div>
+                        <div class="planner-cell rest-cell">
+                          <input class="sets-input"
+                            matInput
+                            type="text"
+                            [(ngModel)]="child.rest"
+                            (blur)="persist()"
+                          />
+                        </div>
+                        <div class="planner-cell weight-cell">
+                          <input matInput class="sets-input"
+                                type="text"
+                                [(ngModel)]="child.weight"
+                                (blur)="persist()" />
+                        </div>
+                        <div class="planner-cell actions-cell">
+                          <button mat-mini-fab 
+                            (click)="openExercisePreview(child)" 
+                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseleave)="onVideoLeave()"
+                            [matTooltip]="'Vista previa'">
+                            <mat-icon>play_circle</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
                 </ng-container>
-              </tbody>
-            </table>
+              </ng-container>
+            </div>
           </mat-card-content>
         </div>
       </mat-card>
@@ -495,6 +541,21 @@
 
 
 
+  </div>
+
+  <!-- Hover Preview Overlay -->
+  <div *ngIf="hoveredExercise"
+       class="hover-preview"
+       [style.left.px]="previewPosition.x"
+       [style.top.px]="previewPosition.y">
+    <img *ngIf="getPreviewUrl(hoveredExercise)"
+         [src]="getPreviewUrl(hoveredExercise)"
+         alt="Vista previa"
+         class="preview-image"
+         loading="lazy">
+    <div *ngIf="!getPreviewUrl(hoveredExercise)" class="preview-fallback">
+      Vista previa no disponible
+    </div>
   </div>
 </div>
 
@@ -508,12 +569,12 @@
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions align="end">
-    <button mat-button mat-dialog-close [disabled]="isSavingTemplate">Cancelar</button>
+    <button mat-fab extended mat-dialog-close [disabled]="isSavingTemplate">Cancelar</button>
     <button
-      mat-raised-button
+      mat-fab extended
       color="primary"
       (click)="confirmSaveTemplate()"
-      [disabled]="!templateNameInput.trim() || isSavingTemplate"
+      [disabled]="isSavingTemplate"
     >
       Guardar
     </button>

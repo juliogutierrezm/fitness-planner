@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { Observable, of, from } from 'rxjs';
-import { map, take, switchMap } from 'rxjs/operators';
-import { AuthService, UserRole } from '../services/auth.service';
-import { isIndependentTenant } from '../shared/shared-utils';
+import { Observable, from, of } from 'rxjs';
+import { map, take, switchMap, catchError, tap, filter } from 'rxjs/operators';
+import { AuthService } from '../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -29,42 +28,40 @@ export class AuthGuard implements CanActivate, CanActivateChild {
     return this.checkAuth(childRoute);
   }
 
-  private checkAuth(route: ActivatedRouteSnapshot): Observable<boolean> {
-    // Ensure we refresh auth state once before deciding
+  private checkAuth(_route: ActivatedRouteSnapshot): Observable<boolean> {
+    // SSR/hydration note:
+    // - On the server we cannot resolve browser auth tokens, so authStatus remains 'unknown'.
+    // - We must NOT redirect to /login in that state (it breaks deep links and causes login flash).
+    if (this.authService.getAuthStatusSync() === 'unknown') {
+      console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.allow', reason: 'authUnknown' });
+      return of(true);
+    }
+
+    // Browser: Ensure we refresh auth state once before deciding
     return from(this.authService.checkAuthState()).pipe(
-      switchMap(() => this.authService.isAuthenticated$.pipe(
+      tap(() => console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.checkAuthStateComplete' })),
+      switchMap(() => this.authService.isAuthLoading$.pipe(
+        filter(isLoading => !isLoading),
         take(1),
-        switchMap(isAuthenticated => {
-          if (!isAuthenticated) {
-            // Prefer Hosted UI redirect if available
-            try { this.authService.signInWithRedirect(); } catch {}
-            this.router.navigate(['/login']);
-            return of(false);
-          }
+        switchMap(() => this.authService.isAuthenticated$.pipe(
+          take(1),
+          map(isAuthenticated => {
+            console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.isAuthenticated', isAuthenticated });
+            if (!isAuthenticated) {
+              console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.redirectLogin' });
+              this.router.navigate(['/login']);
+              return false;
+            }
 
-          // Check role-based access
-          const requiredRoles = route.data?.['roles'] as UserRole[];
-          if (requiredRoles && requiredRoles.length > 0) {
-            return this.authService.currentUser$.pipe(
-              take(1),
-              map(user => {
-                if (!user || !requiredRoles.includes(user.role)) {
-                  this.router.navigate(['/unauthorized']);
-                  return false;
-                }
-                const excludeIndependent = route.data?.['excludeIndependent'] === true;
-                if (excludeIndependent && isIndependentTenant(user?.companyId)) {
-                  this.router.navigate(['/unauthorized']);
-                  return false;
-                }
-                return true;
-              })
-            );
-          }
-
-          return of(true);
-        })
-      ))
+            return true;
+          })
+        ))
+      )),
+      catchError(error => {
+        console.error('[AuthDebug]', { op: 'AuthGuard.checkAuth.error', error });
+        this.router.navigate(['/login']);
+        return of(false);
+      })
     );
   }
 }

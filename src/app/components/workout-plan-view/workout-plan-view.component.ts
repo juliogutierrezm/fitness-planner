@@ -1,9 +1,10 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatIconModule } from '@angular/material/icon';
 import { PlanItem, Session } from '../../shared/models';
 import {
   getPlanItemDisplayName,
@@ -11,6 +12,8 @@ import {
   hasRenderablePlanContent,
   parsePlanSessions
 } from '../../shared/shared-utils';
+import { UserApiService } from '../../user-api.service';
+import { PlanProgressions, ProgressionWeek } from '../planner/models/planner-plan.model';
 
 @Component({
   selector: 'app-workout-plan-view',
@@ -22,14 +25,24 @@ import {
     MatDividerModule,
     MatTableModule,
     MatTooltipModule,
+    MatIconModule,
   ],
   templateUrl: './workout-plan-view.component.html',
   styleUrls: ['./workout-plan-view.component.scss']
 })
-export class WorkoutPlanViewComponent implements OnChanges {
+export class WorkoutPlanViewComponent implements OnChanges, OnInit {
   @Input() plan: any;
   sessions: Session[] = [];
   hasRenderableSessions = false;
+  trainerName = '';
+  progressions: PlanProgressions | null = null;
+
+  constructor(private userApi: UserApiService) {}
+
+  ngOnInit(): void {
+    this.loadTrainerName();
+    this.loadProgressions();
+  }
 
   /**
    * Purpose: refresh normalized sessions when the plan input changes.
@@ -40,6 +53,52 @@ export class WorkoutPlanViewComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['plan']) {
       this.refreshSessions();
+      this.loadTrainerName();
+      this.loadProgressions();
+    }
+  }
+
+  /**
+   * Purpose: Load trainer name from userId.
+   */
+  private loadTrainerName(): void {
+    const trainerId = this.plan?.trainerId || this.plan?.userId;
+    if (!trainerId) {
+      this.trainerName = 'N/A';
+      return;
+    }
+    this.userApi.getUserById(trainerId).subscribe({
+      next: (user) => {
+        if (user) {
+          this.trainerName = `${user.givenName || ''} ${user.familyName || ''}`.trim() || user.email || trainerId;
+        } else {
+          this.trainerName = 'N/A';
+        }
+      },
+      error: () => {
+        this.trainerName = 'N/A';
+      }
+    });
+  }
+
+  /**
+   * Purpose: Load and normalize progressions from plan.
+   */
+  private loadProgressions(): void {
+    const rawProgressions = this.plan?.progressions;
+    if (!rawProgressions) {
+      this.progressions = null;
+      return;
+    }
+    if (typeof rawProgressions === 'string') {
+      try {
+        const parsed = JSON.parse(rawProgressions);
+        this.progressions = parsed && typeof parsed === 'object' ? parsed as PlanProgressions : null;
+      } catch {
+        this.progressions = null;
+      }
+    } else {
+      this.progressions = rawProgressions as PlanProgressions;
     }
   }
 
@@ -50,7 +109,11 @@ export class WorkoutPlanViewComponent implements OnChanges {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private refreshSessions(): void {
-    this.sessions = parsePlanSessions(this.plan?.sessions);
+    // Support both new format { meta, plan: [...sessions] } and legacy { sessions: [...] }
+    const rawSessions = Array.isArray(this.plan?.plan)
+      ? this.plan.plan
+      : this.plan?.sessions;
+    this.sessions = parsePlanSessions(rawSessions);
     this.hasRenderableSessions = hasRenderablePlanContent(this.sessions);
   }
 

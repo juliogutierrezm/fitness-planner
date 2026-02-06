@@ -1,0 +1,379 @@
+<div class="trainers-page">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>sports</mat-icon>
+        {{ pageTitle }}
+      </mat-card-title>
+      <mat-card-subtitle>Administración de entrenadores y su rendimiento</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <div *ngIf="canCreate && !showCreateForm" class="create-button-container">
+    <button 
+      mat-fab 
+      extended 
+      color="primary" 
+      (click)="openCreateForm()"
+      [disabled]="hasReachedTrainerLimit()"
+      [matTooltip]="hasReachedTrainerLimit() ? getTrainerLimitMessage() : ''">
+      <mat-icon>add</mat-icon>
+      Crear nuevo entrenador
+    </button>
+    <p *ngIf="hasReachedTrainerLimit()" class="limit-warning">
+      <mat-icon>info</mat-icon>
+      {{ getTrainerLimitMessage() }}
+    </p>
+  </div>
+
+  <mat-card class="form-card" *ngIf="canCreate && showCreateForm">
+    <h3>Crear entrenador</h3>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" type="email" required />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
+          <input matInput formControlName="givenName" required />
+          <mat-error *ngIf="form.get('givenName')?.hasError('required')">
+            El nombre es obligatorio
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Apellidos</mat-label>
+          <input matInput formControlName="familyName" required />
+          <mat-error *ngIf="form.get('familyName')?.hasError('required')">
+            Los apellidos son obligatorios
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Teléfono</mat-label>
+          <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Género</mat-label>
+          <mat-select formControlName="gender">
+            <mat-option value="Masculino">Masculino</mat-option>
+            <mat-option value="Femenino">Femenino</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Fecha de nacimiento</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="dateOfBirth" required>
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+          <mat-error *ngIf="form.get('dateOfBirth')?.hasError('required')">
+            La fecha de nacimiento es obligatoria
+          </mat-error>
+        </mat-form-field>
+      </div>
+      <div class="form-grid">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Notas internas</mat-label>
+          <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas"></textarea>
+        </mat-form-field>
+      </div>
+      <div class="actions">
+        <button mat-fab extended type="button" (click)="showCreateForm = false">Cancelar</button>
+        <button mat-fab extended color="primary" type="submit" [disabled]="form.invalid || isSaving">
+          <mat-icon>how_to_reg</mat-icon>
+          Guardar
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="list-card">
+    <div *ngIf="isLoading" class="loading-container" role="status" aria-live="polite" aria-busy="true">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+    <div *ngIf="!isLoading && trainers.length === 0" class="empty">No hay entrenadores</div>
+    
+    <ng-container *ngIf="!isLoading && trainers.length > 0">
+      <!-- Search filter -->
+      <div class="search-container">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar entrenador</mat-label>
+          <input 
+            matInput 
+            [(ngModel)]="searchTerm" 
+            placeholder="Nombre, email o teléfono"
+            type="text">
+          <mat-icon matPrefix>search</mat-icon>
+          <button 
+            *ngIf="searchTerm" 
+            matSuffix 
+            mat-icon-button 
+            aria-label="Limpiar búsqueda"
+            (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-form-field>
+      </div>
+
+      <mat-tab-group [(selectedIndex)]="selectedTabIndex" class="users-tabs">
+        <!-- Tab Activos -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">check_circle</mat-icon>
+            Activos ({{ activeTrainers.length }})
+          </ng-template>
+          
+          <div class="tab-content">
+            <div *ngIf="activeTrainers.length === 0" class="empty">No hay entrenadores activos</div>
+            <div class="user-row" *ngFor="let u of activeTrainers" [class.user-row--expanded]="isTrainerExpanded(u)">
+              <ng-container *ngIf="editingId !== u.id; else editTpl">
+                <div class="user-row-main">
+                  <div class="info clickable" (click)="toggleTrainerExpansion(u)">
+                    <div class="name-row">
+                      <span class="name">{{ u.givenName || '' }} {{ u.familyName || '' }}</span>
+                      <span class="status-badge active">Activo</span>
+                      <mat-icon class="expand-icon">
+                        {{ isTrainerExpanded(u) ? 'expand_less' : 'expand_more' }}
+                      </mat-icon>
+                    </div>
+                    <div class="meta">
+                      <span class="meta-item">{{ u.email }}</span>
+                      <span class="meta-sep" *ngIf="u.telephone">&middot;</span>
+                      <span class="meta-item" *ngIf="u.telephone">{{ u.telephone }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item">{{ u.role }}</span>
+                      <span class="meta-sep" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">&middot;</span>
+                      <span class="meta-item" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">{{ u.companyId }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item">Clientes: {{ getTrainerClientCount(u) }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item ai-plans-badge" [class.limit-reached]="hasReachedAiPlanLimit(u)">
+                        Planes IA: {{ getTrainerAiPlanCount(u) }} / {{ MAX_AI_PLANS_PER_TRAINER }}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div class="row-actions">
+                    <button mat-mini-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar entrenador">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button *ngIf="isAdmin"
+                      matTooltip="Desactivar entrenador"
+                      mat-mini-fab
+                      class="btn-deactivate"
+                      (click)="deactivateUser(u)"
+                      [disabled]="togglingStatusUserId === u.id"
+                      aria-label="Desactivar"
+                    >
+                      <mat-icon>block</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Expansion panel for trainer details -->
+                <div *ngIf="isTrainerExpanded(u)" class="trainer-expansion">
+                  <div class="expansion-section">
+                    <h4>
+                      <mat-icon>group</mat-icon>
+                      Clientes Asignados
+                    </h4>
+                    <div *ngIf="getTrainerClients(u).length === 0" class="empty-state">
+                      <p>Este entrenador no tiene clientes asignados aún.</p>
+                    </div>
+                    <div *ngIf="getTrainerClients(u).length > 0" class="clients-list">
+                      <div class="client-chip" *ngFor="let client of getTrainerClients(u)">
+                        <mat-icon>person</mat-icon>
+                        <span class="client-name">{{ client.givenName || '' }} {{ client.familyName || '' }}</span>
+                        <span class="client-email">{{ client.email }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <mat-divider></mat-divider>
+
+                  <div class="expansion-section">
+                    <h4>
+                      <mat-icon>auto_awesome</mat-icon>
+                      Planes de Entrenamiento con IA
+                    </h4>
+                    <div class="ai-plans-info">
+                      <div class="ai-count" [class.limit-reached]="hasReachedAiPlanLimit(u)">
+                        <span class="count-number">{{ getTrainerAiPlanCount(u) }}</span>
+                        <span class="count-label">/ {{ MAX_AI_PLANS_PER_TRAINER }}</span>
+                      </div>
+                      <p class="ai-description">
+                        Planes creados por este entrenador durante el periodo de prueba.
+                      </p>
+                      <div *ngIf="hasReachedAiPlanLimit(u)" class="limit-message">
+                        <mat-icon>info</mat-icon>
+                        <span>{{ getAiPlanLimitMessage() }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <ng-template #editTpl>
+                <form [formGroup]="editForm" class="edit-grid" (ngSubmit)="saveEdit(u)">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Email</mat-label>
+                    <input matInput type="email" formControlName="email" readonly />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="givenName" required />
+                    <mat-error *ngIf="editForm.get('givenName')?.hasError('required')">
+                      El nombre es obligatorio
+                    </mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Apellidos</mat-label>
+                    <input matInput formControlName="familyName" required />
+                    <mat-error *ngIf="editForm.get('familyName')?.hasError('required')">
+                      Los apellidos son obligatorios
+                    </mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Teléfono</mat-label>
+                    <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Género</mat-label>
+                    <mat-select formControlName="gender">
+                      <mat-option value="Masculino">Masculino</mat-option>
+                      <mat-option value="Femenino">Femenino</mat-option>
+                      <mat-option value="Otro">Otro</mat-option>
+                      <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Fecha de nacimiento</mat-label>
+                    <input matInput [matDatepicker]="editPickerActive" formControlName="dateOfBirth" required>
+                    <mat-datepicker-toggle matSuffix [for]="editPickerActive"></mat-datepicker-toggle>
+                    <mat-datepicker #editPickerActive></mat-datepicker>
+                    <mat-error *ngIf="editForm.get('dateOfBirth')?.hasError('required')">
+                      La fecha de nacimiento es obligatoria
+                    </mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Notas internas</mat-label>
+                    <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas"></textarea>
+                  </mat-form-field>
+                  <div class="edit-actions">
+                    <button mat-fab extended type="button" (click)="cancelEdit()">Cancelar</button>
+                    <button mat-fab extended color="primary" type="submit" [disabled]="editForm.invalid || isSaving">Guardar</button>
+                  </div>
+                </form>
+              </ng-template>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Tab Inactivos -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon inactive-icon">cancel</mat-icon>
+            Inactivos ({{ inactiveTrainers.length }})
+          </ng-template>
+          
+          <div class="tab-content">
+            <div *ngIf="inactiveTrainers.length === 0" class="empty">No hay entrenadores inactivos</div>
+            <div class="user-row user-row--inactive" *ngFor="let u of inactiveTrainers">
+              <ng-container *ngIf="editingId !== u.id; else editInactiveTpl">
+                <div class="user-row-main">
+                  <div class="info">
+                    <div class="name-row">
+                      <span class="name">{{ u.givenName || '' }} {{ u.familyName || '' }}</span>
+                      <span class="status-badge inactive">Inactivo</span>
+                    </div>
+                    <div class="meta">
+                      <span class="meta-item">{{ u.email }}</span>
+                      <span class="meta-sep" *ngIf="u.telephone">&middot;</span>
+                      <span class="meta-item" *ngIf="u.telephone">{{ u.telephone }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item">{{ u.role }}</span>
+                      <span class="meta-sep" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">&middot;</span>
+                      <span class="meta-item" *ngIf="u.companyId && u.companyId !== 'INDEPENDENT'">{{ u.companyId }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item">Clientes: {{ getTrainerClientCount(u) }}</span>
+                      <span class="meta-sep">&middot;</span>
+                      <span class="meta-item ai-plans-badge" [class.limit-reached]="hasReachedAiPlanLimit(u)">
+                        Planes IA: {{ getTrainerAiPlanCount(u) }} / {{ MAX_AI_PLANS_PER_TRAINER }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="row-actions">
+                    <button *ngIf="isAdmin"
+                      matTooltip="Activar entrenador"
+                      mat-mini-fab
+                      class="btn-activate"
+                      (click)="activateUser(u)"
+                      [disabled]="togglingStatusUserId === u.id"
+                      aria-label="Activar"
+                    >
+                      <mat-icon>check_circle</mat-icon>
+                    </button>
+                    <div class="trash-icon">
+                      <button *ngIf="isAdmin"
+                        matTooltip="Eliminar permanentemente"
+                        mat-mini-fab
+                        color="warn"
+                        (click)="remove(u)"
+                        [disabled]="deletingUserId === u.id"
+                        aria-label="Eliminar"
+                      >
+                        <mat-icon>delete_forever</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+
+              <ng-template #editInactiveTpl>
+                <form [formGroup]="editForm" class="edit-grid" (ngSubmit)="saveEdit(u)">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Email</mat-label>
+                    <input matInput type="email" formControlName="email" readonly />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="givenName" required />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Apellidos</mat-label>
+                    <input matInput formControlName="familyName" required />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Teléfono</mat-label>
+                    <input matInput formControlName="telephone" placeholder="+56912345678" type="tel">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Género</mat-label>
+                    <mat-select formControlName="gender">
+                      <mat-option value="Masculino">Masculino</mat-option>
+                      <mat-option value="Femenino">Femenino</mat-option>
+                      <mat-option value="Otro">Otro</mat-option>
+                      <mat-option value="Prefiero no decirlo">Prefiero no decirlo</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Fecha de nacimiento</mat-label>
+                    <input matInput [matDatepicker]="editPickerInactive" formControlName="dateOfBirth" required>
+                    <mat-datepicker-toggle matSuffix [for]="editPickerInactive"></mat-datepicker-toggle>
+                    <mat-datepicker #editPickerInactive></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Notas internas</mat-label>
+                    <textarea matInput formControlName="notes" rows="2" placeholder="Notas privadas"></textarea>
+                  </mat-form-field>
+                  <div class="edit-actions">
+                    <button mat-fab extended type="button" (click)="cancelEdit()">Cancelar</button>
+                    <button mat-fab extended color="primary" type="submit" [disabled]="editForm.invalid || isSaving">Guardar</button>
+                  </div>
+                </form>
+              </ng-template>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </ng-container>
+  </mat-card>
+</div>

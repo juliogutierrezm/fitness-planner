@@ -1,5 +1,4 @@
-import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -20,46 +19,25 @@ export interface ThemeConfig {
   tagline?: string;  // Max 80 chars
 }
 
-export interface TenantTheme {
-  tenantId?: string;
-  tenantType?: 'TRAINER' | 'COMPANY' | 'DEFAULT';
-  primaryColor: string;
-  accentColor: string;
-  backgroundMode: 'dark' | 'light';
-  fontFamily: string;
-  appName?: string;
-  tagline?: string;
-  logoUrl?: string;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class ThemeService {
   private themeSubject = new BehaviorSubject<ThemeConfig | null>(null);
   public theme$ = this.themeSubject.asObservable();
-  private tenantThemeSubject = new BehaviorSubject<TenantTheme | null>(null);
-  public tenantTheme$ = this.tenantThemeSubject.asObservable();
-
-  private readonly isBrowser: boolean;
 
   // Default theme values
-  private readonly defaultTenantTheme: TenantTheme = {
-    primaryColor: '#FF9900',
-    accentColor: '#22D3EE',
+  private readonly defaultTenantTheme: ThemeConfig = {
+    primaryColor: '#0ea5e9',
+    accentColor: '#38bdf8',
     backgroundMode: 'dark',
     fontFamily: 'Inter',
-    appName: 'TrainGrid',
+    appName: 'SpeedUp Coach',
     tagline: 'Entrena mejor. Progresa mas rapido.',
-    logoUrl: '/assets/TrainGrid.png'
+    logoUrl: '/assets/faviconSC.png'
   };
 
-  constructor(
-    private http: HttpClient,
-    @Inject(PLATFORM_ID) platformId: Object
-  ) {
-    this.isBrowser = isPlatformBrowser(platformId);
-  }
+  constructor(private http: HttpClient) {}
 
   private getApiBaseUrl(): string {
     // Use apiUrl from environment
@@ -73,62 +51,6 @@ export class ThemeService {
    */
   getTheme(): Observable<ThemeConfig> {
     return this.http.get<ThemeConfig>(`${this.getApiBaseUrl()}/tenant/theme`);
-  }
-
-  /**
-   * Purpose: fetch tenant theme configuration for client experiences.
-   * Input: none. Output: Observable<TenantTheme>.
-   * Error handling: defers fallback handling to callers for user feedback.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getTenantTheme(): Observable<TenantTheme> {
-    return this.getTheme().pipe(
-      map(theme => this.normalizeTenantTheme(theme))
-    );
-  }
-
-  /**
-   * Purpose: apply tenant theme tokens globally for client UI rendering.
-   * Input: TenantTheme payload. Output: void (side effects on documentElement).
-   * Error handling: no-op on non-browser platforms; logs unexpected failures.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  applyTheme(theme: TenantTheme): void {
-    if (!this.isBrowser || typeof document === 'undefined') {
-      return;
-    }
-
-    try {
-      const normalized = this.normalizeTenantTheme(theme);
-      const root = document.documentElement;
-      const isDark = normalized.backgroundMode === 'dark';
-
-      root.style.setProperty('--client-primary', normalized.primaryColor);
-      root.style.setProperty('--client-accent', normalized.accentColor);
-      root.style.setProperty('--client-font', normalized.fontFamily);
-      root.style.setProperty('--client-app-name', normalized.appName || '');
-      root.style.setProperty('--client-tagline', normalized.tagline || '');
-      root.style.setProperty('--client-logo-url', normalized.logoUrl || '');
-
-      root.style.setProperty('--client-bg', isDark ? '#0b1220' : '#ffffff');
-      root.style.setProperty('--client-surface', isDark ? 'rgba(255, 255, 255, 0.08)' : '#ffffff');
-      root.style.setProperty('--client-surface-strong', isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(11, 18, 32, 0.03)');
-      root.style.setProperty('--client-text', isDark ? '#ffffff' : '#0b1220');
-      root.style.setProperty('--client-text-muted', isDark ? 'rgba(255, 255, 255, 0.72)' : 'rgba(11, 18, 32, 0.6)');
-      root.style.setProperty('--client-border', isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(11, 18, 32, 0.12)');
-      root.style.setProperty('--client-shadow-1', isDark ? '0 18px 36px rgba(11, 18, 32, 0.55)' : '0 14px 30px rgba(11, 18, 32, 0.16)');
-      root.style.setProperty('--client-header-text', '#ffffff');
-      root.style.setProperty('--client-header-muted', 'rgba(255, 255, 255, 0.84)');
-      root.style.setProperty('--client-header-chip', 'rgba(255, 255, 255, 0.22)');
-
-      root.classList.toggle('dark', isDark);
-      this.tenantThemeSubject.next(normalized);
-    } catch (error) {
-      console.error('[ThemeService] applyTheme failed', {
-        error,
-        hasTheme: !!theme
-      });
-    }
   }
 
   /**
@@ -186,16 +108,6 @@ export class ThemeService {
   }
 
   /**
-   * Purpose: return tenant theme defaults for fallback scenarios.
-   * Input: none. Output: TenantTheme.
-   * Error handling: N/A.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  getDefaultTenantTheme(): TenantTheme {
-    return { ...this.defaultTenantTheme };
-  }
-
-  /**
    * Load theme from server and cache it
    */
   loadTheme(): Observable<ThemeConfig> {
@@ -225,13 +137,10 @@ export class ThemeService {
   }
 
   /**
-   * Purpose: return the latest tenant theme snapshot for client views.
-   * Input: none. Output: TenantTheme.
-   * Error handling: falls back to defaults when no theme is cached.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   * Get raw theme from backend without defaults (for PDF generation)
    */
-  getCurrentTenantTheme(): TenantTheme {
-    return this.tenantThemeSubject.value || this.defaultTenantTheme;
+  getRawTheme(): ThemeConfig | null {
+    return this.themeSubject.value;
   }
 
   /**
@@ -241,42 +150,4 @@ export class ThemeService {
     this.themeSubject.next(config);
   }
 
-  /**
-   * Purpose: cache tenant theme data for client UI rendering.
-   * Input: TenantTheme. Output: void.
-   * Error handling: N/A.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  setTenantThemeInMemory(config: TenantTheme): void {
-    this.tenantThemeSubject.next(this.normalizeTenantTheme(config));
-  }
-
-  /**
-   * Purpose: normalize tenant theme payload to ensure required fields exist.
-   * Input: raw theme config. Output: TenantTheme with defaults applied.
-   * Error handling: returns defaults when raw theme is nullish.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
-  private normalizeTenantTheme(config?: ThemeConfig | TenantTheme | null): TenantTheme {
-    if (!config) {
-      return this.getDefaultTenantTheme();
-    }
-
-    const fallback = this.getDefaultTenantTheme();
-    const backgroundMode = config.backgroundMode === 'light' ? 'light' : 'dark';
-    const typography = 'typography' in config ? (config as ThemeConfig).typography : undefined;
-    const fontFamily = config.fontFamily || typography || fallback.fontFamily;
-
-    return {
-      tenantId: config.tenantId,
-      tenantType: config.tenantType,
-      primaryColor: config.primaryColor || fallback.primaryColor,
-      accentColor: config.accentColor || fallback.accentColor,
-      backgroundMode,
-      fontFamily,
-      appName: config.appName || fallback.appName,
-      tagline: config.tagline || fallback.tagline,
-      logoUrl: config.logoUrl || fallback.logoUrl
-    };
-  }
 }

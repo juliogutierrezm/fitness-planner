@@ -22,6 +22,7 @@
             <app-exercise-filters
               [currentFilters]="currentFilters"
               [filterOptions]="filterOptions"
+              [canModify]="canModifyExercises"
               (filtersChanged)="onFiltersChanged($event)"
               (createNewClicked)="onCreateNewClicked()"
               (refreshClicked)="onRefreshClicked()">
@@ -30,7 +31,9 @@
             <!-- Table Component -->
             <app-exercise-table
               [dataSource]="dataSource"
+              [inlineCatalogs]="inlineCatalogs"
               [initialPaginatorState]="paginatorState"
+              [canModify]="canModifyExercises"
               (editExercise)="onEditExercise($event)"
               (viewDetails)="onViewDetails($event)"
               (openVideoPreview)="onOpenVideo($event)"

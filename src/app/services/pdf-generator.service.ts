@@ -345,20 +345,21 @@ export class PdfGeneratorService {
     this.pdf.text(this.labels.reps.toUpperCase(), cols.reps, this.currentY + 4);
     this.pdf.text(this.labels.rest.toUpperCase(), cols.rest, this.currentY + 4);
     this.pdf.text(this.labels.weight.toUpperCase(), cols.weight, this.currentY + 4);
-    this.pdf.text('VIDEO', cols.video, this.currentY + 4);
+    this.pdf.text(this.labels.video.toUpperCase(), cols.video, this.currentY + 4);
 
     this.currentY += 7;
   }
 
   private getColumnPositions() {
+    // Reps column slightly wider for pyramids like "20-15-12-10"
     return {
       exercise: this.MARGIN + 2,
-      equipment: this.MARGIN + 58,
-      sets: this.MARGIN + 90,
-      reps: this.MARGIN + 103,
-      rest: this.MARGIN + 118,
-      weight: this.MARGIN + 135,
-      video: this.MARGIN + 152
+      equipment: this.MARGIN + 56,
+      sets: this.MARGIN + 88,
+      reps: this.MARGIN + 100,
+      rest: this.MARGIN + 120,
+      weight: this.MARGIN + 138,
+      video: this.MARGIN + 155
     };
   }
 

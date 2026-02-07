@@ -100,20 +100,17 @@ export class AuthService {
   clearAuthFlowState(): void {
     // TODO(debug): remove/trim auth debug logs once auth flow is stable.
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.clearAuthFlowState.start' });
+    void 0;
     this.authFlowSubject.next(null);
     if (this.isBrowser) {
       try {
         sessionStorage.removeItem(this.AUTH_FLOW_STORAGE_KEY);
-        console.debug('[AuthDebug]', { op: 'AuthService.clearAuthFlowState.storageCleared' });
+        void 0;
       } catch (error) {
-        console.debug('[AuthDebug]', { op: 'AuthService.clearAuthFlowState.storageError', error });
+        void 0;
       }
     }
-    console.debug('[AuthDebug]', {
-      op: 'AuthService.clearAuthFlowState.end',
-      elapsedMs: Date.now() - startedAt
-    });
+    void 0;
   }
 
   getAuthFlowRoute(step: AuthFlowStep): string {
@@ -130,12 +127,7 @@ export class AuthService {
     familyName?: string
   ): Promise<AuthActionResult> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', {
-      op: 'AuthService.signUpUser.start',
-      email,
-      hasGivenName: Boolean(givenName),
-      hasFamilyName: Boolean(familyName)
-    });
+    void 0;
     try {
       const result = await signUp({
         username: email,
@@ -148,7 +140,7 @@ export class AuthService {
           }
         }
       });
-      console.debug('[AuthDebug]', { op: 'AuthService.signUpUser.result', result });
+      void 0;
 
       if (!result.isSignUpComplete && result.nextStep?.signUpStep === 'CONFIRM_SIGN_UP') {
         this.setAuthFlowState({
@@ -157,10 +149,7 @@ export class AuthService {
           createdAt: Date.now(),
           nextStep: result.nextStep
         }, true);
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.signUpUser.nextStep',
-          nextStep: result.nextStep
-        });
+        void 0;
         return { nextStep: 'confirmSignUp' };
       }
 
@@ -175,20 +164,16 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.signUpUser.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async confirmSignUpUser(email: string, confirmationCode: string): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.confirmSignUpUser.start', email });
+    void 0;
     try {
       await confirmSignUp({ username: email, confirmationCode });
-      console.debug('[AuthDebug]', { op: 'AuthService.confirmSignUpUser.success', email });
+      void 0;
       this.clearAuthFlowState();
     } catch (error) {
       console.error('[AuthDebug]', {
@@ -199,20 +184,16 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.confirmSignUpUser.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async resendSignUpCode(email: string): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.resendSignUpCode.start', email });
+    void 0;
     try {
       await resendSignUpCode({ username: email });
-      console.debug('[AuthDebug]', { op: 'AuthService.resendSignUpCode.success', email });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', {
         op: 'AuthService.resendSignUpCode.error',
@@ -222,23 +203,19 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.resendSignUpCode.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async signInUser(email: string, password: string): Promise<AuthActionResult> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.signInUser.start', email });
+    void 0;
     try {
       const result = await signIn({ username: email, password });
-      console.debug('[AuthDebug]', { op: 'AuthService.signInUser.result', result });
+      void 0;
 
       if (result.isSignedIn) {
-        console.debug('[AuthDebug]', { op: 'AuthService.signInUser.signedIn', email });
+        void 0;
         await this.checkAuthState(false, true);
         this.clearAuthFlowState();
         return {};
@@ -251,16 +228,13 @@ export class AuthService {
           createdAt: Date.now(),
           nextStep: result.nextStep
         }, false);
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.signInUser.nextStep',
-          nextStep: result.nextStep
-        });
+        void 0;
         return { nextStep: 'newPasswordRequired' };
       }
 
       if (result.nextStep?.signInStep === 'RESET_PASSWORD') {
         const resetResult = await resetPassword({ username: email });
-        console.debug('[AuthDebug]', { op: 'AuthService.signInUser.resetPasswordResult', result: resetResult });
+        void 0;
         if (resetResult.nextStep?.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
           this.setAuthFlowState({
             step: 'resetPassword',
@@ -268,10 +242,7 @@ export class AuthService {
             createdAt: Date.now(),
             nextStep: resetResult.nextStep
           }, true);
-          console.debug('[AuthDebug]', {
-            op: 'AuthService.signInUser.nextStep',
-            nextStep: resetResult.nextStep
-          });
+          void 0;
           return { nextStep: 'resetPassword' };
         }
         this.clearAuthFlowState();
@@ -285,17 +256,11 @@ export class AuthService {
           createdAt: Date.now(),
           nextStep: result.nextStep
         }, true);
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.signInUser.nextStep',
-          nextStep: result.nextStep
-        });
+        void 0;
         return { nextStep: 'confirmSignUp' };
       }
 
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.signInUser.unhandledNextStep',
-        nextStep: result.nextStep
-      });
+      void 0;
     } catch (error: any) {
       console.error('[AuthDebug]', {
         op: 'AuthService.signInUser.error',
@@ -310,10 +275,7 @@ export class AuthService {
         errorName === 'SignedInUserAlreadyAuthenticatedException' ||
         errorMessage.includes('There is already a signed in user')
       ) {
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.signInUser.alreadySignedIn',
-          email
-        });
+        void 0;
         await this.checkAuthState(false, true);
         this.clearAuthFlowState();
         return {};
@@ -342,11 +304,7 @@ export class AuthService {
       }
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.signInUser.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
 
     throw new Error('Paso de inicio de sesión no soportado.');
@@ -354,36 +312,27 @@ export class AuthService {
 
   async confirmNewPassword(newPassword: string, userAttributes?: Record<string, string>): Promise<AuthActionResult> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', {
-      op: 'AuthService.confirmNewPassword.start',
-      hasUserAttributes: Boolean(userAttributes && Object.keys(userAttributes).length > 0)
-    });
+    void 0;
     const options = userAttributes && Object.keys(userAttributes).length > 0
       ? { userAttributes }
       : undefined;
     try {
       const result = await confirmSignIn({ challengeResponse: newPassword, options });
-      console.debug('[AuthDebug]', { op: 'AuthService.confirmNewPassword.result', result });
+      void 0;
 
       if (result.isSignedIn) {
-        console.debug('[AuthDebug]', { op: 'AuthService.confirmNewPassword.signedIn' });
+        void 0;
         await this.checkAuthState(false, true);
         this.clearAuthFlowState();
         return {};
       }
 
       if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.confirmNewPassword.nextStep',
-          nextStep: result.nextStep
-        });
+        void 0;
         return { nextStep: 'newPasswordRequired' };
       }
 
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.confirmNewPassword.unhandledNextStep',
-        nextStep: result.nextStep
-      });
+      void 0;
       throw new Error('No se pudo completar el cambio de contraseña.');
     } catch (error) {
       console.error('[AuthDebug]', {
@@ -393,19 +342,16 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.confirmNewPassword.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async startResetPassword(email: string): Promise<AuthActionResult> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.startResetPassword.start', email });
+    void 0;
     try {
       const result = await resetPassword({ username: email });
-      console.debug('[AuthDebug]', { op: 'AuthService.startResetPassword.result', result });
+      void 0;
       if (result.nextStep?.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
         this.setAuthFlowState({
           step: 'resetPassword',
@@ -413,10 +359,7 @@ export class AuthService {
           createdAt: Date.now(),
           nextStep: result.nextStep
         }, true);
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.startResetPassword.nextStep',
-          nextStep: result.nextStep
-        });
+        void 0;
         return { nextStep: 'resetPassword' };
       }
       this.clearAuthFlowState();
@@ -430,20 +373,16 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.startResetPassword.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async confirmResetPassword(email: string, confirmationCode: string, newPassword: string): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.confirmResetPassword.start', email });
+    void 0;
     try {
       await confirmResetPassword({ username: email, confirmationCode, newPassword });
-      console.debug('[AuthDebug]', { op: 'AuthService.confirmResetPassword.success', email });
+      void 0;
       this.clearAuthFlowState();
     } catch (error) {
       console.error('[AuthDebug]', {
@@ -454,30 +393,16 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.confirmResetPassword.end',
-        email,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async checkAuthState(forceRefresh: boolean = false, bypassCache: boolean = false): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', {
-      op: 'AuthService.checkAuthState.start',
-      forceRefresh,
-      bypassCache,
-      initialized: this.initialized,
-      isBrowser: this.isBrowser
-    });
+    void 0;
     if (this.initialized && !forceRefresh && !bypassCache) {
-      console.debug('[AuthDebug]', { op: 'AuthService.checkAuthState.cacheHit' });
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.checkAuthState.end',
-        reason: 'cacheHit',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
+      void 0;
       return;
     }
     try {
@@ -485,27 +410,19 @@ export class AuthService {
         // SSR: we cannot deterministically resolve browser auth tokens.
         // Keep auth status as 'unknown' so the app can render a neutral splash
         // (never the login UI) until the browser resolves auth.
-        console.debug('[AuthDebug]', { op: 'AuthService.checkAuthState.notBrowser' });
+        void 0;
         return;
       }
       this.initialized = true;
       const session = await fetchAuthSession({ forceRefresh });
       const tokens = session?.tokens;
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.checkAuthState.sessionLoaded',
-        hasTokens: Boolean(tokens),
-        hasIdToken: Boolean(tokens?.idToken),
-        hasAccessToken: Boolean(tokens?.accessToken)
-      });
+      void 0;
 
       if (!tokens) {
         this.currentUserSubject.next(null);
         this.isAuthenticatedSubject.next(false);
         this.authStatusSubject.next('unauthenticated');
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.checkAuthState.unauthenticated',
-          elapsedMs: Date.now() - startedAt
-        });
+        void 0;
         return;
       }
 
@@ -514,10 +431,7 @@ export class AuthService {
         user = await getCurrentUser();
       } catch (error) {
         console.warn('Unable to load current user; falling back to token payload.', error);
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.checkAuthState.getCurrentUserError',
-          error
-        });
+        void 0;
       }
 
       const userProfile = await this.buildUserProfile(user, session);
@@ -525,13 +439,7 @@ export class AuthService {
       this.isAuthenticatedSubject.next(true);
       this.authStatusSubject.next('authenticated');
       this.clearAuthFlowState();
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.checkAuthState.authenticated',
-        userId: userProfile.id,
-        role: userProfile.role,
-        groups: userProfile.groups,
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', {
         op: 'AuthService.checkAuthState.error',
@@ -545,16 +453,13 @@ export class AuthService {
       }
     } finally {
       this.authLoadingSubject.next(false);
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.checkAuthState.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   private async buildUserProfile(user: any | null, session: any): Promise<UserProfile> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.buildUserProfile.start' });
+    void 0;
     try {
       const idToken = session.tokens?.idToken;
       const accessToken = session.tokens?.accessToken;
@@ -585,12 +490,7 @@ export class AuthService {
         trainerIds: typeof trainerIdsRaw === 'string' ? trainerIdsRaw.split(',') : undefined,
         isActive: true
       };
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.buildUserProfile.complete',
-        userId: profile.id,
-        role: profile.role,
-        groups: profile.groups
-      });
+      void 0;
       return profile;
     } catch (error) {
       console.error('[AuthDebug]', {
@@ -600,10 +500,7 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.buildUserProfile.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
@@ -763,7 +660,7 @@ export class AuthService {
 
   async signOut(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.signOut.start', isBrowser: this.isBrowser });
+    void 0;
     try {
       if (!this.isBrowser) { return; }
       await signOut();
@@ -771,7 +668,7 @@ export class AuthService {
       this.isAuthenticatedSubject.next(false);
       this.authStatusSubject.next('unauthenticated');
       this.clearAuthFlowState();
-      console.debug('[AuthDebug]', { op: 'AuthService.signOut.success' });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', {
         op: 'AuthService.signOut.error',
@@ -780,39 +677,28 @@ export class AuthService {
       });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.signOut.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   // Utility method to get auth session for API calls
   getAuthSession(forceRefresh: boolean = false): Observable<any> {
     if (!this.isBrowser) {
-      console.debug('[AuthDebug]', { op: 'AuthService.getAuthSession.notBrowser' });
+      void 0;
       return of(null);
     }
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.getAuthSession.start', forceRefresh });
+    void 0;
     return from(fetchAuthSession({ forceRefresh })).pipe(
       tap(session => {
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.getAuthSession.success',
-          hasTokens: Boolean(session?.tokens),
-          hasIdToken: Boolean(session?.tokens?.idToken),
-          hasAccessToken: Boolean(session?.tokens?.accessToken)
-        });
+        void 0;
       }),
       catchError(error => {
         console.error('[AuthDebug]', { op: 'AuthService.getAuthSession.error', error });
         return of(null);
       }),
       finalize(() => {
-        console.debug('[AuthDebug]', {
-          op: 'AuthService.getAuthSession.end',
-          elapsedMs: Date.now() - startedAt
-        });
+        void 0;
       })
     );
   }
@@ -831,39 +717,34 @@ export class AuthService {
   }
 
   private setAuthFlowState(state: AuthFlowState, persist: boolean): void {
-    console.debug('[AuthDebug]', {
-      op: 'AuthService.setAuthFlowState.start',
-      step: state.step,
-      username: state.username,
-      persist
-    });
+    void 0;
     this.authFlowSubject.next(state);
     if (!this.isBrowser) {
-      console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.end', reason: 'notBrowser' });
+      void 0;
       return;
     }
     if (!persist || !this.PERSISTED_FLOW_STEPS.includes(state.step)) {
       try {
         sessionStorage.removeItem(this.AUTH_FLOW_STORAGE_KEY);
-        console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.storageCleared' });
+        void 0;
       } catch (error) {
-        console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.storageClearError', error });
+        void 0;
       }
-      console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.end', reason: 'notPersisted' });
+      void 0;
       return;
     }
     try {
       sessionStorage.setItem(this.AUTH_FLOW_STORAGE_KEY, JSON.stringify(state));
-      console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.storageSaved' });
+      void 0;
     } catch (error) {
-      console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.storageSaveError', error });
+      void 0;
     }
-    console.debug('[AuthDebug]', { op: 'AuthService.setAuthFlowState.end', reason: 'persisted' });
+    void 0;
   }
 
   private restoreAuthFlowState(): void {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'AuthService.restoreAuthFlowState.start' });
+    void 0;
     try {
       const stored = sessionStorage.getItem(this.AUTH_FLOW_STORAGE_KEY);
       if (!stored) return;
@@ -871,19 +752,13 @@ export class AuthService {
       if (!parsed?.step || !parsed?.username) return;
       if (!this.PERSISTED_FLOW_STEPS.includes(parsed.step)) return;
       this.authFlowSubject.next(parsed);
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.restoreAuthFlowState.loaded',
-        step: parsed.step,
-        username: parsed.username
-      });
+      void 0;
     } catch (error) {
       // Ignore invalid storage
-      console.debug('[AuthDebug]', { op: 'AuthService.restoreAuthFlowState.error', error });
+      void 0;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'AuthService.restoreAuthFlowState.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 }
+

@@ -37,6 +37,8 @@ import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialo
 import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
 import { PlanAssignmentService } from '../../services/plan-assignment.service';
+import { AiPlansService } from '../../services/ai-plans.service';
+import { AiPlanQuota } from '../../shared/ai-plan-limits';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
 import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
 import { PlannerFormService } from './services/planner-form.service';
@@ -199,6 +201,14 @@ export class PlannerComponent implements OnInit, OnDestroy {
    */
   private aiGenerationStartedAt: number | null = null;
 
+  /**
+   * Purpose: track trainer AI plan quota (used / limit) to disable generation when limit reached.
+   * Input/Output: loaded on init for trainers; refreshed after each successful generation.
+   * Error handling: null means quota not yet loaded (button stays enabled).
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  aiPlanQuota: AiPlanQuota | null = null;
+
 
   constructor(
     private formService: PlannerFormService,
@@ -213,7 +223,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private userApi: UserApiService,
-    private planAssignmentService: PlanAssignmentService
+    private planAssignmentService: PlanAssignmentService,
+    private aiPlansService: AiPlansService
   ) {
     console.log('PlannerComponent constructor called');
   }
@@ -266,6 +277,22 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.form.patchValue({ userName: '' });
         this.snackBar.open('No se pudo cargar el usuario.', 'Cerrar', { duration: 3000 });
       }
+    });
+  }
+
+  /**
+   * Purpose: load AI plan quota for current trainer to show usage and disable button at limit.
+   * Input/Output: fetches quota from AiPlansService for current trainer, sets aiPlanQuota.
+   * Error handling: logs warning if not a trainer or no ID; quota stays null (button stays enabled).
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadAiPlanQuota(): void {
+    if (!this.authService.isTrainer()) return;
+    const trainerId = this.authService.getCurrentUserId();
+    if (!trainerId) return;
+    this.aiPlansService.getTrainerQuota(trainerId).subscribe(quota => {
+      this.aiPlanQuota = quota;
+      this.cdr.markForCheck();
     });
   }
 
@@ -726,6 +753,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.aiGenDialogRef.close();
         this.aiGenDialogRef = null;
       }
+      // Refresh AI plan quota after successful generation
+      this.loadAiPlanQuota();
       this.cdr.markForCheck();
       return;
     }
@@ -770,6 +799,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.isTemplateMode = true;
     }
     this.applyTemplateNameValidators();
+
+    // Load AI plan quota for trainers
+    this.loadAiPlanQuota();
 
     this.planAssignmentSub = this.planAssignmentService.currentPlanData.subscribe(data => {
       if (data && data.user && data.user.id && data.plan) {

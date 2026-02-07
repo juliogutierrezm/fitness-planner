@@ -43,7 +43,7 @@ export class ThemeService {
     // Use apiUrl from environment
     // Dev: /api (proxy redirects to backend)
     // Prod: full URL from environment
-    return environment.apiUrl;
+    return environment.apiBase;
   }
 
   /**

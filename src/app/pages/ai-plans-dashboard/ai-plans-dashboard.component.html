@@ -4,6 +4,9 @@
       <mat-card-title>
         <mat-icon>auto_awesome</mat-icon>
         Planes IA
+        <span *ngIf="quota" class="quota-badge" [class.limit-reached]="quota.limitReached">
+          {{ quota.used }}/{{ quota.limit }}
+        </span>
       </mat-card-title>
       <mat-card-subtitle>
         Resumen de actividad de planes generados por IA ({{ scopeLabel }}).
@@ -46,6 +49,14 @@
         </div>
       </mat-card>
     </section>
+
+    <mat-card *ngIf="!loading && quota?.limitReached" class="limit-banner">
+      <mat-icon>warning</mat-icon>
+      <div>
+        <strong>Límite alcanzado</strong>
+        <p>Has alcanzado el límite de {{ quota!.limit }} planes IA permitidos. Contacta al administrador para más información.</p>
+      </div>
+    </mat-card>
 
     <mat-card class="list-card" *ngIf="!loading">
       <div class="list-header">

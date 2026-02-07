@@ -33,22 +33,22 @@ export class AuthGuard implements CanActivate, CanActivateChild {
     // - On the server we cannot resolve browser auth tokens, so authStatus remains 'unknown'.
     // - We must NOT redirect to /login in that state (it breaks deep links and causes login flash).
     if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.allow', reason: 'authUnknown' });
+      void 0;
       return of(true);
     }
 
     // Browser: Ensure we refresh auth state once before deciding
     return from(this.authService.checkAuthState()).pipe(
-      tap(() => console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.checkAuthStateComplete' })),
+      tap(() => void 0),
       switchMap(() => this.authService.isAuthLoading$.pipe(
         filter(isLoading => !isLoading),
         take(1),
         switchMap(() => this.authService.isAuthenticated$.pipe(
           take(1),
           map(isAuthenticated => {
-            console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.isAuthenticated', isAuthenticated });
+            void 0;
             if (!isAuthenticated) {
-              console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.redirectLogin' });
+              void 0;
               this.router.navigate(['/login']);
               return false;
             }
@@ -65,3 +65,4 @@ export class AuthGuard implements CanActivate, CanActivateChild {
     );
   }
 }
+

@@ -32,7 +32,7 @@ export class AuthInterceptor implements HttpInterceptor {
           return next.handle(req);
         }
 
-        console.debug('[Authorization] JWT attached');
+        void 0;
 
         return next.handle(
           req.clone({

@@ -1,8 +1,8 @@
 export const environment = {
   production: false,
   apiBase: 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev',
-  apiUrl: 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev',
-  cognito: {
+  c  apiUrl: 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev',
+ognito: {
     domain: 'fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_8jk4VBnTQ',
     clientId: '1t134cjf2t07f018cruflg41rk'

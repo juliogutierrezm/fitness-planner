@@ -18,6 +18,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AiPlanRequest } from '../../../shared/models';
 import { ExerciseApiService } from '../../../exercise-api.service';
 import { AuthService } from '../../../services/auth.service';
+import { AiPlansService } from '../../../services/ai-plans.service';
 import { finalize, switchMap, catchError, filter, take, scan } from 'rxjs/operators';
 import { timer, of, Subscription, EMPTY } from 'rxjs';
 
@@ -150,7 +151,8 @@ export class AiParametricDialogComponent implements OnInit {
     private api: ExerciseApiService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private authService: AuthService
+    private authService: AuthService,
+    private aiPlansService: AiPlansService
   ) {
     this.userId = data?.userId ?? null;
     this.userProfile = data?.userProfile ?? null;
@@ -283,6 +285,39 @@ export class AiParametricDialogComponent implements OnInit {
   confirm() {
     if (!this.isFormValid()) return;
 
+    // Second line of defense: check quota before sending request
+    if (this.authService.isTrainer()) {
+      const trainerId = this.authService.getCurrentUserId();
+      if (trainerId) {
+        this.isGenerating = true;
+        this.cdr.markForCheck();
+        this.aiPlansService.getTrainerQuota(trainerId).subscribe(quota => {
+          if (quota.limitReached) {
+            this.isGenerating = false;
+            this.cdr.markForCheck();
+            this.snackBar.open(
+              `Has alcanzado el límite de ${quota.limit} planes IA permitidos.`,
+              'Cerrar',
+              { duration: 5000 }
+            );
+            return;
+          }
+          this.executeGeneration();
+        });
+        return;
+      }
+    }
+
+    this.executeGeneration();
+  }
+
+  /**
+   * Purpose: execute the AI plan generation request after validation and quota check.
+   * Input/Output: uses form values + user context, closes dialog with {started:true}.
+   * Error handling: snackbar on API failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private executeGeneration() {
     const formValue = this.form.value;
     const requestStartMs = Date.now();
 

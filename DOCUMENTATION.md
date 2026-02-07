@@ -17,27 +17,20 @@ La aplicación implementa autenticación 100% custom con AWS Cognito y Amplify A
 
 ### Configuración de AWS Cognito
 
-#### User Pool Configuration (CloudFormation)
-```yaml
-# cognito-setup.yaml - Configuración completa del User Pool
-Resources:
-  FitnessUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      # Atributos personalizados para roles y relaciones
-      Schema:
-        - Name: role
-          AttributeDataType: String
-          Required: false
-          Mutable: true
-        - Name: companyId
-          AttributeDataType: String
-          Required: false
-          Mutable: true
-        - Name: trainerIds
-          AttributeDataType: String
-          Required: false
-          Mutable: true
+#### User Pool Configuration (export local JSON)
+```json
+// user-pool.json (referencia local del User Pool de desarrollo)
+{
+  "UserPool": {
+    "Id": "us-east-1_8jk4VBnTQ",
+    "Name": "fitness-planner-dev-user-pool",
+    "SchemaAttributes": [
+      { "Name": "custom:role", "AttributeDataType": "String" },
+      { "Name": "custom:companyId", "AttributeDataType": "String" },
+      { "Name": "custom:trainerIds", "AttributeDataType": "String" }
+    ]
+  }
+}
 ```
 
 #### Grupos de Usuarios
@@ -52,16 +45,25 @@ Resources:
 4. **Sesión Cognito**: Amplify mantiene los tokens en storage seguro
 5. **Guards**: Redirección a dashboard/onboarding/unauthorized según grupos
 
+#### SSR e hidratación (estado auth `unknown`)
+- Durante SSR no se pueden resolver tokens del navegador; el estado inicial de auth es `unknown`.
+- `APP_INITIALIZER` ejecuta `checkAuthState` en cliente antes de completar la navegación inicial.
+- Guards (`AuthGuard`, `AuthFlowGuard`, `OnboardingGuard`, `RoleGuard`, `SystemGuard`) permiten paso cuando auth es `unknown` para evitar redirecciones incorrectas y "login flash".
+- `AppComponent` muestra splash mientras auth permanece en `unknown`.
+
 ### Seguridad Implementada
 - **Amplify Auth**: manejo de tokens y refresh automático
 - **Storage seguro**: tokens gestionados por Amplify
 - **Roles por grupos Cognito**: extracción directa desde tokens
 
 #### Guards y Autorización
-- **AuthGuard**: Protección básica de rutas autenticadas
-- **RoleGuard**: Control de acceso basado en roles específicos
-- **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
-- **AuthFlowGuard**: Routing de pantallas públicas según el paso de autenticación
+- **AuthGuard**: Protección base para rutas autenticadas
+- **PostLoginRedirectGuard**: Redirige a onboarding si falta inicialización (sin grupos Admin/Trainer)
+- **OnboardingGuard**: Permite onboarding solo a usuarios autenticados sin grupos de planner
+- **RoleGuard**: Control de acceso por roles + restricción `excludeIndependent` para módulos específicos
+- **SystemGuard**: Acceso técnico solo para usuarios del grupo Cognito `System`
+- **AuthFlowGuard**: Control de pantallas públicas según el paso activo de autenticación
+- **Data Access Control**: Verificación de permisos para acceso a datos de usuarios
 
 ### Roles y Permisos
 
@@ -106,254 +108,81 @@ Resources:
 // Interceptor automático de autenticación
 export class AuthInterceptor implements HttpInterceptor {
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const isApiRequest = req.url.startsWith(environment.apiBase);
-    const idToken = this.authService.getIdToken();
-
-    if (isApiRequest && idToken && this.authService.isLoggedIn()) {
-      return next.handle(req.clone({
-        setHeaders: { Authorization: `Bearer ${idToken}` }
-      }));
+    if (!req.url.startsWith(environment.apiBase)) {
+      return next.handle(req);
     }
-    return next.handle(req);
+
+    return from(fetchAuthSession()).pipe(
+      switchMap(session => {
+        const token =
+          session?.tokens?.idToken?.toString() ??
+          session?.tokens?.accessToken?.toString();
+        if (!token) return next.handle(req);
+        return next.handle(req.clone({
+          setHeaders: { Authorization: `Bearer ${token}` }
+        }));
+      }),
+      catchError(() => next.handle(req))
+    );
   }
 }
 ```
 
 ## Estructura de carpetas y archivos
-```
+```text
 fitness-planner/
-├── .editorconfig
-├── .gitignore
-├── AGENT_RULES.md
-├── angular.json
-├── APPEARANCE_SETTINGS_DOCS.md
-├── cognito-setup.yaml
-├── DEVELOPER..md
 ├── DOCUMENTATION.md
-├── package-lock.json
-├── package.json
-├── proxy.conf.json
 ├── README.md
-├── tsconfig.app.json
-├── tsconfig.json
-├── tsconfig.spec.json
-├── public/
-│   └── favicon.ico
-├── scripts/
-│   └── smoke-api.mjs
+├── package.json
+├── user-pool.json
 ├── src/
 │   ├── aws-exports.ts
-│   ├── index.html
-│   ├── main.server.ts
-│   ├── main.ts
-│   ├── server.ts
-│   ├── stepFunctionExample.json
-│   ├── styles.scss
-│   ├── app/
-│   │   ├── .auth.json
-│   │   ├── app.component.html
-│   │   ├── app.component.scss
-│   │   ├── app.component.spec.ts
-│   │   ├── app.component.ts
-│   │   ├── app.config.server.ts
-│   │   ├── app.config.ts
-│   │   ├── app.routes.server.ts
-│   │   ├── app.routes.ts
-│   │   ├── exercise-api.service.ts
-│   │   ├── models/
-│   │   │   └── body-metrics.model.ts
-│   │   ├── user-api.service.ts
-│   │   ├── assets/
-│   │   │   ├── tempLogo.png
-│   │   │   └── TrainGrid.png
-│   │   ├── components/
-│   │   │   ├── callback/
-│   │   │   │   ├── callback.component.html
-│   │   │   │   ├── callback.component.scss
-│   │   │   │   └── callback.component.ts
-│   │   │   ├── confirm-code/
-│   │   │   │   ├── confirm-code.component.html
-│   │   │   │   ├── confirm-code.component.scss
-│   │   │   │   └── confirm-code.component.ts
-│   │   │   ├── confirm-dialog/
-│   │   │   │   ├── confirm-dialog.component.html
-│   │   │   │   ├── confirm-dialog.component.scss
-│   │   │   │   └── confirm-dialog.component.ts
-│   │   │   ├── force-new-password/
-│   │   │   │   ├── force-new-password.component.html
-│   │   │   │   ├── force-new-password.component.scss
-│   │   │   │   └── force-new-password.component.ts
-│   │   │   ├── forgot-password/
-│   │   │   │   ├── forgot-password.component.html
-│   │   │   │   ├── forgot-password.component.scss
-│   │   │   │   └── forgot-password.component.ts
-│   │   │   ├── login/
-│   │   │   │   ├── login.component.html
-│   │   │   │   ├── login.component.scss
-│   │   │   │   └── login.component.ts
-│   │   │   ├── reset-password/
-│   │   │   │   ├── reset-password.component.html
-│   │   │   │   ├── reset-password.component.scss
-│   │   │   │   └── reset-password.component.ts
-│   │   │   ├── signup/
-│   │   │   │   ├── signup.component.html
-│   │   │   │   ├── signup.component.scss
-│   │   │   │   └── signup.component.ts
-│   │   │   ├── planner/
-│   │   │   │   ├── ai/
-│   │   │   │   │   ├── ai-generation-dialog.component.ts
-│   │   │   │   │   ├── ai-parametric-dialog.component.html
-│   │   │   │   │   ├── ai-parametric-dialog.component.scss
-│   │   │   │   │   ├── ai-parametric-dialog.component.ts
-│   │   │   │   │   ├── ai-prompt-dialog.component.html
-│   │   │   │   │   ├── ai-prompt-dialog.component.scss
-│   │   │   │   │   └── ai-prompt-dialog.component.ts
-│   │   │   │   ├── dialogs/
-│   │   │   │   │   ├── exercise-preview-dialog.component.ts
-│   │   │   │   │   ├── plan-preview-dialog.component.ts
-│   │   │   │   │   ├── previous-plans-dialog.component.html
-│   │   │   │   │   ├── previous-plans-dialog.component.scss
-│   │   │   │   │   └── previous-plans-dialog.component.ts
-│   │   │   │   ├── models/
-│   │   │   │   │   ├── planner-column.model.ts
-│   │   │   │   │   ├── planner-exercise.model.ts
-│   │   │   │   │   ├── planner-plan.model.ts
-│   │   │   │   │   └── planner-session.model.ts
-│   │   │   │   ├── planner.component.html
-│   │   │   │   ├── planner.component.scss
-│   │   │   │   ├── planner.component.spec.ts
-│   │   │   │   ├── planner.component.ts
-│   │   │   │   └── services/
-│   │   │   │       ├── planner-drag-drop.service.spec.ts
-│   │   │   │       ├── planner-drag-drop.service.ts
-│   │   │   │       ├── planner-exercise-filter.service.spec.ts
-│   │   │   │       ├── planner-exercise-filter.service.ts
-│   │   │   │       ├── planner-form.service.spec.ts
-│   │   │   │       ├── planner-form.service.ts
-│   │   │   │       ├── planner-state.service.spec.ts
-│   │   │   │       └── planner-state.service.ts
-│   │   │   ├── test/
-│   │   │   │   ├── test.component.html
-│   │   │   │   ├── test.component.scss
-│   │   │   │   ├── test.component.spec.ts
-│   │   │   │   └── test.component.ts
-│   │   │   ├── unauthorized/
-│   │   │   │   ├── unauthorized.component.html
-│   │   │   │   ├── unauthorized.component.scss
-│   │   │   │   └── unauthorized.component.ts
-│   │   │   └── workout-plan-view/
-│   │   │       ├── workout-plan-view.component.html
-│   │   │       ├── workout-plan-view.component.scss
-│   │   │       ├── workout-plan-view.component.spec.ts
-│   │   │       └── workout-plan-view.component.ts
-│   │   ├── guards/
-│   │   │   ├── auth-flow.guard.ts
-│   │   │   ├── auth.guard.ts
-│   │   │   ├── onboarding.guard.ts
-│   │   │   ├── post-login-redirect.guard.ts
-│   │   │   └── role.guard.ts
-│   │   ├── interceptors/
-│   │   │   └── auth.interceptor.ts
-│   │   ├── layout/
-│   │   │   ├── layout.component.html
-│   │   │   ├── layout.component.scss
-│   │   │   └── layout.component.ts
-│   │   ├── pages/
-│   │   │   ├── client-body-metrics/
-│   │   │   │   ├── client-body-metrics.component.html
-│   │   │   │   ├── client-body-metrics.component.scss
-│   │   │   │   └── client-body-metrics.component.ts
-│   │   │   ├── clients/
-│   │   │   │   ├── clients.component.html
-│   │   │   │   ├── clients.component.scss
-│   │   │   │   └── clients.component.ts
-│   │   │   ├── dashboard/
-│   │   │   │   ├── dashboard.component.html
-│   │   │   │   ├── dashboard.component.scss
-│   │   │   │   ├── dashboard.component.spec.ts
-│   │   │   │   └── dashboard.component.ts
-│   │   │   ├── diagnostics/
-│   │   │   │   ├── diagnostics.component.html
-│   │   │   │   ├── diagnostics.component.scss
-│   │   │   │   └── diagnostics.component.ts
-│   │   │   ├── exercise-manager/
-│   │   │   │   ├── components/
-│   │   │   │   │   ├── exercise-detail/
-│   │   │   │   │   │   ├── exercise-detail.component.html
-│   │   │   │   │   │   ├── exercise-detail.component.scss
-│   │   │   │   │   │   └── exercise-detail.component.ts
-│   │   │   │   │   ├── exercise-edit-dialog/
-│   │   │   │   │   │   ├── exercise-edit-dialog.component.html
-│   │   │   │   │   │   ├── exercise-edit-dialog.component.scss
-│   │   │   │   │   │   └── exercise-edit-dialog.component.ts
-│   │   │   │   │   ├── exercise-filters/
-│   │   │   │   │   │   ├── exercise-filters.component.html
-│   │   │   │   │   │   ├── exercise-filters.component.scss
-│   │   │   │   │   │   └── exercise-filters.component.ts
-│   │   │   │   │   ├── exercise-table/
-│   │   │   │   │   │   ├── exercise-table.component.html
-│   │   │   │   │   │   ├── exercise-table.component.scss
-│   │   │   │   │   │   └── exercise-table.component.ts
-│   │   │   │   │   └── exercise-video-dialog/
-│   │   │   │   │       ├── exercise-video-dialog.component.html
-│   │   │   │   │       ├── exercise-video-dialog.component.scss
-│   │   │   │   │       └── exercise-video-dialog.component.ts
-│   │   │   │   ├── exercise-manager.component.html
-│   │   │   │   ├── exercise-manager.component.scss
-│   │   │   │   ├── exercise-manager.component.spec.ts
-│   │   │   │   └── exercise-manager.component.ts
-│   │   │   ├── plan-view/
-│   │   │   │   ├── plan-view.component.html
-│   │   │   │   ├── plan-view.component.scss
-│   │   │   │   └── plan-view.component.ts
-│   │   │   ├── settings/
-│   │   │   │   ├── appearance-settings.component.html
-│   │   │   │   ├── appearance-settings.component.scss
-│   │   │   │   └── appearance-settings.component.ts
-│   │   │   ├── templates/
-│   │   │   │   ├── templates.component.html
-│   │   │   │   ├── templates.component.scss
-│   │   │   │   ├── templates.component.spec.ts
-│   │   │   │   └── templates.component.ts
-│   │   │   ├── trainers/
-│   │   │   │   ├── trainers.component.html
-│   │   │   │   ├── trainers.component.scss
-│   │   │   │   └── trainers.component.ts
-│   │   │   ├── user-detail/
-│   │   │   │   ├── user-detail.component.html
-│   │   │   │   ├── user-detail.component.scss
-│   │   │   │   └── user-detail.component.ts
-│   │   │   ├── user-plans-dialog/
-│   │   │   │   ├── user-plans-dialog.component.html
-│   │   │   │   ├── user-plans-dialog.component.scss
-│   │   │   │   └── user-plans-dialog.component.ts
-│   │   │   └── users/
-│   │   │       ├── users.component.html
-│   │   │       ├── users.component.scss
-│   │   │       └── users.component.ts
-│   │   ├── services/
-│   │   │   ├── auth.service.ts
-│   │   │   ├── client-body-metrics.service.ts
-│   │   │   ├── client-body-metrics.service.spec.ts
-│   │   │   ├── template-assignment.service.ts
-│   │   │   ├── theme.service.ts
-│   │   │   └── user-initialization.service.ts
-│   │   ├── shared/
-│   │   │   ├── ai-generation-timeline.component.html
-│   │   │   ├── ai-generation-timeline.component.scss
-│   │   │   ├── ai-generation-timeline.component.ts
-│   │   │   ├── auth-error-utils.ts
-│   │   │   ├── auth-validators.ts
-│   │   │   ├── feedback-utils.ts
-│   │   │   ├── models.ts
-│   │   │   ├── shared-utils.ts
-│   │   │   └── user-display-name.pipe.ts
-│   │   └── environments/
-│   │       ├── environment.prod.ts
-│   │       ├── environment.test.ts
-│   │       └── environment.ts
-└── tsconfig.json
+│   ├── environments/
+│   │   ├── environment.ts
+│   │   └── environment.prod.ts
+│   └── app/
+│       ├── app.config.ts
+│       ├── app.routes.ts
+│       ├── services/
+│       │   ├── auth.service.ts
+│       │   ├── user-initialization.service.ts
+│       │   └── theme.service.ts
+│       ├── interceptors/
+│       │   └── auth.interceptor.ts
+│       ├── guards/
+│       │   ├── auth.guard.ts
+│       │   ├── auth-flow.guard.ts
+│       │   ├── onboarding.guard.ts
+│       │   ├── post-login-redirect.guard.ts
+│       │   ├── role.guard.ts
+│       │   └── system.guard.ts
+│       ├── layout/
+│       ├── pages/
+│       │   ├── onboarding/
+│       │   ├── dashboard/
+│       │   ├── templates/
+│       │   ├── clients/
+│       │   ├── trainers/
+│       │   ├── diagnostics/
+│       │   ├── exercise-manager/
+│       │   ├── ai-plans-dashboard/
+│       │   ├── ai-plans-user/
+│       │   ├── ai-plan-detail/
+│       │   ├── plan-view/
+│       │   └── settings/
+│       ├── components/
+│       │   ├── login/
+│       │   ├── signup/
+│       │   ├── confirm-code/
+│       │   ├── force-new-password/
+│       │   ├── forgot-password/
+│       │   ├── reset-password/
+│       │   ├── planner/
+│       │   └── unauthorized/
+│       └── shared/
+└── scripts/
 ```
+Nota: esta estructura es referencial y prioriza módulos activos/clave. Para detalle exacto use `tree` o el explorador del IDE.
 
 ## Dependencias
 - @angular/animations: ^19.0.0
@@ -369,10 +198,12 @@ fitness-planner/
 - @angular/router: ^19.0.0
 - @angular/ssr: ^19.0.7
 - @aws-amplify/ui-angular: ^5.1.3
+- @aws-sdk/client-dynamodb: ^3.958.0
 - aws-amplify: ^6.15.5
 - express: ^4.18.2
+- jspdf: ^4.1.0
 - rxjs: ~7.8.0
-- tsdb: ^2.3.0
+- tslib: ^2.3.0
 - zone.js: ~0.15.0
 
 ## Instalación
@@ -630,6 +461,7 @@ catch (error) {
 import { sanitizeName } from '../shared/shared-utils';
 
 const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "press_banca_inclinado"
+```
 
 ### Timeline de generación IA
 ```typescript
@@ -656,7 +488,7 @@ export class AiGenerationDialogComponent {
 2. **Instalar dependencias**: Ejecutar `npm install` para configurar el entorno
 3. **Configurar entorno**: Actualizar archivos de configuración con credenciales AWS
 4. **Iniciar servidor de desarrollo**: Ejecutar `ng serve` para desarrollo local
-5. **Probar autenticación**: Acceder a rutas protegidas y verificar flujo OAuth
+5. **Probar autenticación**: Acceder a rutas protegidas y verificar flujo Cognito custom
 6. **Desarrollar nuevas funcionalidades**: Implementar componentes, servicios y rutas según requisitos
 7. **Ejecutar pruebas**: Lanzar `npm test` para verificar funcionalidad
 8. **Construir para producción**: Ejecutar `npm run build` para generar assets optimizados
@@ -721,17 +553,17 @@ export class AiGenerationDialogComponent {
 
 ## Cambios recientes (ultimos commits)
 
-### Ultimas actualizaciones implementadas (últimos 10 commits):
-- **2dbc23f**: added new login page (merge)
-- **2ad115c**: added new login page
-- **4e242fe**: merge PR session requires exercise
-- **e7e9c71**: fixed ui and auth bugs (merge)
-- **ad767fc**: fixed ui and auth bugs
-- **eadabff**: merge PR planner default session one
-- **2046802**: fixed styles and bugs
-- **435613b**: fixed auth routing logs
-- **85af0c1**: implemented onboarding auth
-- **9950266**: update documentation
+### Ultimas actualizaciones implementadas (actualizado al 6 de febrero de 2026):
+- **5e4b939**: `feat` update video label and adjust column positions for improved layout in PDF generation
+- **66e7a8e**: `feat` update video label and adjust column positions for improved layout in PDF generation
+- **d14266e**: `feat` update video label and adjust column positions for improved layout in PDF generation
+- **9730250**: `feat` add PDF generation for workout plans
+- **26ba872**: merge PR #18 (`feat/compact-planner-ui`)
+- **9bbd00b**: `feat` implement SystemGuard; exercise hover preview; permisos por grupo System
+- **d19786e**: `feat` compact planner UI (layout/estilos de filtros y campos de sesión)
+- **db7d2fb**: `feat` compact planner UI (iteración adicional)
+- **5c62f08**: `feat` mejoras en sidebar de ejercicios e inputs
+- **339a7ed**: merge PR #17 (`fix/testing-app`)
 
 ## Mejoras Pendientes
 

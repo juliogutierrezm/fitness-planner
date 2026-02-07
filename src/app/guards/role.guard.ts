@@ -21,13 +21,13 @@ export class RoleGuard implements CanActivate {
     const requiredRoles = route.data?.['roles'] as UserRole[];
     
     if (!requiredRoles || requiredRoles.length === 0) {
-      console.debug('[AuthDebug]', { op: 'RoleGuard.allow', reason: 'noRequiredRoles' });
+      void 0;
       return of(true);
     }
 
     // SSR/hydration note: while auth is 'unknown', do not redirect.
     if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'RoleGuard.allow', reason: 'authUnknown', url: state.url });
+      void 0;
       return of(true);
     }
 
@@ -35,27 +35,28 @@ export class RoleGuard implements CanActivate {
       take(1),
       map(user => {
         if (!user) {
-          console.debug('[AuthDebug]', { op: 'RoleGuard.redirectLogin', reason: 'missingUser' });
+          void 0;
           this.router.navigate(['/login']);
           return false;
         }
 
         if (requiredRoles && !this.authService.hasRequiredRoles(requiredRoles)) {
-          console.debug('[AuthDebug]', { op: 'RoleGuard.redirectUnauthorized', requiredRoles });
+          void 0;
           this.router.navigate(['/unauthorized']);
           return false;
         }
 
         const excludeIndependent = route.data?.['excludeIndependent'] === true;
         if (excludeIndependent && this.authService.isIndependentTenant()) {
-          console.debug('[AuthDebug]', { op: 'RoleGuard.redirectUnauthorized', reason: 'excludeIndependent' });
+          void 0;
           this.router.navigate(['/unauthorized']);
           return false;
         }
 
-        console.debug('[AuthDebug]', { op: 'RoleGuard.allow', reason: 'rolesOk', requiredRoles });
+        void 0;
         return true;
       })
     );
   }
 }
+

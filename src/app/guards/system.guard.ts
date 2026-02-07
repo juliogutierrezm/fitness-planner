@@ -28,7 +28,7 @@ export class SystemGuard implements CanActivate {
   ): Observable<boolean> {
     // SSR/hydration note: while auth is 'unknown', do not redirect.
     if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'SystemGuard.allow', reason: 'authUnknown', url: state.url });
+      void 0;
       return of(true);
     }
 
@@ -36,25 +36,22 @@ export class SystemGuard implements CanActivate {
       take(1),
       map(user => {
         if (!user) {
-          console.debug('[AuthDebug]', { op: 'SystemGuard.redirectLogin', reason: 'missingUser' });
+          void 0;
           this.router.navigate(['/login']);
           return false;
         }
 
         // Check if user belongs to System group
         if (!this.authService.isSystem()) {
-          console.debug('[AuthDebug]', { 
-            op: 'SystemGuard.redirectUnauthorized', 
-            reason: 'notSystemGroup',
-            userGroups: user.groups 
-          });
+          void 0;
           this.router.navigate(['/unauthorized']);
           return false;
         }
 
-        console.debug('[AuthDebug]', { op: 'SystemGuard.allow', reason: 'systemGroupOk' });
+        void 0;
         return true;
       })
     );
   }
 }
+

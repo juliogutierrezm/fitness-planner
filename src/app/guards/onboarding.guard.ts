@@ -18,32 +18,32 @@ export class OnboardingGuard implements CanActivate {
   ): Observable<boolean> {
     // SSR/hydration note: do not redirect while auth is unknown.
     if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'OnboardingGuard.allow', reason: 'authUnknown', url: state.url });
+      void 0;
       return of(true);
     }
     return from(this.authService.checkAuthState()).pipe(
-      tap(() => console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuthStateComplete' })),
+      tap(() => void 0),
       switchMap(() => this.authService.isAuthLoading$.pipe(
         filter(isLoading => !isLoading),
         take(1),
         switchMap(() => this.authService.isAuthenticated$.pipe(
           take(1),
           map(isAuthenticated => {
-            console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuth.isAuthenticated', isAuthenticated });
+            void 0;
             if (!isAuthenticated) {
-              console.debug('[AuthDebug]', { op: 'OnboardingGuard.checkAuth.redirectLogin' });
+              void 0;
               this.router.navigate(['/login']);
               return false;
             }
 
             if (this.authService.isClientOnly()) {
-              console.debug('[AuthDebug]', { op: 'OnboardingGuard.redirectUnauthorized', reason: 'clientOnly' });
+              void 0;
               this.router.navigate(['/unauthorized']);
               return false;
             }
 
             if (this.authService.hasPlannerGroups()) {
-              console.debug('[AuthDebug]', { op: 'OnboardingGuard.redirectDashboard', reason: 'plannerGroups' });
+              void 0;
               this.router.navigate(['/dashboard']);
               return false;
             }
@@ -60,3 +60,4 @@ export class OnboardingGuard implements CanActivate {
     );
   }
 }
+

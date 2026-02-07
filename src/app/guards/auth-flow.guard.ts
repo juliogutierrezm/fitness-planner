@@ -16,17 +16,17 @@ export class AuthFlowGuard implements CanActivate {
   canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
     // SSR/hydration note: auth is unknown on server; do not redirect to /login.
     if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'authUnknown' });
+      void 0;
       return of(true);
     }
     return from(this.authService.checkAuthState()).pipe(
-      tap(() => console.debug('[AuthDebug]', { op: 'AuthFlowGuard.checkAuthStateComplete' })),
+      tap(() => void 0),
       switchMap(() => this.authService.isAuthLoading$.pipe(
         filter(isLoading => !isLoading),
         take(1),
         map(() => this.evaluateRoute(route))
       )),
-      tap(result => console.debug('[AuthDebug]', { op: 'AuthFlowGuard.evaluateRoute.result', result })),
+      tap(result => void 0),
       catchError(error => {
         console.error('[AuthDebug]', { op: 'AuthFlowGuard.error', error });
         this.router.navigate(['/login']);
@@ -40,26 +40,20 @@ export class AuthFlowGuard implements CanActivate {
     const fallback = route.data?.['fallback'] as string | undefined;
     const flowState = this.authService.getAuthFlowSnapshot();
     const currentPath = route.routeConfig?.path ? `/${route.routeConfig.path}` : '';
-    console.debug('[AuthDebug]', {
-      op: 'AuthFlowGuard.evaluateRoute.start',
-      requiredFlow,
-      fallback,
-      flowState,
-      currentPath
-    });
+    void 0;
     if (this.authService.isAuthenticatedSync()) {
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.redirectDashboard', reason: 'alreadyAuthenticated' });
+      void 0;
       this.router.navigate(['/dashboard']);
       return false;
     }
 
     if (flowState && (!flowState.step || !flowState.username)) {
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.clearInvalidFlowState', flowState });
+      void 0;
       this.authService.clearAuthFlowState();
     }
 
     if (requiredFlow === undefined) {
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'noRequiredFlow' });
+      void 0;
       return true;
     }
 
@@ -67,31 +61,32 @@ export class AuthFlowGuard implements CanActivate {
       if (flowState?.step) {
         const target = this.authService.getAuthFlowRoute(flowState.step);
         if (currentPath && target === currentPath) {
-          console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'alreadyOnFlowRoute', target });
+          void 0;
           return true;
         }
-        console.debug('[AuthDebug]', { op: 'AuthFlowGuard.redirectToFlow', target });
+        void 0;
         this.router.navigate([target]);
         return false;
       }
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'noActiveFlow' });
+      void 0;
       return true;
     }
 
     if (!flowState || flowState.step !== requiredFlow) {
       if (flowState?.step) {
         const target = this.authService.getAuthFlowRoute(flowState.step);
-        console.debug('[AuthDebug]', { op: 'AuthFlowGuard.redirectToFlow', target });
+        void 0;
         this.router.navigate([target]);
         return false;
       }
       const target = fallback || '/login';
-      console.debug('[AuthDebug]', { op: 'AuthFlowGuard.redirectFallback', target });
+      void 0;
       this.router.navigate([target]);
       return false;
     }
 
-    console.debug('[AuthDebug]', { op: 'AuthFlowGuard.allow', reason: 'flowMatched', requiredFlow });
+    void 0;
     return true;
   }
 }
+

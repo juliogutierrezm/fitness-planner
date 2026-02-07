@@ -58,10 +58,10 @@ export class SignupComponent {
 
   async submit(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'SignupComponent.submit.start' });
+    void 0;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      console.debug('[AuthDebug]', { op: 'SignupComponent.submit.invalidForm' });
+      void 0;
       return;
     }
 
@@ -75,30 +75,27 @@ export class SignupComponent {
 
     try {
       const result = await this.authService.signUpUser(email, password, givenName, familyName);
-      console.debug('[AuthDebug]', { op: 'SignupComponent.submit.result', result });
+      void 0;
 
       if (result.nextStep) {
         this.snackBar.open('Te enviamos un código de confirmación.', 'Cerrar', { duration: 4000 });
         const target = this.authService.getAuthFlowRoute(result.nextStep);
-        console.debug('[AuthDebug]', { op: 'SignupComponent.submit.navigateNextStep', target });
+        void 0;
         const navigated = await this.router.navigate([target]);
-        console.debug('[AuthDebug]', { op: 'SignupComponent.submit.navigateNextStep.result', target, navigated });
+        void 0;
         return;
       }
 
       this.snackBar.open('Cuenta creada. Inicia sesión para continuar.', 'Cerrar', { duration: 4000 });
-      console.debug('[AuthDebug]', { op: 'SignupComponent.submit.navigateLogin' });
+      void 0;
       const navigated = await this.router.navigate(['/login']);
-      console.debug('[AuthDebug]', { op: 'SignupComponent.submit.navigateLogin.result', navigated });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', { op: 'SignupComponent.submit.error', error });
       this.error = mapCognitoError(error, 'No pudimos crear la cuenta. Intenta de nuevo.');
     } finally {
       this.loading = false;
-      console.debug('[AuthDebug]', {
-        op: 'SignupComponent.submit.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
@@ -112,18 +109,16 @@ export class SignupComponent {
 
   async goToLogin(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'SignupComponent.goToLogin.start' });
+    void 0;
     try {
       const navigated = await this.router.navigate(['/login']);
-      console.debug('[AuthDebug]', { op: 'SignupComponent.goToLogin.result', navigated });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', { op: 'SignupComponent.goToLogin.error', error });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'SignupComponent.goToLogin.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 }
+

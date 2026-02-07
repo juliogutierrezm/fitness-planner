@@ -28,10 +28,17 @@
         <mat-icon>verified</mat-icon>
         {{ getModeLabel(vm.mode) }}
       </span>
-      <span class="hero-chip">
+      <span class="hero-chip" *ngIf="vm.aiPlanQuota; else noQuotaChip"
+            [class.hero-chip--warn]="vm.aiPlanQuota.limitReached">
         <mat-icon>auto_awesome</mat-icon>
-        Planes IA este mes: {{ vm.aiPlansThisMonth }}
+        Planes IA: {{ vm.aiPlanQuota.used }}/{{ vm.aiPlanQuota.limit }}
       </span>
+      <ng-template #noQuotaChip>
+        <span class="hero-chip">
+          <mat-icon>auto_awesome</mat-icon>
+          Planes IA este mes: {{ vm.aiPlansThisMonth }}
+        </span>
+      </ng-template>
       <span class="hero-chip">
         <mat-icon>bolt</mat-icon>
         Clientes con IA este mes: {{ vm.clientsWithAiThisMonth }}

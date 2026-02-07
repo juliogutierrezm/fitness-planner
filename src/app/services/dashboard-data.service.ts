@@ -3,6 +3,7 @@ import { combineLatest, Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { AiAggregateResponse, AiClientPlansSummary, AiPlansService, AiPlanSummary } from './ai-plans.service';
 import { UserApiService, AppUser } from '../user-api.service';
+import { MAX_AI_PLANS_PER_TRAINER, AiPlanQuota } from '../shared/ai-plan-limits';
 
 export type DashboardMode = 'GYM_ADMIN' | 'GYM_TRAINER' | 'INDEPENDENT_TRAINER';
 
@@ -35,6 +36,8 @@ export interface DashboardViewModel {
   quickActions: DashboardQuickAction[];
   aiPlansThisMonth: number;
   clientsWithAiThisMonth: number;
+  /** AI plan quota for trainer role. Null for gym admins. */
+  aiPlanQuota?: AiPlanQuota | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -77,7 +80,8 @@ export class DashboardDataService {
           recentAiActivity: this.buildRecentActivity(clientsWithPlans),
           quickActions: this.getTrainerQuickActions(),
           aiPlansThisMonth: aiStats.aiPlansThisMonth,
-          clientsWithAiThisMonth: aiStats.clientsWithAiThisMonth
+          clientsWithAiThisMonth: aiStats.clientsWithAiThisMonth,
+          aiPlanQuota: this.buildQuota(aiStats.totalPlans)
         };
         return viewModel;
       }),
@@ -257,6 +261,16 @@ export class DashboardDataService {
       clientsWithAiThisMonth: clientsWithAiMonth.size,
       totalPlans
     };
+  }
+
+  /**
+   * Purpose: build AiPlanQuota from total plan count for trainer-facing views.
+   */
+  private buildQuota(totalPlans: number): AiPlanQuota {
+    const used = totalPlans;
+    const limit = MAX_AI_PLANS_PER_TRAINER;
+    const remaining = Math.max(0, limit - used);
+    return { used, limit, remaining, limitReached: used >= limit };
   }
 
   private buildRecentActivity(clients: AiClientPlansSummary[]): DashboardActivityItem[] {

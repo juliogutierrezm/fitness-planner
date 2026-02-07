@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { MAX_AI_PLANS_PER_TRAINER, AiPlanQuota } from '../shared/ai-plan-limits';
 
 export interface AiPlanSummary {
   executionId: string;
@@ -138,6 +139,27 @@ export class AiPlansService {
     return this.http.get<AiPlanSummary>(url, { params }).pipe(
       tap(() => console.log('📊 Ai plan por executionId cargado')),
       catchError(err => this.handleError('No pudimos cargar el plan IA.', err))
+    );
+  }
+
+  /**
+   * Purpose: compute AI plan quota for a trainer (used vs limit).
+   * Input: trainerId. Output: Observable<AiPlanQuota>.
+   * Error handling: returns a default quota (0 used) on failure so views remain functional.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getTrainerQuota(trainerId: string): Observable<AiPlanQuota> {
+    const fallback: AiPlanQuota = { used: 0, limit: MAX_AI_PLANS_PER_TRAINER, remaining: MAX_AI_PLANS_PER_TRAINER, limitReached: false };
+    if (!trainerId) return of(fallback);
+
+    return this.getByTrainer(trainerId).pipe(
+      map(response => {
+        const used = response?.totalPlans ?? 0;
+        const limit = MAX_AI_PLANS_PER_TRAINER;
+        const remaining = Math.max(0, limit - used);
+        return { used, limit, remaining, limitReached: used >= limit } as AiPlanQuota;
+      }),
+      catchError(() => of(fallback))
     );
   }
 

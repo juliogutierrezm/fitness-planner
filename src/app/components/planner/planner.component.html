@@ -35,7 +35,7 @@
         <mat-icon>person</mat-icon>
         {{ getPlannerHeaderLabel() }}
       </mat-card-title>
-      <mat-card-subtitle>Puedes crear tus planes con IA</mat-card-subtitle>
+      <mat-card-subtitle>Crea o edita planes de entrenamiento</mat-card-subtitle>
       <div class="actions-right">
         <ng-container *ngIf="!isEditMode">
           <mat-progress-spinner
@@ -43,13 +43,27 @@
             mode="indeterminate"
             diameter="24"
           ></mat-progress-spinner>
+          <span
+            *ngIf="!isUserLoading && !isTemplateMode && aiPlanQuota"
+            class="ai-quota-badge"
+            [class.limit-reached]="aiPlanQuota.limitReached"
+            [matTooltip]="aiPlanQuota.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota.limit + ' planes IA'
+              : aiPlanQuota.remaining + ' planes IA restantes'"
+          >
+            {{ aiPlanQuota.used }}/{{ aiPlanQuota.limit }}
+          </span>
           <button class="ia-button"
             *ngIf="!isUserLoading && !isTemplateMode"
             mat-fab extended
             color="accent"
             (click)="openAIDialog()"
-            [disabled]="!userProfile?.id"
-            [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+            [disabled]="!userProfile?.id || aiPlanQuota?.limitReached"
+            [matTooltip]="aiPlanQuota?.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota!.limit + ' planes IA permitidos'
+              : userProfile?.id
+                ? 'Generar plan con IA'
+                : 'Debe cargar un usuario antes de generar un plan con IA.'"
           >
           <mat-icon>auto_awesome</mat-icon>
             Generar plan IA
@@ -242,7 +256,7 @@
     <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
       <mat-label>Sesiones</mat-label>
       <input matInput type="number" formControlName="sessionCount" min="1"/>
-      <mat-icon matSuffix>event_available</mat-icon>
+      <mat-icon matSuffix>exposure</mat-icon>
     </mat-form-field>
   </form>
 </div>

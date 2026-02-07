@@ -14,27 +14,28 @@ export class PostLoginRedirectGuard implements CanActivate {
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     // Avoid loops: if already on onboarding route, don't redirect again
     if (route.routeConfig?.path === 'onboarding' || state.url?.startsWith('/onboarding')) {
-      console.debug('[AuthDebug]', { op: 'PostLoginRedirectGuard.allow', reason: 'alreadyOnOnboarding', url: state.url });
+      void 0;
       return true;
     }
 
     if (!this.authService.isAuthenticatedSync()) {
-      console.debug('[AuthDebug]', { op: 'PostLoginRedirectGuard.allow', reason: 'notAuthenticated', url: state.url });
+      void 0;
       return true;
     }
 
     if (this.authService.isClientOnly()) {
-      console.debug('[AuthDebug]', { op: 'PostLoginRedirectGuard.redirectUnauthorized', reason: 'clientOnly' });
+      void 0;
       this.router.navigate(['/unauthorized']);
       return false;
     }
 
     if (!this.authService.hasPlannerGroups()) {
-      console.debug('[AuthDebug]', { op: 'PostLoginRedirectGuard.redirectOnboarding', reason: 'missingPlannerGroups' });
+      void 0;
       this.router.navigate(['/onboarding']);
       return false;
     }
-    console.debug('[AuthDebug]', { op: 'PostLoginRedirectGuard.allow', reason: 'plannerAccess' });
+    void 0;
     return true;
   }
 }
+

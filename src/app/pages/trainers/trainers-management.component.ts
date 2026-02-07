@@ -25,6 +25,7 @@ import { UserApiService, AppUser, UserStatus } from '../../user-api.service';
 import { AuthService, UserRole } from '../../services/auth.service';
 import { isIndependentTenant } from '../../shared/shared-utils';
 import { AiPlansService } from '../../services/ai-plans.service';
+import { MAX_AI_PLANS_PER_TRAINER } from '../../shared/ai-plan-limits';
 
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -88,7 +89,7 @@ export class TrainersManagementComponent implements OnInit, OnDestroy {
   trainerAiPlanCounts: Record<string, number> = {};
   aiPlansLoading = false;
   searchTerm = '';
-  readonly MAX_AI_PLANS_PER_TRAINER = 20;
+  readonly MAX_AI_PLANS_PER_TRAINER = MAX_AI_PLANS_PER_TRAINER;
   readonly MAX_TRAINERS_TRIAL = 3;
   private destroy$ = new Subject<void>();
 

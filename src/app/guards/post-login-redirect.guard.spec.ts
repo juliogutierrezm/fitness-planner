@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { PLATFORM_ID } from '@angular/core';
 import { PostLoginRedirectGuard } from './post-login-redirect.guard';
 import { AuthService } from '../services/auth.service';
 
@@ -24,7 +25,8 @@ describe('PostLoginRedirectGuard', () => {
       providers: [
         PostLoginRedirectGuard,
         { provide: AuthService, useValue: authService },
-        { provide: Router, useValue: router }
+        { provide: Router, useValue: router },
+        { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     });
 

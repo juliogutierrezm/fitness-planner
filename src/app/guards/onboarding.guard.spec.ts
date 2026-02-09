@@ -1,21 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import { PLATFORM_ID } from '@angular/core';
 import { OnboardingGuard } from './onboarding.guard';
 import { AuthService } from '../services/auth.service';
 
 describe('OnboardingGuard', () => {
   let guard: OnboardingGuard;
+  let authStatusSubject: BehaviorSubject<string>;
   let authService: {
-    isAuthenticated$: any;
+    authStatus$: any;
     hasPlannerGroups: jasmine.Spy;
     isClientOnly: jasmine.Spy;
   };
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
+    authStatusSubject = new BehaviorSubject<string>('authenticated');
     authService = {
-      isAuthenticated$: of(true),
+      authStatus$: authStatusSubject.asObservable(),
       hasPlannerGroups: jasmine.createSpy('hasPlannerGroups').and.returnValue(false),
       isClientOnly: jasmine.createSpy('isClientOnly').and.returnValue(false)
     };
@@ -25,7 +28,8 @@ describe('OnboardingGuard', () => {
       providers: [
         OnboardingGuard,
         { provide: AuthService, useValue: authService },
-        { provide: Router, useValue: router }
+        { provide: Router, useValue: router },
+        { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     });
 
@@ -33,8 +37,7 @@ describe('OnboardingGuard', () => {
   });
 
   it('redirects to login when not authenticated', async () => {
-    authService.isAuthenticated$ = of(false);
-    authService.isClientOnly.and.returnValue(false);
+    authStatusSubject.next('unauthenticated');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -43,7 +46,7 @@ describe('OnboardingGuard', () => {
   });
 
   it('allows onboarding when required', async () => {
-    authService.isAuthenticated$ = of(true);
+    authStatusSubject.next('authenticated');
     authService.hasPlannerGroups.and.returnValue(false);
     authService.isClientOnly.and.returnValue(false);
 
@@ -54,7 +57,7 @@ describe('OnboardingGuard', () => {
   });
 
   it('redirects to dashboard when user already has planner groups', async () => {
-    authService.isAuthenticated$ = of(true);
+    authStatusSubject.next('authenticated');
     authService.hasPlannerGroups.and.returnValue(true);
     authService.isClientOnly.and.returnValue(false);
 
@@ -65,7 +68,7 @@ describe('OnboardingGuard', () => {
   });
 
   it('redirects to unauthorized when user is client-only', async () => {
-    authService.isAuthenticated$ = of(true);
+    authStatusSubject.next('authenticated');
     authService.hasPlannerGroups.and.returnValue(false);
     authService.isClientOnly.and.returnValue(true);
 
@@ -73,5 +76,23 @@ describe('OnboardingGuard', () => {
 
     expect(result).toBe(false);
     expect(router.navigate).toHaveBeenCalledWith(['/unauthorized']);
+  });
+
+  it('allows through on SSR (server platform)', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        OnboardingGuard,
+        { provide: AuthService, useValue: authService },
+        { provide: Router, useValue: router },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+    const ssrGuard = TestBed.inject(OnboardingGuard);
+
+    const result = await firstValueFrom(ssrGuard.canActivate({} as any, {} as any));
+
+    expect(result).toBe(true);
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

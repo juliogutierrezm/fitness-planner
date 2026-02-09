@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import { PLATFORM_ID } from '@angular/core';
 import { SystemGuard } from './system.guard';
 import { AuthService, UserProfile, UserRole } from '../services/auth.service';
 
@@ -38,7 +39,8 @@ describe('SystemGuard', () => {
       providers: [
         SystemGuard,
         { provide: AuthService, useValue: authSpy },
-        { provide: Router, useValue: routerSpy }
+        { provide: Router, useValue: routerSpy },
+        { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     });
 
@@ -51,12 +53,29 @@ describe('SystemGuard', () => {
     expect(guard).toBeTruthy();
   });
 
-  it('should allow access when auth status is unknown (SSR hydration)', (done) => {
-    authService.getAuthStatusSync.and.returnValue('unknown');
+  it('should allow access on SSR (server platform)', (done) => {
+    TestBed.resetTestingModule();
+    const authSpy = jasmine.createSpyObj('AuthService', [
+      'getAuthStatusSync',
+      'isSystem'
+    ], {
+      currentUser$: of(mockNonSystemUser)
+    });
+    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
 
-    guard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
+    TestBed.configureTestingModule({
+      providers: [
+        SystemGuard,
+        { provide: AuthService, useValue: authSpy },
+        { provide: Router, useValue: routerSpy },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+    const ssrGuard = TestBed.inject(SystemGuard);
+
+    ssrGuard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
       expect(result).toBeTrue();
-      expect(router.navigate).not.toHaveBeenCalled();
+      expect(routerSpy.navigate).not.toHaveBeenCalled();
       done();
     });
   });

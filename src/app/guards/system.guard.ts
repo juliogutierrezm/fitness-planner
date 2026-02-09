@@ -1,54 +1,52 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
-import { map, take } from 'rxjs/operators';
+import { map, take, filter } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
 /**
- * Purpose: Guard that restricts access to routes requiring System group membership.
+ * Guard that restricts access to routes requiring System group membership.
  * Only users belonging to the Cognito 'System' group can access protected routes.
- * This guard validates technical permissions for exercises management and diagnostics.
- * Input: route, state. Output: Observable<boolean>.
- * Error handling: redirects to /unauthorized if user lacks System group.
- * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
 @Injectable({
   providedIn: 'root'
 })
 export class SystemGuard implements CanActivate {
+  private readonly isBrowser: boolean;
 
   constructor(
     private authService: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> {
-    // SSR/hydration note: while auth is 'unknown', do not redirect.
-    if (this.authService.getAuthStatusSync() === 'unknown') {
-      void 0;
+    // SSR: allow through; splash screen gates rendering.
+    if (!this.isBrowser) {
       return of(true);
     }
 
+    // Browser: wait for auth to resolve, then check System group.
     return this.authService.currentUser$.pipe(
+      filter(() => this.authService.getAuthStatusSync() !== 'unknown'),
       take(1),
       map(user => {
         if (!user) {
-          void 0;
           this.router.navigate(['/login']);
           return false;
         }
 
-        // Check if user belongs to System group
         if (!this.authService.isSystem()) {
-          void 0;
           this.router.navigate(['/unauthorized']);
           return false;
         }
 
-        void 0;
         return true;
       })
     );

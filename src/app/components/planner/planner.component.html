@@ -296,7 +296,7 @@
                 <div class="actions">
                   <button mat-mini-fab 
                     (click)="openExercisePreview(ex)" 
-                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseenter)="onVideoHover(ex, $event, 'library')"
                     (mouseleave)="onVideoLeave()"
                     [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
@@ -445,7 +445,7 @@
                     <div class="planner-cell actions-cell ">
                       <button mat-mini-fab 
                         (click)="openExercisePreview(item)" 
-                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseenter)="onVideoHover(item, $event, 'row')"
                         (mouseleave)="onVideoLeave()"
                         [matTooltip]="'Vista previa'">
                         <mat-icon>play_circle</mat-icon>
@@ -536,7 +536,7 @@
                         <div class="planner-cell actions-cell">
                           <button mat-mini-fab 
                             (click)="openExercisePreview(child)" 
-                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseenter)="onVideoHover(child, $event, 'row')"
                             (mouseleave)="onVideoLeave()"
                             [matTooltip]="'Vista previa'">
                             <mat-icon>play_circle</mat-icon>

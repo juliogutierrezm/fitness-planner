@@ -1271,14 +1271,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Error handling: none; graceful no-op if element not found.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent, context: 'library' | 'row' = 'library'): void {
+    const target = (event.currentTarget as HTMLElement) || (event.target as HTMLElement);
+    if (!target) return;
+
     const rect = target.getBoundingClientRect();
+    const previewWidth = 166;
+    const previewHeight = 166;
+    const offset = 10;
+    const viewportMargin = 8;
+
+    let x = rect.right + offset;
+    let y = rect.top;
+
+    if (context === 'row') {
+      x = rect.left + (rect.width / 2) - (previewWidth / 2);
+      y = rect.top - previewHeight - offset;
+    }
+
+    const maxX = window.innerWidth - previewWidth - viewportMargin;
+    const maxY = window.innerHeight - previewHeight - viewportMargin;
 
     this.hoveredExercise = exercise;
     this.previewPosition = {
-      x: rect.right + 10,
-      y: rect.top
+      x: Math.max(viewportMargin, Math.min(x, maxX)),
+      y: Math.max(viewportMargin, Math.min(y, maxY))
     };
     this.cdr.markForCheck();
   }

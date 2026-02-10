@@ -11,7 +11,7 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatCheckboxModule, WorkoutPlanViewComponent],
   template: `
-    <div class="dialog-container">
+    <div class="dialog-container plan-preview-dialog">
       <div class="dialog-header">
         <h2 mat-dialog-title>Previsualización del plan</h2>
         <button mat-icon-button (click)="close()" aria-label="Cerrar">
@@ -43,7 +43,14 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
     }
     .dialog-content {
       flex: 1;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+    }
+    .plan-preview-dialog app-workout-plan-view {
+      display: block;
+      width: 100%;
+      min-width: 0;
     }
     .dialog-actions {
       display: flex;

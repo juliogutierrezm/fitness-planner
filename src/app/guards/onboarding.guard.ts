@@ -43,8 +43,9 @@ export class OnboardingGuard implements CanActivate {
           return false;
         }
 
-        if (this.authService.hasPlannerGroups()) {
-          this.router.navigate(['/dashboard']);
+        const entryTarget = this.authService.resolveEntryTarget();
+        if (entryTarget !== '/onboarding') {
+          this.router.navigate([entryTarget]);
           return false;
         }
 

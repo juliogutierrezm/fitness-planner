@@ -36,7 +36,8 @@ Archivos de referencia:
 ### 3.2 SSR y bootstrap
 - `APP_INITIALIZER` bloquea navegacion inicial hasta resolver auth en cliente.
 - Durante SSR el estado de auth se mantiene en `unknown`.
-- `AppComponent` muestra splash mientras auth sigue en `unknown`.
+- En cliente, `AuthService.checkAuthState()` tiene timeout determinista de 8s para cerrar en estado final.
+- `AppComponent` muestra splash mientras auth sigue en `unknown` (nunca indefinido en browser).
 - Express incluye healthcheck en `/health`.
 
 Archivos clave:
@@ -70,6 +71,11 @@ Helpers:
 - Onboarding ocurre post-login en `/onboarding`.
 - Envia `userType` (`GYM_OWNER` o `INDEPENDENT_TRAINER`) a `POST /users/initialize`.
 - Tras inicializar, se refresca estado auth para reflejar nuevos grupos Cognito.
+- Decision de entrada centralizada (`resolveEntryTarget`):
+  - `unauthenticated` => `/login`
+  - `authenticated` sin inicializar => `/onboarding`
+  - `authenticated` inicializado => `/dashboard`
+- Usuario inicializado: grupos planner (`Admin` o `Trainer`) + `companyId` valido (incluye `INDEPENDENT`).
 
 Servicio:
 - `src/app/services/user-initialization.service.ts`
@@ -86,11 +92,11 @@ Archivo:
 ## 5) Guards y control de rutas
 Guards implementados:
 - `AuthGuard`: requiere usuario autenticado.
-- `AuthFlowGuard`: controla rutas publicas segun paso de auth.
-- `OnboardingGuard`: restringe acceso a onboarding.
-- `PostLoginRedirectGuard`: redirige a onboarding o unauthorized segun estado.
-- `RoleGuard`: valida roles requeridos por ruta.
-- `SystemGuard`: exige pertenencia al grupo `System`.
+- `AuthFlowGuard`: controla rutas publicas segun paso de auth y usa decision central de entrada.
+- `OnboardingGuard`: restringe acceso a onboarding y evita acceso cuando el destino final no es onboarding.
+- `PostLoginRedirectGuard`: redirige a onboarding/unauthorized segun estado post-login.
+- `RoleGuard`: valida roles requeridos por ruta esperando resolucion explicita de `authStatus`.
+- `SystemGuard`: exige pertenencia al grupo `System` esperando resolucion explicita de `authStatus`.
 
 Archivos:
 - `src/app/guards/auth.guard.ts`

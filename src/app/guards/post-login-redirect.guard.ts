@@ -37,8 +37,9 @@ export class PostLoginRedirectGuard implements CanActivate {
       return false;
     }
 
-    if (!this.authService.hasPlannerGroups()) {
-      this.router.navigate(['/onboarding']);
+    const entryTarget = this.authService.resolveEntryTarget();
+    if (entryTarget === '/onboarding') {
+      this.router.navigate([entryTarget]);
       return false;
     }
 

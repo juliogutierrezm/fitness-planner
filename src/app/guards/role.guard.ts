@@ -34,11 +34,17 @@ export class RoleGuard implements CanActivate {
       return of(true);
     }
 
-    // Browser: wait for auth to resolve, then check roles.
-    return this.authService.currentUser$.pipe(
-      filter(user => this.authService.getAuthStatusSync() !== 'unknown'),
+    // Browser: wait for auth status to resolve, then check roles from auth snapshot.
+    return this.authService.authStatus$.pipe(
+      filter(status => status !== 'unknown'),
       take(1),
-      map(user => {
+      map(status => {
+        if (status !== 'authenticated') {
+          this.router.navigate(['/login']);
+          return false;
+        }
+
+        const user = this.authService.getCurrentUser();
         if (!user) {
           this.router.navigate(['/login']);
           return false;

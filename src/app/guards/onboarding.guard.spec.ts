@@ -10,8 +10,8 @@ describe('OnboardingGuard', () => {
   let authStatusSubject: BehaviorSubject<string>;
   let authService: {
     authStatus$: any;
-    hasPlannerGroups: jasmine.Spy;
     isClientOnly: jasmine.Spy;
+    resolveEntryTarget: jasmine.Spy;
   };
   let router: jasmine.SpyObj<Router>;
 
@@ -19,8 +19,8 @@ describe('OnboardingGuard', () => {
     authStatusSubject = new BehaviorSubject<string>('authenticated');
     authService = {
       authStatus$: authStatusSubject.asObservable(),
-      hasPlannerGroups: jasmine.createSpy('hasPlannerGroups').and.returnValue(false),
-      isClientOnly: jasmine.createSpy('isClientOnly').and.returnValue(false)
+      isClientOnly: jasmine.createSpy('isClientOnly').and.returnValue(false),
+      resolveEntryTarget: jasmine.createSpy('resolveEntryTarget').and.returnValue('/onboarding')
     };
     router = jasmine.createSpyObj('Router', ['navigate']);
 
@@ -47,8 +47,8 @@ describe('OnboardingGuard', () => {
 
   it('allows onboarding when required', async () => {
     authStatusSubject.next('authenticated');
-    authService.hasPlannerGroups.and.returnValue(false);
     authService.isClientOnly.and.returnValue(false);
+    authService.resolveEntryTarget.and.returnValue('/onboarding');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -56,10 +56,10 @@ describe('OnboardingGuard', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('redirects to dashboard when user already has planner groups', async () => {
+  it('redirects to dashboard when user is already initialized', async () => {
     authStatusSubject.next('authenticated');
-    authService.hasPlannerGroups.and.returnValue(true);
     authService.isClientOnly.and.returnValue(false);
+    authService.resolveEntryTarget.and.returnValue('/dashboard');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -69,7 +69,6 @@ describe('OnboardingGuard', () => {
 
   it('redirects to unauthorized when user is client-only', async () => {
     authStatusSubject.next('authenticated');
-    authService.hasPlannerGroups.and.returnValue(false);
     authService.isClientOnly.and.returnValue(true);
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));

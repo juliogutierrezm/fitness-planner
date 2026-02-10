@@ -43,6 +43,7 @@ export enum UserRole {
 export type AuthFlowStep = 'confirmSignUp' | 'resetPassword' | 'newPasswordRequired';
 
 export type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated';
+export type AuthEntryTarget = '/login' | '/onboarding' | '/dashboard';
 
 export interface AuthFlowState {
   step: AuthFlowStep;
@@ -55,6 +56,10 @@ export interface AuthActionResult {
   nextStep?: AuthFlowStep;
 }
 
+type AuthResolutionResult =
+  | { status: 'authenticated'; userProfile: UserProfile }
+  | { status: 'unauthenticated' };
+
 @Injectable({
   providedIn: 'root'
 })
@@ -66,6 +71,7 @@ export class AuthService {
   private authStatusSubject = new BehaviorSubject<AuthStatus>('unknown');
   private readonly isBrowser: boolean;
   private initialized = false;
+  private readonly AUTH_RESOLVE_TIMEOUT_MS = 8000;
   private readonly AUTH_FLOW_STORAGE_KEY = 'auth_flow_state';
   private readonly PERSISTED_FLOW_STEPS: AuthFlowStep[] = ['confirmSignUp', 'resetPassword'];
   
@@ -403,8 +409,10 @@ export class AuthService {
     if (this.initialized && !forceRefresh && !bypassCache) {
       void 0;
       void 0;
+      this.authLoadingSubject.next(false);
       return;
     }
+    this.authLoadingSubject.next(true);
     try {
       if (!this.isBrowser) {
         // SSR: we cannot deterministically resolve browser auth tokens.
@@ -414,31 +422,18 @@ export class AuthService {
         return;
       }
       this.initialized = true;
-      const session = await fetchAuthSession({ forceRefresh });
-      const tokens = session?.tokens;
-      void 0;
-
-      if (!tokens) {
-        this.currentUserSubject.next(null);
-        this.isAuthenticatedSubject.next(false);
-        this.authStatusSubject.next('unauthenticated');
+      const resolution = await this.withTimeout(
+        this.resolveBrowserAuthState(forceRefresh),
+        this.AUTH_RESOLVE_TIMEOUT_MS,
+        'AuthService.checkAuthState'
+      );
+      if (resolution.status === 'authenticated') {
+        this.setAuthenticatedState(resolution.userProfile);
+        this.clearAuthFlowState();
         void 0;
         return;
       }
-
-      let user: any | null = null;
-      try {
-        user = await getCurrentUser();
-      } catch (error) {
-        console.warn('Unable to load current user; falling back to token payload.', error);
-        void 0;
-      }
-
-      const userProfile = await this.buildUserProfile(user, session);
-      this.currentUserSubject.next(userProfile);
-      this.isAuthenticatedSubject.next(true);
-      this.authStatusSubject.next('authenticated');
-      this.clearAuthFlowState();
+      this.setUnauthenticatedState();
       void 0;
     } catch (error) {
       console.error('[AuthDebug]', {
@@ -446,10 +441,8 @@ export class AuthService {
         error,
         elapsedMs: Date.now() - startedAt
       });
-      this.currentUserSubject.next(null);
-      this.isAuthenticatedSubject.next(false);
       if (this.isBrowser) {
-        this.authStatusSubject.next('unauthenticated');
+        this.setUnauthenticatedState();
       }
     } finally {
       this.authLoadingSubject.next(false);
@@ -554,6 +547,20 @@ export class AuthService {
 
   hasPlannerGroups(): boolean {
     return this.hasGroup('Admin') || this.hasGroup('Trainer');
+  }
+
+  isUserInitialized(profile: UserProfile | null = this.currentUserSubject.value): boolean {
+    if (!profile) return false;
+    const hasPlannerGroups = this.hasPlannerGroupsFor(profile);
+    const hasValidCompanyId = this.hasValidCompanyId(profile.companyId);
+    return hasPlannerGroups && hasValidCompanyId;
+  }
+
+  resolveEntryTarget(): AuthEntryTarget {
+    if (this.authStatusSubject.value !== 'authenticated') {
+      return '/login';
+    }
+    return this.isUserInitialized() ? '/dashboard' : '/onboarding';
   }
 
   getCurrentUserId(): string | null {
@@ -664,9 +671,7 @@ export class AuthService {
     try {
       if (!this.isBrowser) { return; }
       await signOut();
-      this.currentUserSubject.next(null);
-      this.isAuthenticatedSubject.next(false);
-      this.authStatusSubject.next('unauthenticated');
+      this.setUnauthenticatedState();
       this.clearAuthFlowState();
       void 0;
     } catch (error) {
@@ -714,6 +719,66 @@ export class AuthService {
     return this.getAuthSession().pipe(
       map(session => session?.tokens?.accessToken?.toString() || null)
     );
+  }
+
+  private async resolveBrowserAuthState(forceRefresh: boolean): Promise<AuthResolutionResult> {
+    const session = await fetchAuthSession({ forceRefresh });
+    const tokens = session?.tokens;
+    void 0;
+
+    if (!tokens) {
+      return { status: 'unauthenticated' };
+    }
+
+    let user: any | null = null;
+    try {
+      user = await getCurrentUser();
+    } catch (error) {
+      console.warn('Unable to load current user; falling back to token payload.', error);
+      void 0;
+    }
+
+    const userProfile = await this.buildUserProfile(user, session);
+    return { status: 'authenticated', userProfile };
+  }
+
+  private hasPlannerGroupsFor(profile: UserProfile): boolean {
+    const groups = profile.groups ?? [];
+    return groups.includes('Admin') || groups.includes('Trainer');
+  }
+
+  private hasValidCompanyId(companyId?: string): boolean {
+    return typeof companyId === 'string' && companyId.trim().length > 0;
+  }
+
+  private setAuthenticatedState(userProfile: UserProfile): void {
+    this.currentUserSubject.next(userProfile);
+    this.isAuthenticatedSubject.next(true);
+    this.authStatusSubject.next('authenticated');
+  }
+
+  private setUnauthenticatedState(): void {
+    this.currentUserSubject.next(null);
+    this.isAuthenticatedSubject.next(false);
+    this.authStatusSubject.next('unauthenticated');
+  }
+
+  private withTimeout<T>(operation: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      operation
+        .then(value => {
+          clearTimeout(timeoutHandle);
+          resolve(value);
+        })
+        .catch(error => {
+          clearTimeout(timeoutHandle);
+          reject(error);
+        });
+    });
   }
 
   private setAuthFlowState(state: AuthFlowState, persist: boolean): void {

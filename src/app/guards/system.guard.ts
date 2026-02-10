@@ -32,11 +32,17 @@ export class SystemGuard implements CanActivate {
       return of(true);
     }
 
-    // Browser: wait for auth to resolve, then check System group.
-    return this.authService.currentUser$.pipe(
-      filter(() => this.authService.getAuthStatusSync() !== 'unknown'),
+    // Browser: wait for auth status to resolve, then check System group.
+    return this.authService.authStatus$.pipe(
+      filter(status => status !== 'unknown'),
       take(1),
-      map(user => {
+      map(status => {
+        if (status !== 'authenticated') {
+          this.router.navigate(['/login']);
+          return false;
+        }
+
+        const user = this.authService.getCurrentUser();
         if (!user) {
           this.router.navigate(['/login']);
           return false;

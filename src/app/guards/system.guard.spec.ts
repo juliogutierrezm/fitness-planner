@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
 import { PLATFORM_ID } from '@angular/core';
+import { Router } from '@angular/router';
+import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
+import { AuthService, AuthStatus, UserProfile, UserRole } from '../services/auth.service';
 import { SystemGuard } from './system.guard';
-import { AuthService, UserProfile, UserRole } from '../services/auth.service';
 
 describe('SystemGuard', () => {
   let guard: SystemGuard;
+  let authStatusSubject: BehaviorSubject<AuthStatus>;
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
 
@@ -27,91 +28,84 @@ describe('SystemGuard', () => {
   };
 
   beforeEach(() => {
-    const authSpy = jasmine.createSpyObj('AuthService', [
-      'getAuthStatusSync',
-      'isSystem'
-    ], {
-      currentUser$: of(mockNonSystemUser)
-    });
-    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+    authStatusSubject = new BehaviorSubject<AuthStatus>('unknown');
+    authService = jasmine.createSpyObj(
+      'AuthService',
+      ['getCurrentUser', 'isSystem'],
+      {
+        authStatus$: authStatusSubject.asObservable(),
+        currentUser$: of(mockNonSystemUser)
+      }
+    );
+    authService.getCurrentUser.and.returnValue(mockNonSystemUser);
+    authService.isSystem.and.returnValue(false);
+
+    router = jasmine.createSpyObj('Router', ['navigate']);
 
     TestBed.configureTestingModule({
       providers: [
         SystemGuard,
-        { provide: AuthService, useValue: authSpy },
-        { provide: Router, useValue: routerSpy },
+        { provide: AuthService, useValue: authService },
+        { provide: Router, useValue: router },
         { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     });
 
     guard = TestBed.inject(SystemGuard);
-    authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
-    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
   });
 
-  it('should be created', () => {
-    expect(guard).toBeTruthy();
+  it('resolves without deadlock when currentUser emitted before authStatus becomes authenticated', async () => {
+    authService.getCurrentUser.and.returnValue(mockSystemUser);
+    authService.isSystem.and.returnValue(true);
+
+    const resultPromise = firstValueFrom(guard.canActivate({} as any, { url: '/diagnostics' } as any));
+
+    authStatusSubject.next('authenticated');
+    const result = await resultPromise;
+
+    expect(result).toBeTrue();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('should allow access on SSR (server platform)', (done) => {
+  it('redirects to login when authStatus resolves to unauthenticated', async () => {
+    const resultPromise = firstValueFrom(guard.canActivate({} as any, { url: '/diagnostics' } as any));
+
+    authStatusSubject.next('unauthenticated');
+    const result = await resultPromise;
+
+    expect(result).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('redirects to unauthorized when user is not in System group', async () => {
+    authService.getCurrentUser.and.returnValue(mockNonSystemUser);
+    authService.isSystem.and.returnValue(false);
+
+    const resultPromise = firstValueFrom(guard.canActivate({} as any, { url: '/diagnostics' } as any));
+
+    authStatusSubject.next('authenticated');
+    const result = await resultPromise;
+
+    expect(result).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/unauthorized']);
+  });
+
+  it('allows through on SSR (server platform)', async () => {
     TestBed.resetTestingModule();
-    const authSpy = jasmine.createSpyObj('AuthService', [
-      'getAuthStatusSync',
-      'isSystem'
-    ], {
-      currentUser$: of(mockNonSystemUser)
-    });
-    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
 
     TestBed.configureTestingModule({
       providers: [
         SystemGuard,
-        { provide: AuthService, useValue: authSpy },
-        { provide: Router, useValue: routerSpy },
+        { provide: AuthService, useValue: authService },
+        { provide: Router, useValue: router },
         { provide: PLATFORM_ID, useValue: 'server' }
       ]
     });
+
     const ssrGuard = TestBed.inject(SystemGuard);
+    const result = await firstValueFrom(ssrGuard.canActivate({} as any, { url: '/diagnostics' } as any));
 
-    ssrGuard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
-      expect(result).toBeTrue();
-      expect(routerSpy.navigate).not.toHaveBeenCalled();
-      done();
-    });
-  });
-
-  it('should redirect to login when user is null', (done) => {
-    authService.getAuthStatusSync.and.returnValue('authenticated');
-    (Object.getOwnPropertyDescriptor(authService, 'currentUser$')!.get as jasmine.Spy).and.returnValue(of(null));
-
-    guard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
-      expect(result).toBeFalse();
-      expect(router.navigate).toHaveBeenCalledWith(['/login']);
-      done();
-    });
-  });
-
-  it('should redirect to unauthorized when user is not in System group', (done) => {
-    authService.getAuthStatusSync.and.returnValue('authenticated');
-    (Object.getOwnPropertyDescriptor(authService, 'currentUser$')!.get as jasmine.Spy).and.returnValue(of(mockNonSystemUser));
-    authService.isSystem.and.returnValue(false);
-
-    guard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
-      expect(result).toBeFalse();
-      expect(router.navigate).toHaveBeenCalledWith(['/unauthorized']);
-      done();
-    });
-  });
-
-  it('should allow access when user is in System group', (done) => {
-    authService.getAuthStatusSync.and.returnValue('authenticated');
-    (Object.getOwnPropertyDescriptor(authService, 'currentUser$')!.get as jasmine.Spy).and.returnValue(of(mockSystemUser));
-    authService.isSystem.and.returnValue(true);
-
-    guard.canActivate({} as any, { url: '/diagnostics' } as any).subscribe(result => {
-      expect(result).toBeTrue();
-      expect(router.navigate).not.toHaveBeenCalled();
-      done();
-    });
+    expect(result).toBeTrue();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

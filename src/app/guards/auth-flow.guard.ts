@@ -40,8 +40,9 @@ export class AuthFlowGuard implements CanActivate {
     const currentPath = route.routeConfig?.path ? `/${route.routeConfig.path}` : '';
     void 0;
     if (this.authService.isAuthenticatedSync()) {
+      const target = this.authService.resolveEntryTarget();
       void 0;
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([target]);
       return false;
     }
 

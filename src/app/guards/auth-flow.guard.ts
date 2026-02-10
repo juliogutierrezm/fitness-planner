@@ -1,37 +1,35 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
-import { Observable, from, of } from 'rxjs';
-import { catchError, map, tap, filter, switchMap, take } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, filter, take } from 'rxjs/operators';
 import { AuthService, AuthFlowStep } from '../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthFlowGuard implements CanActivate {
+  private readonly isBrowser: boolean;
+
   constructor(
     private authService: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
-    // SSR/hydration note: auth is unknown on server; do not redirect to /login.
-    if (this.authService.getAuthStatusSync() === 'unknown') {
-      void 0;
+    // SSR: allow through; splash screen gates rendering.
+    if (!this.isBrowser) {
       return of(true);
     }
-    return from(this.authService.checkAuthState()).pipe(
-      tap(() => void 0),
-      switchMap(() => this.authService.isAuthLoading$.pipe(
-        filter(isLoading => !isLoading),
-        take(1),
-        map(() => this.evaluateRoute(route))
-      )),
-      tap(result => void 0),
-      catchError(error => {
-        console.error('[AuthDebug]', { op: 'AuthFlowGuard.error', error });
-        this.router.navigate(['/login']);
-        return of(false);
-      })
+
+    // Browser: wait for auth to resolve, then evaluate the auth-flow route.
+    return this.authService.authStatus$.pipe(
+      filter(status => status !== 'unknown'),
+      take(1),
+      map(() => this.evaluateRoute(route))
     );
   }
 
@@ -42,8 +40,9 @@ export class AuthFlowGuard implements CanActivate {
     const currentPath = route.routeConfig?.path ? `/${route.routeConfig.path}` : '';
     void 0;
     if (this.authService.isAuthenticatedSync()) {
+      const target = this.authService.resolveEntryTarget();
       void 0;
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([target]);
       return false;
     }
 

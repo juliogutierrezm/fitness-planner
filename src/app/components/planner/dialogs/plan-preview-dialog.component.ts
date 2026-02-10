@@ -18,11 +18,6 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
           <mat-icon>close</mat-icon>
         </button>
       </div>
-      <div class="dialog-progressions">
-        <mat-checkbox [checked]="data.plan?.progressions?.showProgressions === true" disabled>
-          Mostrar progresiones al cliente
-        </mat-checkbox>
-      </div>
       <div class="dialog-content">
         <app-workout-plan-view [plan]="data.plan"></app-workout-plan-view>
       </div>
@@ -49,11 +44,6 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
     .dialog-content {
       flex: 1;
       overflow: auto;
-    }
-    .dialog-progressions {
-      display: flex;
-      align-items: center;
-      margin-bottom: 12px;
     }
     .dialog-actions {
       display: flex;

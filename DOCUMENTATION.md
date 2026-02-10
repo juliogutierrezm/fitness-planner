@@ -1,627 +1,363 @@
-# Fitness Planner
+# Fitness Planner - Documentacion Tecnica del Repositorio
 
-## Descripción general
-Fitness Planner es una aplicación de planificación de entrenamientos desarrollada en Angular 19, que integra autenticación custom con AWS Cognito (Amplify Auth) y conectividad con API para gestionar planes de ejercicios, usuarios y recursos fitness. Ofrece una interfaz responsiva con Material Design, soporte para server-side rendering (SSR), rutas protegidas con control de acceso basado en roles (Admin, Trainer, Client), y funcionalidades administrativas avanzadas.
-Tambien incluye configuracion de apariencia por tenant (branding, colores, tipografia, modo claro/oscuro y logo) con vista previa para administradores.
+Ultima actualizacion: 2026-02-09
 
-## Arquitectura de Autenticación y AWS Cognito
+## 1) Contexto del proyecto
+Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
+- Autenticacion custom con AWS Cognito (via `aws-amplify`, sin Hosted UI).
+- Autorizacion por grupos Cognito (`Admin`, `Trainer`, `Client`, `System`).
+- Arquitectura multi-tenant por `companyId` (modo gimnasio vs independiente).
+- Gestion de usuarios, planes, plantillas, ejercicios, planes IA y metricas corporales.
+- Soporte SSR con Angular + Express.
 
-### Sistema Custom de Autenticación
-La aplicación implementa autenticación 100% custom con AWS Cognito y Amplify Auth, sin Hosted UI ni redirects.
+Este documento describe el estado actual observable en codigo fuente.
 
-#### Componentes principales
-- **AuthService** (`src/app/services/auth.service.ts`): manejo de signup/login/reset, tokens, grupos y estado del flujo
-- **AuthFlowGuard** (`src/app/guards/auth-flow.guard.ts`): control de rutas públicas según el paso de auth
-- **AuthFlowState**: persistencia temporal en `sessionStorage` para confirmación y reset
-- **UI de autenticación**: login, signup, confirm-signup, forgot/reset password, force-change-password
+## 2) Stack y runtime
+- Frontend: Angular 19 standalone + Angular Material + RxJS.
+- Auth: AWS Amplify Auth (`aws-amplify` v6).
+- SSR: `@angular/ssr` + `express`.
+- PDF: `jspdf`.
+- Requisito de Node: `>=20 <21` (definido en `package.json`).
 
-### Configuración de AWS Cognito
+Archivos de referencia:
+- `package.json`
+- `angular.json`
+- `src/main.ts`
+- `src/server.ts`
 
-#### User Pool Configuration (export local JSON)
-```json
-// user-pool.json (referencia local del User Pool de desarrollo)
-{
-  "UserPool": {
-    "Id": "us-east-1_8jk4VBnTQ",
-    "Name": "fitness-planner-dev-user-pool",
-    "SchemaAttributes": [
-      { "Name": "custom:role", "AttributeDataType": "String" },
-      { "Name": "custom:companyId", "AttributeDataType": "String" },
-      { "Name": "custom:trainerIds", "AttributeDataType": "String" }
-    ]
-  }
-}
-```
+## 3) Arquitectura de alto nivel
+### 3.1 Capas
+- UI: paginas/componentes standalone (`src/app/pages`, `src/app/components`).
+- Dominio frontend: servicios de negocio (`src/app/services`).
+- Integracion HTTP: wrappers API (`src/app/exercise-api.service.ts`, `src/app/user-api.service.ts`, `src/app/services/ai-plans.service.ts`).
+- Seguridad y navegacion: guards (`src/app/guards`) + interceptor (`src/app/interceptors/auth.interceptor.ts`).
+- Utilidades/modelos: `src/app/shared`.
 
-#### Grupos de Usuarios
-- **Admin**: Acceso completo a todas las funcionalidades
-- **Trainer**: Gestión de clientes y planes de entrenamiento
-- **Client**: Acceso básico a planes asignados
+### 3.2 SSR y bootstrap
+- `APP_INITIALIZER` bloquea navegacion inicial hasta resolver auth en cliente.
+- Durante SSR el estado de auth se mantiene en `unknown`.
+- `AppComponent` muestra splash mientras auth sigue en `unknown`.
+- Express incluye healthcheck en `/health`.
 
-#### Flujo de Autenticación
-1. **Inicio de sesión/registro**: Formularios custom con Amplify Auth
-2. **nextStep**: Confirmación de cuenta, reset o cambio de contraseña obligatorio
-3. **AuthFlowState**: El estado se guarda temporalmente para recuperar el flujo en navegación
-4. **Sesión Cognito**: Amplify mantiene los tokens en storage seguro
-5. **Guards**: Redirección a dashboard/onboarding/unauthorized según grupos
+Archivos clave:
+- `src/app/app.config.ts`
+- `src/app/app.component.ts`
+- `src/app/app.component.html`
+- `src/app/app.config.server.ts`
+- `src/app/app.routes.server.ts`
 
-#### SSR e hidratación (estado auth `unknown`)
-- Durante SSR no se pueden resolver tokens del navegador; el estado inicial de auth es `unknown`.
-- `APP_INITIALIZER` ejecuta `checkAuthState` en cliente antes de completar la navegación inicial.
-- Guards (`AuthGuard`, `AuthFlowGuard`, `OnboardingGuard`, `RoleGuard`, `SystemGuard`) permiten paso cuando auth es `unknown` para evitar redirecciones incorrectas y "login flash".
-- `AppComponent` muestra splash mientras auth permanece en `unknown`.
+## 4) Autenticacion, roles y tenant
+### 4.1 Roles
+Mapeo de grupos Cognito -> rol app (en `AuthService`):
+- `Admin` -> `admin`
+- `Trainer` -> `trainer`
+- default/fallback -> `client`
 
-### Seguridad Implementada
-- **Amplify Auth**: manejo de tokens y refresh automático
-- **Storage seguro**: tokens gestionados por Amplify
-- **Roles por grupos Cognito**: extracción directa desde tokens
+El control real de permisos usa grupos Cognito.
 
-#### Guards y Autorización
-- **AuthGuard**: Protección base para rutas autenticadas
-- **PostLoginRedirectGuard**: Redirige a onboarding si falta inicialización (sin grupos Admin/Trainer)
-- **OnboardingGuard**: Permite onboarding solo a usuarios autenticados sin grupos de planner
-- **RoleGuard**: Control de acceso por roles + restricción `excludeIndependent` para módulos específicos
-- **SystemGuard**: Acceso técnico solo para usuarios del grupo Cognito `System`
-- **AuthFlowGuard**: Control de pantallas públicas según el paso activo de autenticación
-- **Data Access Control**: Verificación de permisos para acceso a datos de usuarios
+### 4.2 Grupos especiales
+- `System`: habilita funciones tecnicas (diagnostics y modificaciones en catalogo de ejercicios).
 
-### Roles y Permisos
+### 4.3 Tenant
+El tenant se deriva de `companyId`:
+- `INDEPENDENT` -> modo independiente.
+- Distinto de `INDEPENDENT` -> modo gimnasio.
 
-| Rol | Permisos |
-|-----|----------|
-| **Admin** | Acceso completo a usuarios, planes, ejercicios y configuraciones del sistema |
-| **Trainer** | Gestión de sus clientes asignados, creación de planes, acceso al catálogo de ejercicios |
-| **Client** | Acceso a sus propios planes asignados y perfil personal |
+Helpers:
+- `isGymMode(companyId)` y `isIndependentTenant(companyId)` en `src/app/shared/shared-utils.ts`.
 
-## User Initialization & Onboarding
+### 4.4 Onboarding
+- Onboarding ocurre post-login en `/onboarding`.
+- Envia `userType` (`GYM_OWNER` o `INDEPENDENT_TRAINER`) a `POST /users/initialize`.
+- Tras inicializar, se refresca estado auth para reflejar nuevos grupos Cognito.
 
-### userType (solo onboarding)
-- userType indica el contexto operativo del usuario y no es un rol.
-- Valores soportados: GYM_OWNER, INDEPENDENT_TRAINER.
-- Se usa solo en la UI de onboarding y en el body de POST /users/initialize.
-- No se persiste en el perfil ni se usa para permisos.
+Servicio:
+- `src/app/services/user-initialization.service.ts`
 
-### Estado de inicializacion (groups only)
-- Usuario inicializado para planner = pertenece a Admin o Trainer.
-- Fuente de verdad: grupos de Cognito (cognito:groups).
+### 4.5 Interceptor
+`AuthInterceptor`:
+- Adjunta `Authorization: Bearer <token>` solo a requests que inician con `environment.apiBase`.
+- Valida `iss` del JWT contra el User Pool esperado por entorno.
+- Bloquea request si detecta mismatch de entorno/token.
 
-### companyId (aislamiento de tenant)
-- companyId se asigna en backend durante /users/initialize.
-- INDEPENDENT_TRAINER -> INDEPENDENT
-- GYM_OWNER -> GYM#<uuid>
+Archivo:
+- `src/app/interceptors/auth.interceptor.ts`
 
-### Rol vs estado
-- Role (admin/trainer/client) controla permisos de acceso y se deriva de grupos.
-- userType solo define contexto de negocio durante onboarding.
+## 5) Guards y control de rutas
+Guards implementados:
+- `AuthGuard`: requiere usuario autenticado.
+- `AuthFlowGuard`: controla rutas publicas segun paso de auth.
+- `OnboardingGuard`: restringe acceso a onboarding.
+- `PostLoginRedirectGuard`: redirige a onboarding o unauthorized segun estado.
+- `RoleGuard`: valida roles requeridos por ruta.
+- `SystemGuard`: exige pertenencia al grupo `System`.
 
-### Por que el onboarding es post-login
-- El onboarding requiere un JWT valido para llamar POST /users/initialize.
-- Evita mostrar onboarding antes de autenticar al usuario.
+Archivos:
+- `src/app/guards/auth.guard.ts`
+- `src/app/guards/auth-flow.guard.ts`
+- `src/app/guards/onboarding.guard.ts`
+- `src/app/guards/post-login-redirect.guard.ts`
+- `src/app/guards/role.guard.ts`
+- `src/app/guards/system.guard.ts`
 
-### Guards deciden
-- AuthGuard solo valida autenticacion.
-- OnboardingGuard permite /onboarding solo si el usuario autenticado no tiene grupos Admin/Trainer; si los tiene, redirige a /dashboard.
-- PostLoginRedirectGuard redirige a /onboarding cuando el usuario autenticado no tiene grupos Admin/Trainer.
+## 6) Mapa de rutas actual (app)
+Definidas en `src/app/app.routes.ts`.
 
-### Integración con API Backend
-```typescript
-// Interceptor automático de autenticación
-export class AuthInterceptor implements HttpInterceptor {
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    if (!req.url.startsWith(environment.apiBase)) {
-      return next.handle(req);
-    }
+Publicas de autenticacion:
+- `/login`
+- `/signup`
+- `/confirm-signup`
+- `/forgot-password`
+- `/reset-password`
+- `/force-change-password`
+- `/unauthorized`
 
-    return from(fetchAuthSession()).pipe(
-      switchMap(session => {
-        const token =
-          session?.tokens?.idToken?.toString() ??
-          session?.tokens?.accessToken?.toString();
-        if (!token) return next.handle(req);
-        return next.handle(req.clone({
-          setHeaders: { Authorization: `Bearer ${token}` }
-        }));
-      }),
-      catchError(() => next.handle(req))
-    );
-  }
-}
-```
+Privadas principales:
+- `/onboarding`
+- `/dashboard`
+- `/planner`
+- `/planner/:id`
+- `/templates`
+- `/plan/:id`
+- `/exercise-manager`
+- `/exercise-detail/:id`
+- `/diagnostics`
+- `/ai-plans`
+- `/ai-plans/user/:id`
+- `/ai-plans/user/:id/plan/:executionId`
+- `/trainers`
+- `/clients`
+- `/users` (alias funcional de clientes)
+- `/users/:id`
+- `/clients/:id/body-metrics`
+- `/settings/appearance`
 
-## Estructura de carpetas y archivos
+## 7) Modulos funcionales
+### 7.1 Dashboard
+- Vista segun modo: `GYM_ADMIN`, `GYM_TRAINER`, `INDEPENDENT_TRAINER`.
+- KPIs combinando usuarios + planes IA.
+- Refresh periodico (cada 60 segundos).
+
+Archivo:
+- `src/app/pages/dashboard/dashboard.component.ts`
+
+### 7.2 Planner (core)
+- Creacion/edicion de planes.
+- Drag & drop de ejercicios y sesiones.
+- Superseries (agrupacion y desagrupacion).
+- Carga de planes previos.
+- Guardado de plantillas.
+- Integracion IA (dialogo parametrico + polling por `executionId`).
+- Enriquecimiento de sesiones con Exercise Library antes de render/guardar.
+
+Archivo:
+- `src/app/components/planner/planner.component.ts`
+
+### 7.3 Gestion de usuarios
+- `UsersComponent`: clientes (crear, editar, activar/desactivar, eliminar inactivos, asignar entrenador).
+- `TrainersManagementComponent`: entrenadores (gestion admin + metricas + limites trial).
+- `UserDetailComponent`: historial de planes por cliente, asignacion de plantillas y descarga PDF.
+
+Archivos:
+- `src/app/pages/users/users.component.ts`
+- `src/app/pages/trainers/trainers-management.component.ts`
+- `src/app/pages/user-detail/user-detail.component.ts`
+
+### 7.4 Plantillas
+- Lista de plantillas por tenant.
+- Filtros y asignacion de plantilla a cliente.
+- Navegacion a planner con `queryParams` (`userId`, `templateId`).
+
+Archivo:
+- `src/app/pages/templates/templates.component.ts`
+
+### 7.5 Planes IA
+- Dashboard agregado (`by-gym` / `by-trainer`).
+- Historial por usuario (`by-user`).
+- Detalle por `executionId` con opcion de asignar o guardar como plantilla.
+- Cuota de planes IA por entrenador: limite actual `20`.
+
+Archivos:
+- `src/app/services/ai-plans.service.ts`
+- `src/app/pages/ai-plans-dashboard/ai-plans-dashboard.component.ts`
+- `src/app/pages/ai-plans-user/ai-plans-user.component.ts`
+- `src/app/pages/ai-plan-detail/ai-plan-detail.component.ts`
+- `src/app/shared/ai-plan-limits.ts`
+
+### 7.6 Ejercicios
+- Catalogo desde `GET /exercise/library`.
+- Filtros avanzados, paginacion y edicion inline/dialogo.
+- Modificaciones (create/update/delete) condicionadas en UI al grupo `System`.
+
+Archivo:
+- `src/app/pages/exercise-manager/exercise-manager.component.ts`
+
+### 7.7 Metricas corporales
+- Historial por cliente.
+- Alta y eliminacion de mediciones.
+- Calculo de IMC en cliente.
+
+Archivos:
+- `src/app/pages/client-body-metrics/client-body-metrics.component.ts`
+- `src/app/services/client-body-metrics.service.ts`
+
+### 7.8 Apariencia y branding
+- Configuracion por tenant (`/tenant/theme`).
+- Subida de logo mediante URL pre-firmada (`/tenant/logo-upload-url` + PUT directo a S3).
+- Vista previa en pantalla de settings.
+
+Nota: el componente de settings actualmente usa preview local; no aplica tema global inmediato a toda la app.
+
+Archivos:
+- `src/app/pages/settings/appearance-settings.component.ts`
+- `src/app/services/theme.service.ts`
+
+### 7.9 PDF de planes
+- Generacion PDF con branding de tenant (nombre, tagline, colores, logo).
+- Soporta sesiones, superseries y progresiones.
+- Enlaces de video clicables.
+
+Archivo:
+- `src/app/services/pdf-generator.service.ts`
+
+## 8) Contratos backend consumidos por frontend
+Base URL: `environment.apiBase`.
+
+### 8.1 Auth/onboarding
+- `POST /users/initialize`
+
+### 8.2 Usuarios
+- `GET /users`
+- `POST /users`
+- `GET /users/:id`
+- `PUT /users/:id`
+- `POST /users/:id` (status `ACTIVE`/`INACTIVE`)
+- `DELETE /users/:id` (frontend fuerza solo inactivos)
+- `PUT /users/trainers` (asignacion entrenador)
+- `GET /users/plan?userId=<id>`
+
+### 8.3 Planes y plantillas
+- `GET /workoutPlans?userId=<id>`
+- `GET /workoutPlans/:planId`
+- `POST /workoutPlans`
+- `PUT /workoutPlans`
+- `DELETE /workoutPlans/:planId`
+- `GET /workoutPlans/trainer`
+- `GET /workoutPlans/company`
+
+### 8.4 IA
+- `POST /generatePlanFromAI`
+- `GET /generatePlanFromAI/:userId`
+- `GET /generatePlanFromAI/:userId/:executionId`
+- `GET /generatePlanFromAI?executionArn=<arn>`
+- `GET /ai-plans/by-user/:userId`
+- `GET /ai-plans/by-trainer/:trainerId`
+- `GET /ai-plans/by-gym/:companyId`
+- `GET /ai-plans/:executionId`
+
+### 8.5 Ejercicios
+- `GET /exercise`
+- `POST /exercise`
+- `PUT /exercise`
+- `DELETE /exercise?id=<id>`
+- `POST /exercise/bulk`
+- `GET /exercise/library`
+- `PUT /exercise/library/:id`
+
+### 8.6 Tenant/theme
+- `GET /tenant/theme`
+- `PUT /tenant/theme`
+- `POST /tenant/logo-upload-url`
+
+### 8.7 Metricas
+- `GET /clients/metrics/:clientId`
+- `POST /clients/metrics/:clientId`
+- `DELETE /clients/metrics/:clientId?measurementDate=<iso>`
+
+## 9) Configuracion de entorno
+Archivos:
+- `src/environments/environment.ts` (dev)
+- `src/environments/environment.prod.ts` (prod)
+- `src/environments/environment.test.ts` (tests)
+- `src/environments/environment.interface.ts` (shape comun)
+
+Tambien hay reemplazo de `src/aws-exports.ts` en build de produccion (ver `angular.json`).
+
+## 10) Persistencia local en frontend
+Llaves principales en navegador:
+- `auth_flow_state` (sessionStorage, pasos de auth flow persistibles).
+- `fp_sessions_<userId>` (localStorage, sesiones del planner por usuario).
+- `planner-filters` (localStorage, filtros planner).
+- `exercise-manager-filters` y `exercise-manager-filters-paginator` (localStorage).
+
+## 11) Scripts y comandos
+Comandos npm (`package.json`):
+- `npm run build` -> build app (incluye SSR output).
+- `npm run watch` -> build en modo desarrollo watch.
+- `npm test` -> tests con Karma.
+- `npm run start` -> ejecuta servidor SSR desde `dist`.
+- `npm run serve:ssr:fitness-planner` -> alias de arranque SSR.
+
+Comando util adicional:
+- `node scripts/smoke-api.mjs`
+  - Env vars: `API_BASE`, `ID_TOKEN`, `TEST_USER_ID`, `WRITE_TESTS=true`.
+
+## 12) Estructura resumida del repo
 ```text
 fitness-planner/
-├── DOCUMENTATION.md
-├── README.md
-├── package.json
-├── user-pool.json
-├── src/
-│   ├── aws-exports.ts
-│   ├── environments/
-│   │   ├── environment.ts
-│   │   └── environment.prod.ts
-│   └── app/
-│       ├── app.config.ts
-│       ├── app.routes.ts
-│       ├── services/
-│       │   ├── auth.service.ts
-│       │   ├── user-initialization.service.ts
-│       │   └── theme.service.ts
-│       ├── interceptors/
-│       │   └── auth.interceptor.ts
-│       ├── guards/
-│       │   ├── auth.guard.ts
-│       │   ├── auth-flow.guard.ts
-│       │   ├── onboarding.guard.ts
-│       │   ├── post-login-redirect.guard.ts
-│       │   ├── role.guard.ts
-│       │   └── system.guard.ts
-│       ├── layout/
-│       ├── pages/
-│       │   ├── onboarding/
-│       │   ├── dashboard/
-│       │   ├── templates/
-│       │   ├── clients/
-│       │   ├── trainers/
-│       │   ├── diagnostics/
-│       │   ├── exercise-manager/
-│       │   ├── ai-plans-dashboard/
-│       │   ├── ai-plans-user/
-│       │   ├── ai-plan-detail/
-│       │   ├── plan-view/
-│       │   └── settings/
-│       ├── components/
-│       │   ├── login/
-│       │   ├── signup/
-│       │   ├── confirm-code/
-│       │   ├── force-new-password/
-│       │   ├── forgot-password/
-│       │   ├── reset-password/
-│       │   ├── planner/
-│       │   └── unauthorized/
-│       └── shared/
-└── scripts/
-```
-Nota: esta estructura es referencial y prioriza módulos activos/clave. Para detalle exacto use `tree` o el explorador del IDE.
-
-## Dependencias
-- @angular/animations: ^19.0.0
-- @angular/cdk: ^19.0.5
-- @angular/common: ^19.0.0
-- @angular/compiler: ^19.0.0
-- @angular/core: ^19.0.0
-- @angular/forms: ^19.0.0
-- @angular/material: ^19.0.5
-- @angular/platform-browser: ^19.0.0
-- @angular/platform-browser-dynamic: ^19.0.0
-- @angular/platform-server: ^19.0.0
-- @angular/router: ^19.0.0
-- @angular/ssr: ^19.0.7
-- @aws-amplify/ui-angular: ^5.1.3
-- @aws-sdk/client-dynamodb: ^3.958.0
-- aws-amplify: ^6.15.5
-- express: ^4.18.2
-- jspdf: ^4.1.0
-- rxjs: ~7.8.0
-- tslib: ^2.3.0
-- zone.js: ~0.15.0
-
-## Instalación
-### Requisitos previos
-- Node.js versión 18 o superior
-- Angular CLI instalado globalmente
-- Configuración de AWS Cognito User Pool y API Gateway (opcional para desarrollo local)
-
-### Instalación de dependencias
-```bash
-npm install
+|-- src/
+|   |-- app/
+|   |   |-- components/
+|   |   |-- guards/
+|   |   |-- interceptors/
+|   |   |-- layout/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   `-- shared/
+|   |-- environments/
+|   |-- main.ts
+|   |-- main.server.ts
+|   `-- server.ts
+|-- scripts/
+|   `-- smoke-api.mjs
+|-- angular.json
+|-- package.json
+|-- README.md
+`-- DOCUMENTATION.md
 ```
 
-### Configuración del entorno
-1. Actualizar `src/environments/environment.ts` con los valores de tu entorno AWS:
-```typescript
-export const environment = {
-  production: false,
-  apiBase: 'https://tu-api-endpoint.amazonaws.com/dev',
-  apiUrl: 'https://tu-api-endpoint.amazonaws.com/dev',
-  cognito: {
-    domain: 'tu-cognito-domain.auth.us-east-1.amazoncognito.com',
-    userPoolId: 'us-east-1_XXXXXXXXX',
-    clientId: 'XXXXXXXXXXXXXXXXXXXXX'
-  }
-};
-```
+## 13) Estado de pruebas (unitarias)
+Specs presentes actualmente:
+- `src/app/app.component.spec.ts`
+- `src/app/services/client-body-metrics.service.spec.ts`
+- `src/app/guards/system.guard.spec.ts`
+- `src/app/guards/post-login-redirect.guard.spec.ts`
+- `src/app/guards/onboarding.guard.spec.ts`
+- `src/app/pages/templates/templates.component.spec.ts`
+- `src/app/pages/dashboard/dashboard.component.spec.ts`
+- `src/app/components/workout-plan-view/workout-plan-view.component.spec.ts`
+- `src/app/components/planner/planner.component.spec.ts`
+- `src/app/components/planner/services/planner-state.service.spec.ts`
+- `src/app/components/planner/services/planner-form.service.spec.ts`
+- `src/app/components/planner/services/planner-exercise-filter.service.spec.ts`
+- `src/app/components/planner/services/planner-drag-drop.service.spec.ts`
 
-### Ejecutar la aplicación
-```bash
-ng serve
-```
-La aplicación estará disponible en `http://localhost:4200`.
+Cobertura funcional existe en modulos clave, pero no cubre toda la superficie del producto.
 
-## Funcionalidades
-- **Autenticación custom con AWS Cognito**: Signup/login/reset con UI propia
-- **Control de Acceso Basado en Roles**: Tres niveles jerárquicos (Admin, Trainer, Client) con permisos granulares
-- **Gestión de Sesiones con Amplify**: Refresh automático de tokens y manejo de expiración transparente
-- **Grupos de Cognito**: Integración con User Groups para asignación automática de roles
-- **Atributos Personalizados**: Soporte para companyId, trainerIds y otros metadatos de usuario
-- **Rutas protegidas**: Guards avanzados con verificación de autenticación y roles específicos
-- **Data Access Control**: Verificación de permisos para acceder a datos de otros usuarios
-- **Dashboard principal**: Panel de control para navegación y resúmenes
-- **Planificador de entrenamientos**: Creación y edición de planes de ejercicios personalizados con generación IA
-- **Generación de planes con IA**: Creación automática de planes usando prompts personalizados y Claude 3
-- **Previsualización de planes**: Vista previa inline y en diálogo de planes de entrenamiento
-- **Vista de planes anteriores**: Diálogo para reutilizar planes existentes
-- **Previsualización de ejercicios**: Diálogos para ver detalles y videos de ejercicios
-- **Visualización de planes**: Interfaz para ver detalles de planes existentes
-- **Gestión de ejercicios**: Administración completa del catálogo de ejercicios con filtros avanzados, tabla paginada y edición
-- **Filtros de ejercicios**: Búsqueda y filtrado por categoría, grupo muscular y tipo de equipo
-- **Edición de ejercicios**: Diálogos para crear y editar ejercicios del catálogo
-- **Vista de detalle de ejercicios**: Páginas dedicadas para ver información completa de ejercicios
-- **Videos de ejercicios**: Diálogos integrados para reproducción de videos demostrativos
-- **Plantillas de entrenamientos**: Creacion y gestion de plantillas reutilizables
-- **Gestion de clientes y entrenadores**: Vistas separadas por rol con flujos claros (crear, editar, eliminar)
-- **Metricas por entrenador**: Conteo de clientes asignados y planes creados en la vista de entrenadores
-- **Diagnósticos**: Herramientas de depuración para verificar autenticación y conexiones API
-- **Vista de detalle de usuario**: Información detallada de usuarios individuales
-- **Confirmación de acciones**: Diálogos modales para confirmar operaciones críticas
-- **Notificaciones de no autorizado**: Manejo de accesos no permitidos
-- **Sistema de feedback centralizado**: Manejo consistente de mensajes de éxito, error e información
-- **Configuracion de apariencia**: Panel admin para branding (nombre, tagline, logo), colores, tipografia y modo claro/oscuro con vista previa en tiempo real
-- **Utilidades compartidas**: Funciones auxiliares para sanitización de nombres, cálculo de edad y procesamiento de datos
-- **Timeline de generación IA**: Componente visual que muestra el progreso paso a paso de la generación de planes con IA
-- **Diálogo parametric AI**: Interfaz avanzada para configuración detallada de planes de entrenamiento generados por IA con perfiles de usuario
-- **Métricas corporales de clientes**: Seguimiento histórico de composición corporal (peso, grasa corporal, masa muscular, IMC, metabolismo basal, edad metabólica) con gráficos y gestión de mediciones
-- **Interfaz unificada de usuario**: Arquitectura simplificada donde todos los roles acceden a través de la aplicación principal sin interfaces separadas
-- **Flujo de autenticación controlado**: Pantallas públicas con guard de flujo, persistencia temporal en `sessionStorage` y redirecciones claras
+## 14) Notas operativas importantes
+- El repo puede estar en cambios activos; valida `git status` antes de asumir baseline limpio.
+- Varias rutas y componentes dependen de grupos Cognito reales; para probar flujos completos necesitas usuarios de prueba con grupos correctos.
+- `System` habilita features tecnicas (diagnostics y modificacion de ejercicios).
+- `Admin` sin `Trainer` se trata como `Gym Admin` (acceso mas restringido en ciertas vistas de operacion).
 
-## Modulos de usuarios por rol
-- **Clientes**: Gestión de usuarios con role = client, con asignación/cambio de entrenador (solo admin). Los clientes acceden a través de la aplicación principal según sus permisos.
-- **Entrenadores**: Vista dedicada para usuarios con role = trainer, con conteo de clientes asignados y planes creados.
-- **Formularios por contexto**: El rol se infiere por la vista (no hay dropdown de rol).
-- **Plantillas**: La asignación de plantillas filtra solo clientes.
-
-## Estado actual del desarrollo
-
-
-
-## Ejemplos de uso
-### Iniciar sesión custom
-```typescript
-// Ejemplo con AuthService (src/app/services/auth.service.ts)
-await this.authService.signInUser(email, password);
-```
-
-### Realizar llamadas a la API
-```typescript
-// Uso del servicio ExerciseApiService
-constructor(private exerciseApi: ExerciseApiService) {}
-
-loadExercises() {
-  this.exerciseApi.getExercises().subscribe(exercises => {
-    // Procesar ejercicios
-  });
-}
-```
-
-### Navegación programática
-```typescript
-// En un componente, redirigir a un plano específico
-this.router.navigate(['/plan', planId]);
-```
-
-### Verificar estado de autenticación y roles
-```typescript
-// Uso del AuthGuard (src/app/guards/auth.guard.ts)
-return from(this.authService.checkAuthState()).pipe(
-  switchMap(() => this.authService.isAuthenticated$)
-);
-
-// Uso del RoleGuard para control de acceso basado en roles
-canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
-  const requiredRoles = route.data?.['roles'] as UserRole[];
-  return this.authService.currentUser$.pipe(
-    take(1),
-    map(user => {
-      if (!user) {
-        this.router.navigate(['/login']);
-        return false;
-      }
-      if (!requiredRoles.includes(user.role)) {
-        this.router.navigate(['/unauthorized']);
-        return false;
-      }
-      return true;
-    })
-  );
-}
-```
-
-### Generar planes con IA (Diálogo Parametric)
-```typescript
-// Uso del PlannerComponent para generación con IA usando diálogo parametric
-openAIDialog() {
-  const dialogRef = this.dialog.open(AiParametricDialogComponent, {
-    width: '1000px',
-    maxWidth: '95vw',
-    maxHeight: '90vh',
-    data: {
-      userId: this.selectedUser?.id,
-      userProfile: this.selectedUser,
-      userAge: this.selectedUser?.age
-    }
-  });
-
-  dialogRef.afterClosed().subscribe(result => {
-    if (result?.executionArn) {
-      this.handleAIGeneration(result);
-    }
-  });
-}
-
-private handleAIGeneration(result: any) {
-  // Crear plan básico con metadatos
-  const planData = {
-    name: result.planFormData.name,
-    objective: result.planFormData.objective,
-    sessions: result.planFormData.sessions,
-    generalNotes: result.planFormData.generalNotes
-  };
-
-  // Iniciar polling para el resultado de IA
-  this.pollAIResult(result.executionArn, planData);
-}
-
-private pollAIResult(executionArn: string, planData: any) {
-  // Polling cada 3 segundos hasta que el plan esté listo
-  const pollInterval = setInterval(() => {
-    this.exerciseApi.checkAIPlanStatus(executionArn).subscribe(status => {
-      if (status.status === 'SUCCEEDED') {
-        clearInterval(pollInterval);
-        this.loadCompletedPlan(status.planId);
-      } else if (status.status === 'FAILED') {
-        clearInterval(pollInterval);
-        this.showError('Error en la generación del plan');
-      }
-    });
-  }, 3000);
-}
-```
-
-### Interfaz AiPlanRequest
-```typescript
-// Interfaz para solicitudes de generación de planes con IA
-export interface AiPlanRequest {
-  gender: string;                    // Género del usuario
-  difficulty: string;                // Nivel de dificultad ('Principiante', 'Intermedio', 'Avanzado', etc.)
-  trainingGoal: string;              // Objetivo de entrenamiento ('Hipertrofia', 'Pérdida de peso', etc.)
-  totalSessions: number;             // Número total de sesiones por semana
-  sessionDuration: number;           // Duración de cada sesión en minutos
-  availableEquipment: string[];      // Equipo disponible para entrenar
-  excludeMuscles: string[];          // Grupos musculares a excluir
-  includeSupersets: boolean;         // Incluir superseries en el plan
-  includeMobility: boolean;          // Incluir trabajo de movilidad
-  expectedExercisesPerSession: number; // Número esperado de ejercicios por sesión
-  sessionBlueprint: {                // Plano de sesiones personalizado
-    name: string;                    // Nombre de la sesión
-    targets: string[];               // Grupos musculares objetivo
-  }[];
-  generalNotes: string;              // Notas generales del plan
-  userId?: string;                   // ID del usuario (opcional)
-  age?: number;                      // Edad del usuario (opcional)
-  userContext?: {                    // Contexto adicional del usuario
-    injuries?: string;               // Lesiones o limitaciones
-    notes?: string;                  // Notas adicionales
-  };
-}
-```
-
-### Gestionar ejercicios con filtros
-```typescript
-// Uso del ExerciseManagerComponent
-onFiltersChanged(filters: ExerciseFilters): void {
-  this.filters = filters;
-  this.applyCombinedFilter();
-  this.saveFiltersToStorage();
-}
-
-private applyCombinedFilter(): void {
-  this.filteredExercises = this.exercises.filter(exercise => {
-    const matchesSearch = !this.filters.searchValue ||
-      exercise.name.toLowerCase().includes(this.filters.searchValue.toLowerCase());
-    const matchesCategory = !this.filters.categoryFilter ||
-      exercise.category === this.filters.categoryFilter;
-    // ... otros filtros
-    return matchesSearch && matchesCategory;
-  });
-}
-```
-
-### Sistema de feedback centralizado
-```typescript
-// Uso de FeedbackUtils para mensajes consistentes
-import { FeedbackUtils } from '../shared/feedback-utils';
-
-// Mostrar mensaje de éxito
-this.snackBar.open(
-  FeedbackUtils.ExerciseMessages.CREATED_SUCCESS,
-  'Cerrar',
-  FeedbackUtils.FeedbackConfig.successConfig()
-);
-
-// Manejar errores de API
-catch (error) {
-  const message = FeedbackUtils.ErrorMapper.mapHttpError(error);
-  this.snackBar.open(message, 'Cerrar', FeedbackUtils.FeedbackConfig.errorConfig());
-}
-```
-
-### Utilidades compartidas
-```typescript
-// Uso de SharedUtils para sanitización de nombres
-import { sanitizeName } from '../shared/shared-utils';
-
-const exerciseId = sanitizeName(exercise.name); // "press_banca_inclinado" -> "press_banca_inclinado"
-```
-
-### Timeline de generación IA
-```typescript
-// Uso del AiGenerationTimelineComponent para mostrar progreso visual
-// En el template HTML del diálogo de generación IA:
-<app-ai-generation-timeline [currentAiStep]="currentStep"></app-ai-generation-timeline>
-
-// En el componente TypeScript:
-import { AiStep } from '../../shared/models';
-
-export class AiGenerationDialogComponent {
-  currentAiStep: AiStep | undefined;
-
-  // Actualizar el paso actual durante el proceso de generación
-  updateProgress(step: AiStep) {
-    this.currentAiStep = step;
-    this.cdr.markForCheck(); // Forzar detección de cambios
-  }
-}
-```
-
-## Flujo de trabajo de desarrollo
-1. **Clonar el repositorio**: Obtener el código fuente desde el repositorio Git
-2. **Instalar dependencias**: Ejecutar `npm install` para configurar el entorno
-3. **Configurar entorno**: Actualizar archivos de configuración con credenciales AWS
-4. **Iniciar servidor de desarrollo**: Ejecutar `ng serve` para desarrollo local
-5. **Probar autenticación**: Acceder a rutas protegidas y verificar flujo Cognito custom
-6. **Desarrollar nuevas funcionalidades**: Implementar componentes, servicios y rutas según requisitos
-7. **Ejecutar pruebas**: Lanzar `npm test` para verificar funcionalidad
-8. **Construir para producción**: Ejecutar `npm run build` para generar assets optimizados
-9. **Desplegar**: Subir a servidor de producción, asegurar CORS y URLs correctas
-
-## Arquitectura del sistema
-
-### Integración con AWS Lambda y DynamoDB
-- **Función Lambda**: `generateWorkoutPlanAI.mjs` para generación de planes con IA usando Claude 3
-- **Tabla DynamoDB**: `ExerciseLibrary` para catálogo de ejercicios con normalización inteligente de nombres
-- **Procesamiento de nombres**: Normalización NFD para acentos, conversión a minúsculas, eliminación de paréntesis y espacios múltiples
-- **Índice de ejercicios**: Mapa normalizado → metadatos para matching exacto de nombres
-- **Límite de catálogo**: 300 ejercicios máximo en el prompt para optimizar el rendimiento
-
-### Funcionalidad de IA
-- **Modelo**: Anthropic Claude 3 Sonnet para generación de planes de entrenamiento
-- **Enrichment**: Planes generados incluyen todos los metadatos disponibles (tipo de equipo, grupo muscular, dificultad, etc.)
-- **Validación**: Verificación de ejercicios existentes en el catálogo antes de retornar el plan
-- **Formato estructurado**: Salida consistente con objetos plan y planLegacy para compatibilidad
-
-### Configuracion de apariencia y branding
-- **ThemeService** (`src/app/services/theme.service.ts`): Obtiene y guarda configuracion de tema en `/tenant/theme` con cache en memoria y defaults.
-- **Appearance Settings** (`src/app/pages/settings/appearance-settings.component.ts`): Panel admin con vista previa en tiempo real para colores, tipografia, modo claro/oscuro, nombre de app y tagline.
-- **Carga de logo**: Flujo con URL pre-firmada (`/tenant/logo-upload-url`) y subida directa a S3 usando `PUT`.
-- **Campos soportados**: primaryColor, accentColor, backgroundMode, fontFamily, appName, tagline, logoKey/logoUrl.
-
-### Utilidades compartidas
-- **FeedbackUtils**: Sistema centralizado de manejo de feedback con temas semánticos (éxito, error, información)
-- **ErrorMapper**: Mapeo de códigos de error HTTP a mensajes amigables para el usuario
-- **DevLogger**: Utilidades de logging para desarrollo con contexto estructurado
-- **SharedUtils**: Funciones auxiliares como sanitización de nombres de ejercicios para IDs consistentes y cálculo de edad basado en fecha de nacimiento
-
-## Estado actual del desarrollo
-- **Módulo de autenticación**: Completo - Integración total con AWS Cognito, JWT, guards e interceptores
-- **Pantallas de autenticación**: Completo - Login, signup, confirmación, reset y cambio de contraseña
-- **Dashboard principal**: Completo - Navegación básica implementada
-- **Planificador de entrenamientos**: Completo - Funcionalidad CRUD para planes con integración de búsqueda de ejercicios y superseries
-- **Generación de planes con IA**: Completo - Diálogo parametric avanzado con timeline visual, perfiles de usuario detallados y polling en tiempo real para generación de planes con Claude 3
-- **Previsualización de planes**: Completo - Vista previa inline y diálogos para planes de entrenamiento
-- **Vista de planes anteriores**: Completo - Diálogo para reutilizar planes existentes
-- **Previsualización de ejercicios**: Completo - Diálogos para ver detalles y videos de ejercicios
-- **Vista de planes**: Completo - Visualización y gestión de planos existentes
-- **Gestión de ejercicios**: Completo - Sistema completo con tabla paginada, filtros avanzados, edición y videos
-- **Filtros de ejercicios**: Completo - Búsqueda y filtrado por categoría, grupo muscular y tipo de equipo
-- **Edición de ejercicios**: Completo - Diálogos para crear y editar ejercicios del catálogo
-- **Vista de detalle de ejercicios**: Completo - Páginas dedicadas para ver información completa de ejercicios
-- **Videos de ejercicios**: Completo - Diálogos integrados para reproducción de videos demostrativos
-- **Gestion de clientes y entrenadores**: Completo - Vistas separadas por rol con flujos claros y control de asignaciones
-- **Plantillas**: Completo - Creación y gestión de plantillas con funcionalidad de guardado y asignación de usuarios
-- **Diagnósticos**: Completo - Herramientas de debug y pruebas de API
-- **Configuracion de apariencia y branding**: Completo - panel admin para colores, tipografia, modo claro/oscuro y logo con vista previa
-- **Sistema de feedback centralizado**: Completo - Manejo consistente de mensajes con temas semánticos
-- **Utilidades compartidas**: Completo - Funciones auxiliares para sanitización y procesamiento de datos
-- **SSR y optimizaciones**: Completo - Compatible con server-side rendering
-- **Documentación**: Completa - Información detallada sobre arquitectura, funcionalidades y estructura del código
-- **Gestión de superseries**: Completo - Creación y gestión visual de superseries con mejoras de layout y flags de agrupamiento
-- **Gestión de asignación de usuarios**: Completo - Sistema para que entrenadores asignen planes y plantillas a clientes específicos con soporte de diálogos
-- **Funcionalidad de guardado de plantillas**: Completo - UI y funcionalidad para guardar plantillas reutilizables
-- **Mejoras en visualización de planes**: Completo - Renderizado mejorado y gestión de sesiones de entrenamiento
-- **Pruebas unitarias**: Parcial - Cobertura básica implementada, se recomiendan pruebas exhaustivas
-- **Integración con otras APIs**: Pendiente - Posibles extensiones para integraciones con apps fitness externas
-
-## Cambios recientes (ultimos commits)
-
-### Ultimas actualizaciones implementadas (actualizado al 6 de febrero de 2026):
-- **5e4b939**: `feat` update video label and adjust column positions for improved layout in PDF generation
-- **66e7a8e**: `feat` update video label and adjust column positions for improved layout in PDF generation
-- **d14266e**: `feat` update video label and adjust column positions for improved layout in PDF generation
-- **9730250**: `feat` add PDF generation for workout plans
-- **26ba872**: merge PR #18 (`feat/compact-planner-ui`)
-- **9bbd00b**: `feat` implement SystemGuard; exercise hover preview; permisos por grupo System
-- **d19786e**: `feat` compact planner UI (layout/estilos de filtros y campos de sesión)
-- **db7d2fb**: `feat` compact planner UI (iteración adicional)
-- **5c62f08**: `feat` mejoras en sidebar de ejercicios e inputs
-- **339a7ed**: merge PR #17 (`fix/testing-app`)
-
-## Mejoras Pendientes
-
-### Funcionalidad de Superseries
-- **Visualización mejorada**: Implementar wrapper visual externo para superseries que muestre "Superserie" como etiqueta
-- **Remoción de checkboxes**: Los ejercicios dentro de superseries no deberían tener checkboxes individuales
-- **Drag & drop grupal**: Permitir arrastrar superseries completas como unidades
-- **Persistencia visual**: Mantener el estado visual de superserie al recargar la página
-
-### Optimizaciones de Rendimiento
-- **Virtualización de listas**: Aplicar virtualización a listas largas de ejercicios
-- **Lazy loading**: Implementar carga diferida para módulos no críticos
-- **Optimización de API**: Mejorar eficiencia de llamadas a servicios backend
-
-## Entrenador asignado vs entrenador actual (decisión de arquitectura)
-
-El sistema distingue explícitamente entre dos conceptos relacionados con entrenadores y clientes, los cuales cumplen propósitos distintos y no deben confundirse.
-
-### Entrenador asignado (administrativo)
-
-- Representa una asignación organizativa dentro del gimnasio.
-- Se almacena de forma explícita en el perfil del usuario:
-  - `USERS.trainerId`
-- Es gestionado únicamente por el administrador / gym owner.
-- Se utiliza para:
-  - Vistas administrativas
-  - Organización interna del gimnasio
-  - Conteo de clientes por entrenador
-  - Reporting y métricas de gestión
-- No representa actividad reciente ni autoría de planes.
-
-### Entrenador actual (operativo)
-
-- Representa al entrenador que más recientemente creó un plan para el cliente.
-- **No se almacena como estado fijo**.
-- Se deriva dinámicamente a partir del último plan de entrenamiento:
-  - `WorkoutPlans` ordenados por fecha descendente.
-- Se utiliza para:
-  - Experiencia de usuario del cliente
-  - Personalización de la interfaz
-  - Contexto operativo en vistas de entrenador y cliente
-- Un cliente puede tener planes creados por múltiples entrenadores a lo largo del tiempo.
-
-### Relación entre ambos conceptos
-
-- El entrenador asignado **no limita** la creación de planes.
-- Cualquier entrenador del mismo gimnasio puede crear planes para cualquier cliente del tenant.
-- El entrenador actual puede cambiar de forma natural sin intervención administrativa.
-- El historial de planes conserva siempre la autoría original.
-
-### Estado de implementación
-
-- El backend soporta completamente esta separación de responsabilidades.
-- La lógica de derivación del entrenador actual está implementada a nivel de datos.
-- La UI actual utiliza principalmente la asignación administrativa.
-- La exposición completa del entrenador actual en UI (cliente, entrenador, administrador) queda planificada para una implementación posterior.
-
-Esta separación permite flexibilidad operativa, colaboración entre entrenadores y una experiencia de usuario fluida, sin comprometer el control administrativo del gimnasio.
-
-
-
+## 15) Referencias primarias de codigo
+- Rutas: `src/app/app.routes.ts`
+- Config app: `src/app/app.config.ts`
+- Auth: `src/app/services/auth.service.ts`
+- Interceptor: `src/app/interceptors/auth.interceptor.ts`
+- Planner: `src/app/components/planner/planner.component.ts`
+- Usuarios: `src/app/user-api.service.ts`
+- Planes/ejercicios: `src/app/exercise-api.service.ts`
+- IA: `src/app/services/ai-plans.service.ts`
+- Theme: `src/app/services/theme.service.ts`
+- SSR server: `src/server.ts`

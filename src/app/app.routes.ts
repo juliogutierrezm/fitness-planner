@@ -174,5 +174,7 @@ export const routes: Routes = [
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
-  }
+  },
+  // Unauthenticated users land on /login; AuthFlowGuard redirects authenticated users to /dashboard
+  { path: '**', redirectTo: 'login' }
 ];

@@ -1,6 +1,6 @@
 # Fitness Planner - Documentacion Tecnica del Repositorio
 
-Ultima actualizacion: 2026-02-09
+Ultima actualizacion: 2026-02-11
 
 ## 1) Contexto del proyecto
 Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
@@ -113,9 +113,11 @@ Publicas de autenticacion:
 - `/login`
 - `/signup`
 - `/confirm-signup`
+- `/confirm-code` (alias legacy -> redirige a `/confirm-signup`)
 - `/forgot-password`
 - `/reset-password`
 - `/force-change-password`
+- `/force-new-password` (alias legacy -> redirige a `/force-change-password`)
 - `/unauthorized`
 
 Privadas principales:
@@ -155,16 +157,21 @@ Archivo:
 - Guardado de plantillas.
 - Integracion IA (dialogo parametrico + polling por `executionId`).
 - Enriquecimiento de sesiones con Exercise Library antes de render/guardar.
+- Previsualizacion del plan en dialogo usando `WorkoutPlanViewComponent` con layout de tabla y scroll horizontal para sesiones extensas.
 
 Archivo:
 - `src/app/components/planner/planner.component.ts`
+- `src/app/components/planner/dialogs/plan-preview-dialog.component.ts`
+- `src/app/components/workout-plan-view/workout-plan-view.component.ts`
 
 ### 7.3 Gestion de usuarios
-- `UsersComponent`: clientes (crear, editar, activar/desactivar, eliminar inactivos, asignar entrenador).
+- `UsersComponent`: modulo base de clientes (crear, editar, activar/desactivar, eliminar inactivos, asignar entrenador).
+- `ClientsComponent`: contenedor standalone usado por rutas `/clients` y `/users`, reutiliza `UsersComponent`.
 - `TrainersManagementComponent`: entrenadores (gestion admin + metricas + limites trial).
 - `UserDetailComponent`: historial de planes por cliente, asignacion de plantillas y descarga PDF.
 
 Archivos:
+- `src/app/pages/clients/clients.component.ts`
 - `src/app/pages/users/users.component.ts`
 - `src/app/pages/trainers/trainers-management.component.ts`
 - `src/app/pages/user-detail/user-detail.component.ts`
@@ -298,7 +305,9 @@ Llaves principales en navegador:
 
 ## 11) Scripts y comandos
 Comandos npm (`package.json`):
+- `npm run ng` -> passthrough del CLI Angular.
 - `npm run build` -> build app (incluye SSR output).
+- `npm run build:ssr` -> alias de build SSR (actualmente equivalente a `npm run build`).
 - `npm run watch` -> build en modo desarrollo watch.
 - `npm test` -> tests con Karma.
 - `npm run start` -> ejecuta servidor SSR desde `dist`.
@@ -336,9 +345,12 @@ fitness-planner/
 Specs presentes actualmente:
 - `src/app/app.component.spec.ts`
 - `src/app/services/client-body-metrics.service.spec.ts`
+- `src/app/services/auth.service.spec.ts`
 - `src/app/guards/system.guard.spec.ts`
 - `src/app/guards/post-login-redirect.guard.spec.ts`
 - `src/app/guards/onboarding.guard.spec.ts`
+- `src/app/guards/auth-flow.guard.spec.ts`
+- `src/app/guards/role.guard.spec.ts`
 - `src/app/pages/templates/templates.component.spec.ts`
 - `src/app/pages/dashboard/dashboard.component.spec.ts`
 - `src/app/components/workout-plan-view/workout-plan-view.component.spec.ts`

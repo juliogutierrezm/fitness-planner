@@ -213,7 +213,7 @@
         <mat-label>Categoría</mat-label>
         <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ cat }}</mat-option>
+          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ getUiLabel(cat) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -221,7 +221,7 @@
         <mat-label>Grupo Muscular</mat-label>
         <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ mg }}</mat-option>
+          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ getUiLabel(mg) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -229,7 +229,7 @@
         <mat-label>Tipo de Equipo</mat-label>
         <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
+          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ getUiLabel(et) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -245,7 +245,7 @@
         <mat-label>Tipo de Grupo</mat-label>
         <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
+          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ getUiLabel(gt) }}</mat-option>
         </mat-select>
       </mat-form-field> -->
     </div>
@@ -292,7 +292,7 @@
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
               <div class="row">
-                <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
+                <small>({{ getExerciseEquipmentDisplay(ex.equipment_type) }})</small>
                 <div class="actions">
                   <button mat-mini-fab 
                     (click)="openExercisePreview(ex)" 

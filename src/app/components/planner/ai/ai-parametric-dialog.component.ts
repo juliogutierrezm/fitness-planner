@@ -108,7 +108,7 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Mancuernas', value: 'Mancuernas' },
     { label: 'Máquina', value: 'Máquina' },
     { label: 'Peso corporal', value: 'Peso corporal' },
-    { label: 'Anillas', value: 'Rings' }
+    { label: 'Suspensión', value: 'Rings' }
   ];
 
   muscleGroupOptions = [

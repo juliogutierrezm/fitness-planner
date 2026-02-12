@@ -101,7 +101,7 @@
             <td mat-cell *matCellDef="let ex">
                 <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'muscle_group')" (click)="startEdit(ex, 'muscle_group', $event)">
                     <ng-container *ngIf="!isEditingCell(ex, 'muscle_group'); else muscleEdit">
-                        <span matTooltip="{{ getInlineValue(ex, 'muscle_group') || '' }}">{{ getInlineValue(ex, 'muscle_group') || '—' }}</span>
+                        <span matTooltip="{{ getUiLabel(getInlineValue(ex, 'muscle_group')) || '' }}">{{ getUiLabel(getInlineValue(ex, 'muscle_group')) || '—' }}</span>
                     </ng-container>
                     <ng-template #muscleEdit>
                         <mat-form-field appearance="outline" class="inline-field">
@@ -111,7 +111,7 @@
                               (closed)="commitEdit(ex, 'muscle_group')"
                               aria-label="Editar grupo muscular">
                                 <mat-option *ngFor="let option of inlineCatalogs?.muscleGroupOptions" [value]="option">
-                                    {{ option }}
+                                    {{ getUiLabel(option) }}
                                 </mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -126,7 +126,7 @@
             <td mat-cell *matCellDef="let ex">
                 <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'equipment_type')" (click)="startEdit(ex, 'equipment_type', $event)">
                     <ng-container *ngIf="!isEditingCell(ex, 'equipment_type'); else equipmentEdit">
-                        <span matTooltip="{{ getInlineValue(ex, 'equipment_type') || '' }}">{{ getInlineValue(ex, 'equipment_type') || '—' }}</span>
+                        <span matTooltip="{{ getUiLabel(getInlineValue(ex, 'equipment_type')) || '' }}">{{ getUiLabel(getInlineValue(ex, 'equipment_type')) || '—' }}</span>
                     </ng-container>
                     <ng-template #equipmentEdit>
                         <mat-form-field appearance="outline" class="inline-field">
@@ -136,7 +136,7 @@
                               (closed)="commitEdit(ex, 'equipment_type')"
                               aria-label="Editar equipo">
                                 <mat-option *ngFor="let option of inlineCatalogs?.equipmentTypeOptions" [value]="option">
-                                    {{ option }}
+                                    {{ getUiLabel(option) }}
                                 </mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -151,7 +151,7 @@
             <td mat-cell *matCellDef="let ex">
                 <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'category')" (click)="startEdit(ex, 'category', $event)">
                     <ng-container *ngIf="!isEditingCell(ex, 'category'); else categoryEdit">
-                        <span matTooltip="{{ getInlineValue(ex, 'category') || '' }}">{{ getInlineValue(ex, 'category') || '—' }}</span>
+                        <span matTooltip="{{ getUiLabel(getInlineValue(ex, 'category')) || '' }}">{{ getUiLabel(getInlineValue(ex, 'category')) || '—' }}</span>
                     </ng-container>
                     <ng-template #categoryEdit>
                         <mat-form-field appearance="outline" class="inline-field">
@@ -161,7 +161,7 @@
                               (closed)="commitEdit(ex, 'category')"
                               aria-label="Editar categoría">
                                 <mat-option *ngFor="let option of inlineCatalogs?.categoryOptions" [value]="option">
-                                    {{ option }}
+                                    {{ getUiLabel(option) }}
                                 </mat-option>
                             </mat-select>
                         </mat-form-field>
@@ -200,7 +200,7 @@
             <td mat-cell *matCellDef="let ex">
                 <div class="inline-cell" [class.is-editing]="isEditingCell(ex, 'exercise_type')" (click)="startEdit(ex, 'exercise_type', $event)">
                     <ng-container *ngIf="!isEditingCell(ex, 'exercise_type'); else typeEdit">
-                        <span>{{ getInlineValue(ex, 'exercise_type') || '—' }}</span>
+                        <span>{{ getUiLabel(getInlineValue(ex, 'exercise_type')) || '—' }}</span>
                     </ng-container>
                     <ng-template #typeEdit>
                         <mat-form-field appearance="outline" class="inline-field">
@@ -210,7 +210,7 @@
                               (closed)="commitEdit(ex, 'exercise_type')"
                               aria-label="Editar tipo de grupo muscular">
                                 <mat-option *ngFor="let option of inlineCatalogs?.exerciseTypeOptions" [value]="option">
-                                    {{ option }}
+                                    {{ getUiLabel(option) }}
                                 </mat-option>
                             </mat-select>
                         </mat-form-field>

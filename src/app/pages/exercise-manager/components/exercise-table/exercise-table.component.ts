@@ -46,6 +46,12 @@ interface RowEditState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExerciseTableComponent implements AfterViewInit {
+  private readonly uiLabelAliases: Record<string, string> = {
+    Rings: 'Suspensión',
+    Anillas: 'Suspensión',
+    Bend: 'Hip'
+  };
+
   // Fixed columns for the simplified table
   displayedColumns: string[] = [
     'actions',
@@ -270,6 +276,12 @@ export class ExerciseTableComponent implements AfterViewInit {
       return this.getFunctionalValue(exercise);
     }
     return this.getFieldValue(exercise, field);
+  }
+
+  getUiLabel(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return '';
+    return this.uiLabelAliases[normalized] || normalized;
   }
 
   onAliasClick(exercise: Exercise, alias: string, event: Event): void {

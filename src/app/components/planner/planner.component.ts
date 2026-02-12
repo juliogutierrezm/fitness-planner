@@ -200,6 +200,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private aiGenerationStartedAt: number | null = null;
+  private readonly uiLabelAliases: Record<string, string> = {
+    Rings: 'Suspensión',
+    Anillas: 'Suspensión',
+    Bend: 'Hip'
+  };
 
   /**
    * Purpose: track trainer AI plan quota (used / limit) to disable generation when limit reached.
@@ -1378,7 +1383,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     if (result.addedExercise) {
       this.addRecent(result.addedExercise);
-      this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
+      this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
     }
   }
 
@@ -1484,8 +1489,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.persist();
     this.cdr.markForCheck();
     this.addRecent(ex);
-    this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
-    this.liveAnnounce('Ejercicio a¤adido');
+    this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
+    this.liveAnnounce('Ejercicio añadido');
   }
 
   toggleFavorite(ex: Exercise) {
@@ -1537,13 +1542,44 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Purpose: map internal enum-like values to UI-friendly labels.
+   * Input: raw value string. Output: UI label string.
+   * Error handling: returns empty string when value is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getUiLabel(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return '';
+    return this.uiLabelAliases[normalized] || normalized;
+  }
+
+  /**
+   * Purpose: provide equipment display label in lists while preserving raw persisted values.
+   * Input: optional equipment value. Output: UI label or fallback.
+   * Error handling: returns placeholder when value is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getExerciseEquipmentDisplay(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return 'Equipo no definido';
+    return this.getUiLabel(normalized);
+  }
+
+  /**
    * Purpose: provide the equipment label for a plan item in the planner view.
    * Input: PlanItem. Output: equipment label string.
    * Error handling: returns a placeholder when equipment_type is missing.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   getEquipmentLabel(item: PlanItem): string {
-    return getPlanItemEquipmentLabel(item);
+    const rawLabel = getPlanItemEquipmentLabel(item);
+    if (!rawLabel || rawLabel === 'Equipo no definido') {
+      return rawLabel;
+    }
+    return rawLabel
+      .split('/')
+      .map(part => this.getUiLabel(part))
+      .join(' / ');
   }
 
   // TrackBy helpers

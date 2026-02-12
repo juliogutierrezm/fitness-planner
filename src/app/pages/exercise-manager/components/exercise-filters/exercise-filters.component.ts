@@ -24,6 +24,12 @@ import { ExerciseFilters, FilterOptions } from '../../../../shared/models';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExerciseFiltersComponent {
+  private readonly uiLabelAliases: Record<string, string> = {
+    Rings: 'Suspensión',
+    Anillas: 'Suspensión',
+    Bend: 'Hip'
+  };
+
   @Input() currentFilters!: ExerciseFilters;
   @Input() filterOptions!: FilterOptions;
   @Input() isLoading = false;
@@ -47,5 +53,11 @@ export class ExerciseFiltersComponent {
 
   onRefresh(): void {
     this.refreshClicked.emit();
+  }
+
+  getUiLabel(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return '';
+    return this.uiLabelAliases[normalized] || normalized;
   }
 }

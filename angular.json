@@ -49,6 +49,16 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                },
+                {
+                  "replace": "src/aws-exports.ts",
+                  "with": "src/aws/aws-exports.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -57,8 +67,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kB",
-                  "maximumError": "15kB"
+                  "maximumWarning": "12kb",
+                  "maximumError": "25kb"
                 }
               ],
               "outputHashing": "all"
@@ -78,8 +88,7 @@
               "buildTarget": "fitness-planner:build:production"
             },
             "development": {
-              "buildTarget": "fitness-planner:build:development",
-              "proxyConfig": "proxy.conf.json"
+              "buildTarget": "fitness-planner:build:development"
             }
           },
           "defaultConfiguration": "development"

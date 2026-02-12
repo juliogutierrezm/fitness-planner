@@ -35,7 +35,7 @@
         <mat-icon>person</mat-icon>
         {{ getPlannerHeaderLabel() }}
       </mat-card-title>
-      <mat-card-subtitle>Puedes crear tus planes con IA</mat-card-subtitle>
+      <mat-card-subtitle>Crea o edita planes de entrenamiento</mat-card-subtitle>
       <div class="actions-right">
         <ng-container *ngIf="!isEditMode">
           <mat-progress-spinner
@@ -43,13 +43,27 @@
             mode="indeterminate"
             diameter="24"
           ></mat-progress-spinner>
+          <span
+            *ngIf="!isUserLoading && !isTemplateMode && aiPlanQuota"
+            class="ai-quota-badge"
+            [class.limit-reached]="aiPlanQuota.limitReached"
+            [matTooltip]="aiPlanQuota.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota.limit + ' planes IA'
+              : aiPlanQuota.remaining + ' planes IA restantes'"
+          >
+            {{ aiPlanQuota.used }}/{{ aiPlanQuota.limit }}
+          </span>
           <button class="ia-button"
             *ngIf="!isUserLoading && !isTemplateMode"
             mat-fab extended
             color="accent"
             (click)="openAIDialog()"
-            [disabled]="!userProfile?.id"
-            [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+            [disabled]="!userProfile?.id || aiPlanQuota?.limitReached"
+            [matTooltip]="aiPlanQuota?.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota!.limit + ' planes IA permitidos'
+              : userProfile?.id
+                ? 'Generar plan con IA'
+                : 'Debe cargar un usuario antes de generar un plan con IA.'"
           >
           <mat-icon>auto_awesome</mat-icon>
             Generar plan IA
@@ -199,7 +213,7 @@
         <mat-label>Categoría</mat-label>
         <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ cat }}</mat-option>
+          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ getUiLabel(cat) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -207,7 +221,7 @@
         <mat-label>Grupo Muscular</mat-label>
         <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ mg }}</mat-option>
+          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ getUiLabel(mg) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -215,7 +229,7 @@
         <mat-label>Tipo de Equipo</mat-label>
         <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
+          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ getUiLabel(et) }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -231,7 +245,7 @@
         <mat-label>Tipo de Grupo</mat-label>
         <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
           <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
+          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ getUiLabel(gt) }}</mat-option>
         </mat-select>
       </mat-form-field> -->
     </div>
@@ -242,7 +256,7 @@
     <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
       <mat-label>Sesiones</mat-label>
       <input matInput type="number" formControlName="sessionCount" min="1"/>
-      <mat-icon matSuffix>event_available</mat-icon>
+      <mat-icon matSuffix>exposure</mat-icon>
     </mat-form-field>
   </form>
 </div>
@@ -278,11 +292,11 @@
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
               <div class="row">
-                <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
+                <small>({{ getExerciseEquipmentDisplay(ex.equipment_type) }})</small>
                 <div class="actions">
                   <button mat-mini-fab 
                     (click)="openExercisePreview(ex)" 
-                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseenter)="onVideoHover(ex, $event, 'library')"
                     (mouseleave)="onVideoLeave()"
                     [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
@@ -431,7 +445,7 @@
                     <div class="planner-cell actions-cell ">
                       <button mat-mini-fab 
                         (click)="openExercisePreview(item)" 
-                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseenter)="onVideoHover(item, $event, 'row')"
                         (mouseleave)="onVideoLeave()"
                         [matTooltip]="'Vista previa'">
                         <mat-icon>play_circle</mat-icon>
@@ -522,7 +536,7 @@
                         <div class="planner-cell actions-cell">
                           <button mat-mini-fab 
                             (click)="openExercisePreview(child)" 
-                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseenter)="onVideoHover(child, $event, 'row')"
                             (mouseleave)="onVideoLeave()"
                             [matTooltip]="'Vista previa'">
                             <mat-icon>play_circle</mat-icon>

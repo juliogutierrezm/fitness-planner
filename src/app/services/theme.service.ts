@@ -40,10 +40,7 @@ export class ThemeService {
   constructor(private http: HttpClient) {}
 
   private getApiBaseUrl(): string {
-    // Use apiUrl from environment
-    // Dev: /api (proxy redirects to backend)
-    // Prod: full URL from environment
-    return environment.apiUrl;
+    return environment.apiBase;
   }
 
   /**

@@ -37,6 +37,8 @@ import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialo
 import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
 import { PlanAssignmentService } from '../../services/plan-assignment.service';
+import { AiPlansService } from '../../services/ai-plans.service';
+import { AiPlanQuota } from '../../shared/ai-plan-limits';
 import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
 import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
 import { PlannerFormService } from './services/planner-form.service';
@@ -198,6 +200,19 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private aiGenerationStartedAt: number | null = null;
+  private readonly uiLabelAliases: Record<string, string> = {
+    Rings: 'Suspensión',
+    Anillas: 'Suspensión',
+    Bend: 'Hip'
+  };
+
+  /**
+   * Purpose: track trainer AI plan quota (used / limit) to disable generation when limit reached.
+   * Input/Output: loaded on init for trainers; refreshed after each successful generation.
+   * Error handling: null means quota not yet loaded (button stays enabled).
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  aiPlanQuota: AiPlanQuota | null = null;
 
 
   constructor(
@@ -213,7 +228,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private userApi: UserApiService,
-    private planAssignmentService: PlanAssignmentService
+    private planAssignmentService: PlanAssignmentService,
+    private aiPlansService: AiPlansService
   ) {
     console.log('PlannerComponent constructor called');
   }
@@ -266,6 +282,22 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.form.patchValue({ userName: '' });
         this.snackBar.open('No se pudo cargar el usuario.', 'Cerrar', { duration: 3000 });
       }
+    });
+  }
+
+  /**
+   * Purpose: load AI plan quota for current trainer to show usage and disable button at limit.
+   * Input/Output: fetches quota from AiPlansService for current trainer, sets aiPlanQuota.
+   * Error handling: logs warning if not a trainer or no ID; quota stays null (button stays enabled).
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private loadAiPlanQuota(): void {
+    if (!this.authService.isTrainer()) return;
+    const trainerId = this.authService.getCurrentUserId();
+    if (!trainerId) return;
+    this.aiPlansService.getTrainerQuota(trainerId).subscribe(quota => {
+      this.aiPlanQuota = quota;
+      this.cdr.markForCheck();
     });
   }
 
@@ -726,6 +758,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.aiGenDialogRef.close();
         this.aiGenDialogRef = null;
       }
+      // Refresh AI plan quota after successful generation
+      this.loadAiPlanQuota();
       this.cdr.markForCheck();
       return;
     }
@@ -770,6 +804,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.isTemplateMode = true;
     }
     this.applyTemplateNameValidators();
+
+    // Load AI plan quota for trainers
+    this.loadAiPlanQuota();
 
     this.planAssignmentSub = this.planAssignmentService.currentPlanData.subscribe(data => {
       if (data && data.user && data.user.id && data.plan) {
@@ -1239,14 +1276,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Error handling: none; graceful no-op if element not found.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
-  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+  onVideoHover(exercise: Exercise | PlanItem, event: MouseEvent, context: 'library' | 'row' = 'library'): void {
+    const target = (event.currentTarget as HTMLElement) || (event.target as HTMLElement);
+    if (!target) return;
+
     const rect = target.getBoundingClientRect();
+    const previewWidth = 166;
+    const previewHeight = 166;
+    const offset = 10;
+    const viewportMargin = 8;
+
+    let x = rect.right + offset;
+    let y = rect.top;
+
+    if (context === 'row') {
+      x = rect.left + (rect.width / 2) - (previewWidth / 2);
+      y = rect.top - previewHeight - offset;
+    }
+
+    const maxX = window.innerWidth - previewWidth - viewportMargin;
+    const maxY = window.innerHeight - previewHeight - viewportMargin;
 
     this.hoveredExercise = exercise;
     this.previewPosition = {
-      x: rect.right + 10,
-      y: rect.top
+      x: Math.max(viewportMargin, Math.min(x, maxX)),
+      y: Math.max(viewportMargin, Math.min(y, maxY))
     };
     this.cdr.markForCheck();
   }
@@ -1329,7 +1383,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     if (result.addedExercise) {
       this.addRecent(result.addedExercise);
-      this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
+      this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
     }
   }
 
@@ -1435,8 +1489,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.persist();
     this.cdr.markForCheck();
     this.addRecent(ex);
-    this.snackBar.open('Ejercicio a¤adido', undefined, { duration: 1200 });
-    this.liveAnnounce('Ejercicio a¤adido');
+    this.snackBar.open('Ejercicio añadido', undefined, { duration: 1200 });
+    this.liveAnnounce('Ejercicio añadido');
   }
 
   toggleFavorite(ex: Exercise) {
@@ -1488,13 +1542,44 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Purpose: map internal enum-like values to UI-friendly labels.
+   * Input: raw value string. Output: UI label string.
+   * Error handling: returns empty string when value is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getUiLabel(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return '';
+    return this.uiLabelAliases[normalized] || normalized;
+  }
+
+  /**
+   * Purpose: provide equipment display label in lists while preserving raw persisted values.
+   * Input: optional equipment value. Output: UI label or fallback.
+   * Error handling: returns placeholder when value is missing.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  getExerciseEquipmentDisplay(value: string | null | undefined): string {
+    const normalized = value?.trim() || '';
+    if (!normalized) return 'Equipo no definido';
+    return this.getUiLabel(normalized);
+  }
+
+  /**
    * Purpose: provide the equipment label for a plan item in the planner view.
    * Input: PlanItem. Output: equipment label string.
    * Error handling: returns a placeholder when equipment_type is missing.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   getEquipmentLabel(item: PlanItem): string {
-    return getPlanItemEquipmentLabel(item);
+    const rawLabel = getPlanItemEquipmentLabel(item);
+    if (!rawLabel || rawLabel === 'Equipo no definido') {
+      return rawLabel;
+    }
+    return rawLabel
+      .split('/')
+      .map(part => this.getUiLabel(part))
+      .join(' / ');
   }
 
   // TrackBy helpers

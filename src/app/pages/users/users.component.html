@@ -129,7 +129,7 @@
           <div class="tab-content">
             <div *ngIf="activeUsers.length === 0" class="empty">No hay usuarios activos</div>
             <div class="user-row" *ngFor="let u of activeUsers">
-              <ng-container *ngIf="editingId !== u.id;">
+              <ng-container *ngIf="editingId !== u.id; else editTpl">
                 <div class="user-row-main">
                   <div class="info">
                     <div class="name-row">
@@ -187,6 +187,8 @@
                 </div>
               </div>
               
+            </ng-container>
+
               <ng-template #editTpl>
                 <form [formGroup]="editForm" class="edit-grid" (ngSubmit)="saveEdit(u)">
                   <mat-form-field appearance="outline">
@@ -246,7 +248,6 @@
                   </div>
                 </form>
               </ng-template>
-            </ng-container>
             </div>
           </div>
         </mat-tab>

@@ -464,7 +464,7 @@ export class UserDetailComponent implements OnInit {
         plan: pdfPlanData,
         clientName,
         trainerName,
-        locale: detectUserLocale(),
+        locale: 'es',
         filename: pdfFilename
       });
 

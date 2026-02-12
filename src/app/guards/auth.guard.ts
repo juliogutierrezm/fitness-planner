@@ -1,18 +1,23 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { Observable, from, of } from 'rxjs';
-import { map, take, switchMap, catchError, tap, filter } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, take, filter } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate, CanActivateChild {
+  private readonly isBrowser: boolean;
 
   constructor(
     private authService: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   canActivate(
     route: ActivatedRouteSnapshot,
@@ -29,39 +34,25 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   }
 
   private checkAuth(_route: ActivatedRouteSnapshot): Observable<boolean> {
-    // SSR/hydration note:
-    // - On the server we cannot resolve browser auth tokens, so authStatus remains 'unknown'.
-    // - We must NOT redirect to /login in that state (it breaks deep links and causes login flash).
-    if (this.authService.getAuthStatusSync() === 'unknown') {
-      console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.allow', reason: 'authUnknown' });
+    // SSR: cannot resolve auth tokens on the server; allow through.
+    // The splash screen in AppComponent gates rendering until auth resolves on client.
+    if (!this.isBrowser) {
       return of(true);
     }
 
-    // Browser: Ensure we refresh auth state once before deciding
-    return from(this.authService.checkAuthState()).pipe(
-      tap(() => console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.checkAuthStateComplete' })),
-      switchMap(() => this.authService.isAuthLoading$.pipe(
-        filter(isLoading => !isLoading),
-        take(1),
-        switchMap(() => this.authService.isAuthenticated$.pipe(
-          take(1),
-          map(isAuthenticated => {
-            console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.isAuthenticated', isAuthenticated });
-            if (!isAuthenticated) {
-              console.debug('[AuthDebug]', { op: 'AuthGuard.checkAuth.redirectLogin' });
-              this.router.navigate(['/login']);
-              return false;
-            }
-
-            return true;
-          })
-        ))
-      )),
-      catchError(error => {
-        console.error('[AuthDebug]', { op: 'AuthGuard.checkAuth.error', error });
+    // Browser: wait for auth to resolve (filter out 'unknown'), then decide.
+    // This eliminates the race between APP_INITIALIZER and withEnabledBlockingInitialNavigation().
+    return this.authService.authStatus$.pipe(
+      filter(status => status !== 'unknown'),
+      take(1),
+      map(status => {
+        if (status === 'authenticated') {
+          return true;
+        }
         this.router.navigate(['/login']);
-        return of(false);
+        return false;
       })
     );
   }
 }
+

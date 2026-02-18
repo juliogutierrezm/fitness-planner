@@ -116,7 +116,7 @@
       </div>
       <!-- Session Blueprint Section -->
       <div class="form-section">
-        <div class="form-row">
+        <div class="form-row session-blueprint-controls">
           <mat-form-field appearance="outline" class="form-field equipment-field compact-field">
             <mat-label>Equipo disponible</mat-label>
             <mat-select formControlName="availableEquipment" multiple>
@@ -126,22 +126,57 @@
             </mat-select>
             <mat-hint>Selecciona el equipo disponible</mat-hint>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="form-field compact-field">
-            <mat-label>Total de sesiones</mat-label>
-            <input matInput type="number" formControlName="totalSessions" min="1" max="7" step="1">
-            <mat-hint>Número de sesiones en el plan (1-7)</mat-hint>
-          </mat-form-field>
         </div>
-        <div class="custom-structure-section">
-          <div class="custom-days-container">
-            <div *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index" class="custom-day-item">
-              <div class="session-controls">
-                <mat-form-field appearance="outline" class="session-name-field">
-                  <mat-label>Sesion {{ i + 1 }}</mat-label>
-                  <input matInput [formControl]="getSessionNameControl(i)" readonly>
-                  <mat-hint>Nombre generado automaticamente</mat-hint>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="day-field">
+        <div class="custom-structure-section session-blueprint-section">
+          <div class="session-blueprint-heading">
+            <div class="session-blueprint-copy">
+              <h4 class="session-blueprint-title">Estructura por sesión</h4>
+              <p class="session-blueprint-hint">Configura el foco de cada sesión.</p>
+            </div>
+            <div class="session-blueprint-toolbar">
+              <label class="compact-stepper__label" for="aiTotalSessionsInput">Total de sesiones</label>
+              <div class="compact-stepper" role="group" aria-label="Control de total de sesiones">
+                <button
+                  type="button"
+                  class="compact-stepper__btn"
+                  (click)="decrementTotalSessions()"
+                  matTooltip="Reducir sesiones"
+                  aria-label="Reducir sesiones"
+                >
+                  −
+                </button>
+                <input
+                  id="aiTotalSessionsInput"
+                  class="compact-stepper__input"
+                  type="number"
+                  formControlName="totalSessions"
+                  min="1"
+                  max="7"
+                  step="1"
+                >
+                <button
+                  type="button"
+                  class="compact-stepper__btn"
+                  (click)="incrementTotalSessions()"
+                  matTooltip="Aumentar sesiones"
+                  aria-label="Aumentar sesiones"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="session-blueprint-grid">
+            <article *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index" class="session-plan-card">
+              <div class="session-plan-header">
+                <span class="session-plan-index">Sesión {{ i + 1 }}</span>
+                <mat-checkbox [formControl]="getSessionSupersetsControl(i)" class="supersets-checkbox">
+                  Incluir superseries
+                </mat-checkbox>
+              </div>
+
+              <div class="session-plan-body">
+                <mat-form-field appearance="outline" class="day-field compact-blueprint-field">
                   <mat-label>Grupo muscular o tipo de ejercicio</mat-label>
                   <mat-select [formControl]="getSessionTargetsControl(i)" multiple>
                     <mat-option *ngFor="let muscle of muscleGroupOptions" [value]="muscle.value">
@@ -150,7 +185,8 @@
                   </mat-select>
                 </mat-form-field>
               </div>
-              <div class="session-chips">
+
+              <div class="session-plan-chips" [class.empty]="!(getSessionTargetsControl(i).value?.length)">
                 <mat-chip-set class="muscle-chips">
                   <mat-chip *ngFor="let muscleValue of getSessionTargetsControl(i).value"
                             (removed)="removeTarget(i, muscleValue)">
@@ -160,11 +196,11 @@
                     </button>
                   </mat-chip>
                 </mat-chip-set>
-                <mat-checkbox [formControl]="getSessionSupersetsControl(i)" class="supersets-checkbox">
-                  Incluir superseries
-                </mat-checkbox>
+                <p class="session-plan-empty" *ngIf="!(getSessionTargetsControl(i).value?.length)">
+                  Selecciona uno o más grupos musculares.
+                </p>
               </div>
-            </div>
+            </article>
           </div>
         </div>
       </div>

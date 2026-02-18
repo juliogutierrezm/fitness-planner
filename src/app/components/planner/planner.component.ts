@@ -316,7 +316,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
     console.log('[AI] Dialog opened with userId', userId);
 
     const dialogRef = this.dialog.open(AiParametricDialogComponent, {
-      width: '900px',
+      panelClass: 'ai-parametric-dialog',
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      maxHeight: '90vh',
       disableClose: true,
       data: { userId, userProfile: this.userProfile, userAge: this.userAge }
     });
@@ -707,8 +711,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       autoFocus: false,
       panelClass: 'ai-generation-dialog',
       backdropClass: 'ai-generation-backdrop',
-      width: '760px',
-      maxWidth: '92vw',
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      maxHeight: '90vh',
       data: { currentAiStep: this.currentAiStep }
     });
 
@@ -1011,6 +1017,32 @@ export class PlannerComponent implements OnInit, OnDestroy {
     const parsed = Number(value);
     const totalWeeks = Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 1;
     this.syncProgressionWeeks(totalWeeks);
+  }
+
+  decrementTotalWeeks(): void {
+    this.onTotalWeeksChange((this.progressions?.totalWeeks || 1) - 1);
+    this.cdr.markForCheck();
+  }
+
+  incrementTotalWeeks(): void {
+    this.onTotalWeeksChange((this.progressions?.totalWeeks || 1) + 1);
+    this.cdr.markForCheck();
+  }
+
+  decrementSessionCount(): void {
+    const control = this.form?.get('sessionCount');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.max(1, Math.floor(current)) : 1;
+    control.setValue(Math.max(1, normalized - 1));
+  }
+
+  incrementSessionCount(): void {
+    const control = this.form?.get('sessionCount');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.max(1, Math.floor(current)) : 1;
+    control.setValue(normalized + 1);
   }
 
   getProgressionNotePlaceholder(week: number): string {

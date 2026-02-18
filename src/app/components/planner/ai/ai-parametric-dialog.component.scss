@@ -1,19 +1,21 @@
 .parametric-dialog-container {
   display: flex;
   flex-direction: column;
+  height: 100%;
   max-height: 90vh;
   width: 100%;
-  min-width: 760px;
-  max-width: 1200px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
 
   @media (max-width: 768px) {
-    min-width: 100vw;
-    max-width: 100vw;
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
 .parametric-dialog-header {
-  padding: 24px 24px 16px;
+  padding: 12px 16px 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
@@ -45,14 +47,14 @@
 
 .parametric-dialog-content {
   flex: 1;
-  padding: 24px;
+  padding: 12px 16px;
   overflow-y: auto;
-  max-height: calc(90vh - 140px);
+  max-height: calc(90vh - 112px);
 
   .parametric-form {
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 16px;
   }
 }
 
@@ -61,8 +63,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0 0 16px 0;
-    font-size: 18px;
+    margin: 0 0 10px 0;
+    font-size: 16px;
     font-weight: 500;
     color: rgba(0, 0, 0, 0.87);
 
@@ -271,8 +273,8 @@
 
 .form-row {
   display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 4px;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -308,12 +310,96 @@
 .session-config-row {
   flex-wrap: wrap;
   align-items: flex-start;
-  margin-top: 2rem;
+  margin-top: 0.5rem;
 }
 
 .compact-field {
   flex: 1 1 200px;
   min-width: 180px;
+}
+
+.compact-stepper__label {
+  display: inline-block;
+  font-size: 12.5px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.compact-stepper {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid #d1d9e8;
+  border-radius: 999px;
+  background: #f8fbff;
+  padding: 0 3px;
+  box-sizing: border-box;
+  transition: background-color 160ms ease, border-color 160ms ease;
+
+  &:focus-within {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+    background: #ffffff;
+  }
+}
+
+.compact-stepper__btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms ease;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.12);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.compact-stepper__input {
+  width: 48px;
+  min-width: 48px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.87);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  padding: 0 2px;
+  box-sizing: border-box;
+  appearance: textfield;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.compact-stepper__input::-webkit-outer-spin-button,
+.compact-stepper__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .form-field {
@@ -401,96 +487,181 @@
 }
 
 .custom-structure-section {
-  margin-top: 24px;
-  padding: 20px;
+  margin-top: 12px;
+  padding: 12px;
   background: rgba(25, 118, 210, 0.04);
   border-radius: 8px;
   border-left: 4px solid #1976d2;
-
-  .subsection-title {
-    margin: 0 0 8px 0;
-    font-size: 16px;
-    font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
-  }
-
-  .subsection-hint {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.6);
-  }
 }
 
-.custom-days-container {
+.session-blueprint-section {
+  margin-top: 8px;
+  padding: 10px 12px;
+}
+
+.session-blueprint-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.session-blueprint-copy {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 2px;
+  min-width: 0;
 }
 
-.custom-day-item {
+.session-blueprint-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.session-blueprint-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.session-blueprint-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+
+  .compact-stepper {
+    width: 100px;
+    justify-content: center;
+  }
+}
+
+.session-blueprint-grid {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 360px));
+  grid-auto-rows: max-content;
+  gap: 10px;
+  justify-content: start;
   align-items: start;
-  padding: 16px;
-  background: white;
+  min-width: 0;
+}
+
+.session-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  width: 100%;
+  max-width: 360px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f7fbff, #f3f8ff);
+  border: 1px solid #dbe6f5;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 12px;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: #bfd4ee;
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.08);
+    background: linear-gradient(180deg, #fbfdff, #f3f9ff);
+  }
+}
+
+.session-plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.session-plan-index {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+.session-plan-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.compact-blueprint-field {
+  width: 100%;
+  min-width: 0;
+
+  .mat-mdc-form-field-infix {
+    min-height: 34px;
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
 
-  .session-controls {
+  .mat-mdc-text-field-wrapper {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+.session-plan-chips {
+  min-height: 42px;
+  max-height: 110px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-50, #f8fafc);
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  padding: 7px 8px;
+  min-width: 0;
+
+  &.empty {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 300px;
-
-    @media (max-width: 768px) {
-      min-width: unset;
-    }
-
-    .session-name-field {
-      width: 100%;
-    }
-
-    .day-field {
-      width: 100%;
-    }
+    align-items: center;
   }
 
-  .session-chips {
+  .muscle-chips {
     display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     align-items: flex-start;
-    min-width: 200px;
-
-    @media (max-width: 768px) {
-      justify-content: flex-start;
-    }
-
-    .muscle-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: flex-start;
-
-      mat-chip {
-        border-radius: 16px;
-        transition: all 0.2s ease;
-
-        &:hover {
-          background-color: rgba(25, 118, 210, 0.08);
-        }
-      }
-    }
   }
+
+  mat-chip {
+    border-radius: 16px;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+}
+
+.session-plan-empty {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.session-plan-header .supersets-checkbox {
+  margin: 0;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.session-plan-header ::ng-deep .mdc-form-field > label {
+  font-size: 12.5px;
 }
 
 .notes-field {
-  width: 70%;
+  width: 100%;
 
   textarea {
     resize: vertical;
@@ -518,7 +689,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 24px 24px;
+  padding: 10px 16px 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
 
   .cancel-btn {
@@ -624,9 +795,17 @@
 
 // Material form field overrides
 ::ng-deep {
-  .cdk-overlay-pane.mat-mdc-dialog-panel {
-    max-width: 1200px;
-    width: 95vw;
+  .cdk-overlay-pane.ai-parametric-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
+  }
+
+  .cdk-overlay-pane.ai-parametric-dialog .mat-mdc-dialog-container,
+  .cdk-overlay-pane.ai-parametric-dialog .mat-mdc-dialog-surface {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .mat-mdc-form-field {
@@ -653,15 +832,15 @@
 // Responsive adjustments
 @media (max-width: 768px) {
   .parametric-dialog-container {
-    min-width: 100vw;
-    max-width: 100vw;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .parametric-dialog-header,
   .parametric-dialog-content,
   .parametric-dialog-actions {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .parametric-dialog-title h2 {
@@ -672,20 +851,59 @@
     gap: 12px;
   }
 
-  .custom-day-item {
-    padding: 12px;
+  .session-blueprint-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .session-blueprint-toolbar {
+    width: 100%;
+    align-items: flex-start;
+    margin-left: 0;
+
+    .compact-stepper {
+      width: 148px;
+    }
+  }
+
+  .session-blueprint-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .session-plan-card {
+    padding: 10px;
+  }
+
+  .session-plan-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-plan-card,
+  .compact-stepper__btn {
+    transition: none;
+  }
+
+  .session-plan-card:hover,
+  .compact-stepper__btn:hover {
+    transform: none;
+    box-shadow: none;
   }
 }
 
 @media (max-width: 480px) {
   .parametric-dialog-container {
-    min-width: 100vw;
-    max-width: 100vw;
+    min-width: 0;
+    max-width: 100%;
     margin: 0;
   }
 
   .parametric-dialog-content {
-    padding: 16px;
+    padding: 10px 12px;
   }
 
   .section-title {

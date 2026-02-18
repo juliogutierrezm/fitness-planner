@@ -244,6 +244,24 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('includeSupersets') as FormControl;
   }
 
+  decrementTotalSessions(): void {
+    const control = this.form?.get('totalSessions');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.floor(current) : 1;
+    control.setValue(Math.max(1, Math.min(7, normalized - 1)));
+    this.cdr.markForCheck();
+  }
+
+  incrementTotalSessions(): void {
+    const control = this.form?.get('totalSessions');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.floor(current) : 1;
+    control.setValue(Math.max(1, Math.min(7, normalized + 1)));
+    this.cdr.markForCheck();
+  }
+
   removeTarget(sessionIndex: number, target: string) {
     const control = this.getSessionTargetsControl(sessionIndex);
     const current = control.value as string[];

@@ -93,12 +93,11 @@ export class AiParametricDialogComponent implements OnInit {
   ];
 
   trainingGoalOptions = [
-    { value: 'Hipertrofia', label: 'Hipertrofia', desc: 'Ganar masa muscular' },
-    { value: 'Pérdida de peso', label: 'Pérdida de peso', desc: 'Quemar grasa' },
-    { value: 'Resistencia', label: 'Resistencia', desc: 'Mayor resistencia muscular' },
-    { value: 'Potencia', label: 'Potencia', desc: 'Fuerza máxima explosiva' },
-    { value: 'Funcional', label: 'Funcional', desc: 'Movimientos naturales' },
-    { value: 'Cardiovascular', label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
+    { value: 'HYPERTROPHY', label: 'Hipertrofia', desc: 'Ganar masa muscular' },
+    { value: 'WEIGHT_LOSS', label: 'Pérdida de peso', desc: 'Quemar grasa' },
+    { value: 'ENDURANCE', label: 'Resistencia', desc: 'Mayor resistencia muscular' },
+    { value: 'POWER', label: 'Potencia', desc: 'Fuerza máxima explosiva' },
+    { value: 'CARDIO', label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
   ];
 
   equipmentOptions = [
@@ -121,10 +120,12 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Cuádriceps', value: 'Cuádriceps' },
     { label: 'Isquiotibiales', value: 'Isquiotibiales' },
     { label: 'Glúteos', value: 'Glúteos' },
-    { label: 'Pantorrillas', value: 'Pantorrillas' },
+    { label: 'Pantorrillas', value: 'Pantorrilla' },
     { label: 'Trapecio', value: 'Trapecio' },
     { label: 'Antebrazos', value: 'Antebrazos' },
     { label: 'Core', value: 'Core' },
+    { label: 'Abdominales', value: 'Abdominales' },
+    { label: 'Oblicuos', value: 'Oblicuos' },
     // Tipos / categorías
     { label: 'Cardio', value: 'Cardio' },
     { label: 'Mobility', value: 'Mobility' },
@@ -132,8 +133,10 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Pull', value: 'Pull' },
     { label: 'Squat', value: 'Squat' },
     { label: 'Lunge', value: 'Lunge' },
-    { label: 'Hip', value: 'Bend' },
-    { label: 'Funcional', value: 'Funcional' }
+    { label: 'Hinge', value: 'Bend' },
+    { label: 'Full Body', value: 'Full_Body' },
+    { label: 'Complex', value: 'Complex' },
+    { label: 'Carry', value: 'Carry' },
   ];
 
   // Purpose: store planner-supplied user context for AI requests.
@@ -177,7 +180,7 @@ export class AiParametricDialogComponent implements OnInit {
       expectedExercisesPerSession: [8, [Validators.min(4), Validators.max(15)]],
 
       // Preferences
-      availableEquipment: [[]],
+      availableEquipment: [[], Validators.required],
 
       // Session Blueprint
       sessionBlueprint: this.fb.array([]),
@@ -288,8 +291,8 @@ export class AiParametricDialogComponent implements OnInit {
       'Pérdida de peso': 'Plan de Pérdida de Peso',
       'Resistencia': 'Plan de Resistencia Muscular',
       'Potencia': 'Plan de Fuerza y Potencia',
-      'Funcional': 'Plan Funcional',
-      'Cardiovascular': 'Plan Cardiovascular'
+      'Cardiovascular': 'Plan Cardiovascular',
+      'Cuerpo completo': 'Plan Fullbody'
     };
     return goalNames[trainingGoal] || `Plan de Entrenamiento - ${trainingGoal}`;
   }

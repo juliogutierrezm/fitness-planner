@@ -7,7 +7,7 @@ Angular 19 fitness planning application with custom AWS Cognito authentication a
 - 🔐 Custom AWS Cognito authentication (signup, confirmación, login, reset)
 - 🛡️ Protected routes with AuthGuard (`/planner`, `/plans`, `/exercise-manager`, `/diagnostics`)
 - 🌐 JWT token-based API authentication (auto-attached to API calls)
-- 🔧 SSR (Server-Side Rendering) compatible
+- 🚀 SPA (static hosting) ready for AWS S3 + CloudFront
 - 🎨 Material Design UI with responsive layout
 - 📊 Built-in diagnostics page for auth and API testing
 
@@ -101,11 +101,11 @@ npm test
 # Run tests in watch mode
 npm test -- --watch
 
-# Build for production (includes SSR)
+# Build for production (SPA static output)
 npm run build
 
-# Serve production build locally
-npm run serve:ssr:fitness-planner
+# Serve in development
+npm run start
 ```
 
 ## Testing
@@ -190,3 +190,6 @@ window.location.href = '/';
 For production deployment, update `src/environments/environment.prod.ts`:
 - Update `apiBase` to production API URL
 - Verifica el dominio y clientId del User Pool según tu entorno
+- Set `cognito.redirectUri` to your CloudFront callback URL (for example: `https://<distribution>.cloudfront.net/callback`)
+- Build with `npm run build -- --configuration production`
+- Upload contents of `dist/fitness-planner/` to S3 (no server runtime required)

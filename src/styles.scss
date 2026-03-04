@@ -86,8 +86,13 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 /* AI Generation Modal Enhancements */
 .ai-generation-backdrop {
-  background-color: rgba(0, 0, 0, 0.45) !important;
-  backdrop-filter: blur(7px) !important;
+  background-color: rgba(8, 23, 45, 0.34) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+}
+
+.ai-parametric-backdrop {
+  background-color: rgba(9, 26, 50, 0.28) !important;
+  backdrop-filter: blur(8px) saturate(1.08) !important;
 }
 
 .ai-generation-dialog .mat-mdc-dialog-container {

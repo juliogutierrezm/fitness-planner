@@ -8,14 +8,14 @@ Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisic
 - Autorizacion por grupos Cognito (`Admin`, `Trainer`, `Client`, `System`).
 - Arquitectura multi-tenant por `companyId` (modo gimnasio vs independiente).
 - Gestion de usuarios, planes, plantillas, ejercicios, planes IA y metricas corporales.
-- Soporte SSR con Angular + Express.
+- SPA Angular 19 para despliegue estatico en AWS S3 + CloudFront.
 
 Este documento describe el estado actual observable en codigo fuente.
 
 ## 2) Stack y runtime
 - Frontend: Angular 19 standalone + Angular Material + RxJS.
 - Auth: AWS Amplify Auth (`aws-amplify` v6).
-- SSR: `@angular/ssr` + `express`.
+- Hosting: salida estatica (sin runtime Node/Express).
 - PDF: `jspdf`.
 - Requisito de Node: `>=20 <21` (definido en `package.json`).
 
@@ -23,7 +23,6 @@ Archivos de referencia:
 - `package.json`
 - `angular.json`
 - `src/main.ts`
-- `src/server.ts`
 
 ## 3) Arquitectura de alto nivel
 ### 3.1 Capas
@@ -33,19 +32,15 @@ Archivos de referencia:
 - Seguridad y navegacion: guards (`src/app/guards`) + interceptor (`src/app/interceptors/auth.interceptor.ts`).
 - Utilidades/modelos: `src/app/shared`.
 
-### 3.2 SSR y bootstrap
+### 3.2 Bootstrap y navegacion inicial
 - `APP_INITIALIZER` bloquea navegacion inicial hasta resolver auth en cliente.
-- Durante SSR el estado de auth se mantiene en `unknown`.
 - En cliente, `AuthService.checkAuthState()` tiene timeout determinista de 8s para cerrar en estado final.
 - `AppComponent` muestra splash mientras auth sigue en `unknown` (nunca indefinido en browser).
-- Express incluye healthcheck en `/health`.
 
 Archivos clave:
 - `src/app/app.config.ts`
 - `src/app/app.component.ts`
 - `src/app/app.component.html`
-- `src/app/app.config.server.ts`
-- `src/app/app.routes.server.ts`
 
 ## 4) Autenticacion, roles y tenant
 ### 4.1 Roles
@@ -306,12 +301,10 @@ Llaves principales en navegador:
 ## 11) Scripts y comandos
 Comandos npm (`package.json`):
 - `npm run ng` -> passthrough del CLI Angular.
-- `npm run build` -> build app (incluye SSR output).
-- `npm run build:ssr` -> alias de build SSR (actualmente equivalente a `npm run build`).
+- `npm run build` -> build app SPA.
 - `npm run watch` -> build en modo desarrollo watch.
 - `npm test` -> tests con Karma.
-- `npm run start` -> ejecuta servidor SSR desde `dist`.
-- `npm run serve:ssr:fitness-planner` -> alias de arranque SSR.
+- `npm run start` -> levanta servidor de desarrollo Angular (`ng serve`).
 
 Comando util adicional:
 - `node scripts/smoke-api.mjs`
@@ -330,9 +323,7 @@ fitness-planner/
 |   |   |-- services/
 |   |   `-- shared/
 |   |-- environments/
-|   |-- main.ts
-|   |-- main.server.ts
-|   `-- server.ts
+|   `-- main.ts
 |-- scripts/
 |   `-- smoke-api.mjs
 |-- angular.json
@@ -378,4 +369,3 @@ Cobertura funcional existe en modulos clave, pero no cubre toda la superficie de
 - Planes/ejercicios: `src/app/exercise-api.service.ts`
 - IA: `src/app/services/ai-plans.service.ts`
 - Theme: `src/app/services/theme.service.ts`
-- SSR server: `src/server.ts`

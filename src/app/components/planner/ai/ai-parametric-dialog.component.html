@@ -1,7 +1,9 @@
 <div class="parametric-dialog-container">
   <div class="parametric-dialog-header">
     <div class="parametric-dialog-title">
-      <mat-icon class="ai-icon">auto_awesome</mat-icon>
+      <span class="ai-icon-badge">
+        <mat-icon class="ai-icon">auto_awesome</mat-icon>
+      </span>
       <h2>Generar Plan Personalizado con IA</h2>
     </div>
     <div class="parametric-dialog-divider"></div>
@@ -37,10 +39,10 @@
             <span class="profile-label">Detalle:</span>
             <span class="profile-value">{{ userProfile.injuries }}</span>
           </div>
-          <div class="profile-row" *ngIf="userProfile.notes">
+<!--           <div class="profile-row" *ngIf="userProfile.notes">
             <span class="profile-label">Notas:</span>
             <span class="profile-value">{{ userProfile.notes }}</span>
-          </div>
+          </div> -->
         </div>
         <p class="profile-hint">Esta información se utilizará automáticamente para generar un plan personalizado y seguro.</p>
       </div>
@@ -124,7 +126,7 @@
                 {{ equipment.label }}
               </mat-option>
             </mat-select>
-            <mat-hint>Selecciona el equipo disponible</mat-hint>
+            <mat-hint>Selecciona al menos un equipo disponible</mat-hint>
           </mat-form-field>
         </div>
         <div class="custom-structure-section session-blueprint-section">

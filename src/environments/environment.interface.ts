@@ -15,5 +15,6 @@ export interface Environment {
     domain: string;
     userPoolId: string;
     clientId: string;
+    redirectUri?: string;
   };
 }

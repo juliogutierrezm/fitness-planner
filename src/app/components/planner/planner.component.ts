@@ -317,6 +317,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
     const dialogRef = this.dialog.open(AiParametricDialogComponent, {
       panelClass: 'ai-parametric-dialog',
+      backdropClass: 'ai-parametric-backdrop',
       width: '95vw',
       maxWidth: '95vw',
       height: '90vh',

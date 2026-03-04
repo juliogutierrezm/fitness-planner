@@ -430,6 +430,9 @@
 }
 
 .progressions-panel {
+  --mat-expansion-header-hover-state-layer-color: transparent;
+  --mat-expansion-header-focus-state-layer-color: transparent;
+  --progressions-header-bg: linear-gradient(135deg, #e8f1ff, #d8e7fb 55%, #cfdcf1);
   margin-bottom: 1rem;
   border-radius: var(--radius-sm);
   border: 1px solid #e5e7eb;
@@ -447,7 +450,13 @@
       #cfdcf1
     );
     transition: background 180ms ease;
+  }
 
+  .mat-expansion-panel-header,
+  .mat-expansion-panel-header:hover,
+  .mat-expansion-panel-header.mat-expanded,
+  .mat-expansion-panel-header.mat-expanded:hover {
+    background: var(--progressions-header-bg) !important;
   }
 
   .progression-title {
@@ -514,7 +523,6 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    min-width: 100px;
 
     .compact-stepper {
       width: fit-content;
@@ -1205,7 +1213,6 @@ mat-icon {
 }
 
 .session-actions {
-  margin-bottom: 0rem;
   display: flex;
   gap: 1rem;
   margin-bottom: 1rem;

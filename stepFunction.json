@@ -1,0 +1,106 @@
+{
+  "Comment": "Modular AI Workout Plan Generator with Progress States",
+  "StartAt": "Validate Params",
+  "States": {
+    "Validate Params": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:validateParamsSF",
+      "Parameters": {
+        "params.$": "$",
+        "executionId.$": "$$.Execution.Id"
+      },
+      "ResultPath": "$.validatedResult",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "VALIDATING_INPUT"
+      },
+      "Next": "Filter Exercises"
+    },
+    "Filter Exercises": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:filterExercisesSF",
+      "InputPath": "$.validatedResult.data.validatedParams",
+      "ResultPath": "$.filterResult",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "FILTERING_EXERCISES"
+      },
+      "Next": "Resolve Sessions"
+    },
+    "Resolve Sessions": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:resolveSessionsSF",
+      "Parameters": {
+        "validatedResult.$": "$.validatedResult.data",
+        "filterResult.$": "$.filterResult.data"
+      },
+      "ResultPath": "$.sessionSpecs",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "STRUCTURING_PLAN"
+      },
+      "Next": "Build Session Structure"
+    },
+    "Build Session Structure": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:sessionBuilderSF",
+      "InputPath": "$.sessionSpecs.data",
+      "ResultPath": "$.sessionSpecs",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "BUILDING_SESSION_STRUCTURE"
+      },
+      "Next": "Generate Sessions"
+    },
+    "Generate Sessions": {
+      "Type": "Map",
+      "ItemsPath": "$.sessionSpecs.data",
+      "MaxConcurrency": 3,
+      "Parameters": {
+        "session.$": "$$.Map.Item.Value",
+        "inputParams.$": "$.validatedResult.data.validatedParams"
+      },
+      "Iterator": {
+        "StartAt": "Generate Single Session",
+        "States": {
+          "Generate Single Session": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-east-1:750391387727:function:generateWorkoutPlanAI",
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.generatedSessions",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "MATCHING_EXERCISES"
+      },
+      "Next": "Finalize Workout Plan"
+    },
+    "Finalize Workout Plan": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:finalizeWorkoutPlanSF",
+      "ResultPath": "$.finalized",
+      "ResultSelector": {
+        "data.$": "$",
+        "currentStep": "OPTIMIZING_LOAD"
+      },
+      "Next": "Store Workout Plan"
+    },
+    "Store Workout Plan": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:750391387727:function:storeWorkoutPlanSF",
+      "Parameters": {
+        "userId.$": "$.validatedResult.data.validatedParams.userId",
+        "executionId.$": "$.validatedResult.data.validatedParams.executionId",
+        "trainerId.$": "$.validatedResult.data.validatedParams.trainerId",
+        "companyId.$": "$.validatedResult.data.validatedParams.companyId",
+        "finalized.$": "$.finalized.data"
+      },
+      "ResultSelector": {
+        "currentStep": "FINAL_VALIDATION"
+      },
+      "End": true
+    }
+  }
+}

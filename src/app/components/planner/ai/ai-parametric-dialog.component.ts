@@ -1,6 +1,6 @@
 import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AiPlanRequest } from '../../../shared/models';
+import { TrainingGoal, TrainingGoalProfile, getGoalProfile } from '../../../shared/training-goal.config';
 import { ExerciseApiService } from '../../../exercise-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { AiPlansService } from '../../../services/ai-plans.service';
@@ -92,12 +93,12 @@ export class AiParametricDialogComponent implements OnInit {
     }
   ];
 
-  trainingGoalOptions = [
-    { value: 'HYPERTROPHY', label: 'Hipertrofia', desc: 'Ganar masa muscular' },
-    { value: 'WEIGHT_LOSS', label: 'Pérdida de peso', desc: 'Quemar grasa' },
-    { value: 'ENDURANCE', label: 'Resistencia', desc: 'Mayor resistencia muscular' },
-    { value: 'POWER', label: 'Potencia', desc: 'Fuerza máxima explosiva' },
-    { value: 'CARDIO', label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
+  trainingGoalOptions: { value: TrainingGoal; label: string; desc: string }[] = [
+    { value: TrainingGoal.HYPERTROPHY, label: 'Hipertrofia', desc: 'Ganar masa muscular' },
+    { value: TrainingGoal.WEIGHT_LOSS, label: 'Pérdida de peso', desc: 'Quemar grasa' },
+    { value: TrainingGoal.ENDURANCE, label: 'Resistencia', desc: 'Mayor resistencia muscular' },
+    { value: TrainingGoal.POWER, label: 'Potencia', desc: 'Fuerza máxima explosiva' },
+    { value: TrainingGoal.CARDIO, label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
   ];
 
   equipmentOptions = [
@@ -106,37 +107,42 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Kettlebell', value: 'Kettlebell' },
     { label: 'Mancuernas', value: 'Mancuernas' },
     { label: 'Máquina', value: 'Máquina' },
+    { label: 'Polea', value: 'Polea' },
     { label: 'Peso corporal', value: 'Peso corporal' },
     { label: 'Suspensión', value: 'Rings' }
   ];
 
   muscleGroupOptions = [
-    // Musculares
-    { label: 'Pectorales', value: 'Pectorales' },
-    { label: 'Dorsales', value: 'Dorsales' },
-    { label: 'Deltoides', value: 'Deltoides' },
-    { label: 'Bíceps', value: 'Bíceps' },
-    { label: 'Tríceps', value: 'Tríceps' },
-    { label: 'Cuádriceps', value: 'Cuádriceps' },
-    { label: 'Isquiotibiales', value: 'Isquiotibiales' },
-    { label: 'Glúteos', value: 'Glúteos' },
-    { label: 'Pantorrillas', value: 'Pantorrilla' },
-    { label: 'Trapecio', value: 'Trapecio' },
-    { label: 'Antebrazos', value: 'Antebrazos' },
-    { label: 'Core', value: 'Core' },
     { label: 'Abdominales', value: 'Abdominales' },
+    { label: 'Abductores de cadera', value: 'Abductores de cadera' },
+    { label: 'Aductores de cadera', value: 'Aductores de cadera' },
+    { label: 'Antebrazos', value: 'Antebrazos' },
+    { label: 'Bíceps', value: 'Bíceps' },
+    { label: 'Core', value: 'Core' },
+    { label: 'Cuádriceps', value: 'Cuádriceps' },
+    { label: 'Deltoides', value: 'Deltoides' },
+    { label: 'Dorsales', value: 'Dorsales' },
+    { label: 'Glúteos', value: 'Glúteos' },
+    { label: 'Isquiotibiales', value: 'Isquiotibiales' },
     { label: 'Oblicuos', value: 'Oblicuos' },
-    // Tipos / categorías
-    { label: 'Cardio', value: 'Cardio' },
-    { label: 'Mobility', value: 'Mobility' },
+    { label: 'Pantorrilla', value: 'Pantorrilla' },
+    { label: 'Pectorales', value: 'Pectorales' },
+    { label: 'Trapecio', value: 'Trapecio' },
+    { label: 'Tríceps', value: 'Tríceps' },
+    { label: 'Cuerpo completo', value: 'Cuerpo completo' }
+  ];
+
+  movementPatternOptions = [
     { label: 'Push', value: 'Push' },
     { label: 'Pull', value: 'Pull' },
     { label: 'Squat', value: 'Squat' },
     { label: 'Lunge', value: 'Lunge' },
-    { label: 'Hinge', value: 'Bend' },
-    { label: 'Full Body', value: 'Full_Body' },
-    { label: 'Complex', value: 'Complex' },
+    { label: 'Bend (Hinge)', value: 'Bend' },
     { label: 'Carry', value: 'Carry' },
+    { label: 'Complex', value: 'Complex' },
+    { label: 'Conditioning', value: 'Conditioning' },
+    { label: 'Cardio', value: 'Cardio' },
+    { label: 'Mobility', value: 'Mobility' }
   ];
 
   // Purpose: store planner-supplied user context for AI requests.
@@ -172,7 +178,7 @@ export class AiParametricDialogComponent implements OnInit {
     this.form = this.fb.group({
       // General Data
       difficulty: ['Intermedio', Validators.required],
-      trainingGoal: ['Hipertrofia', Validators.required],
+      trainingGoal: [TrainingGoal.HYPERTROPHY, Validators.required],
 
       // Availability
       totalSessions: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
@@ -198,15 +204,30 @@ export class AiParametricDialogComponent implements OnInit {
     this.updateSessionBlueprint();
   }
 
-  // Purpose: rebuild session blueprint while preserving existing muscle selections and supersets.
+  private readonly sessionTargetSelectionValidator = (control: AbstractControl): ValidationErrors | null => {
+    const selectedMuscleGroups = Array.isArray(control.get('selectedMuscleGroups')?.value)
+      ? control.get('selectedMuscleGroups')?.value as string[]
+      : [];
+    const selectedMovementPatterns = Array.isArray(control.get('selectedMovementPatterns')?.value)
+      ? control.get('selectedMovementPatterns')?.value as string[]
+      : [];
+    return selectedMuscleGroups.length + selectedMovementPatterns.length > 0
+      ? null
+      : { targetsRequired: true };
+  };
+
+  // Purpose: rebuild session blueprint while preserving existing target selections and supersets.
   // Input/Output: reads totalSessions + current FormArray values, writes updated FormArray.
-  // Error handling: defaults to empty targets and true for includeSupersets when prior values are missing.
+  // Error handling: defaults to empty selections and true for includeSupersets when prior values are missing.
   // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
     const existingValues = sessionBlueprintArray.controls.map((control) => ({
-      targets: Array.isArray(control.get('targets')?.value)
-        ? [...(control.get('targets')?.value as string[])]
+      selectedMuscleGroups: Array.isArray(control.get('selectedMuscleGroups')?.value)
+        ? [...(control.get('selectedMuscleGroups')?.value as string[])]
+        : [],
+      selectedMovementPatterns: Array.isArray(control.get('selectedMovementPatterns')?.value)
+        ? [...(control.get('selectedMovementPatterns')?.value as string[])]
         : [],
       includeSupersets: control.get('includeSupersets')?.value ?? true
     }));
@@ -218,13 +239,15 @@ export class AiParametricDialogComponent implements OnInit {
     }
 
     for (let i = 0; i < totalSessions; i++) {
-      const existingTargets = existingValues[i]?.targets ?? [];
+      const existingMuscleGroups = existingValues[i]?.selectedMuscleGroups ?? [];
+      const existingMovementPatterns = existingValues[i]?.selectedMovementPatterns ?? [];
       const existingIncludeSupersets = existingValues[i]?.includeSupersets ?? true;
       sessionBlueprintArray.push(this.fb.group({
         name: [`Sesion ${i + 1}`, Validators.required],
-        targets: [existingTargets, Validators.required],
+        selectedMuscleGroups: [existingMuscleGroups],
+        selectedMovementPatterns: [existingMovementPatterns],
         includeSupersets: [existingIncludeSupersets]
-      }));
+      }, { validators: this.sessionTargetSelectionValidator }));
     }
   }
 
@@ -237,9 +260,14 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('name') as FormControl;
   }
 
-  getSessionTargetsControl(index: number): FormControl {
+  getSessionMuscleGroupsControl(index: number): FormControl {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
-    return sessionBlueprintArray.at(index).get('targets') as FormControl;
+    return sessionBlueprintArray.at(index).get('selectedMuscleGroups') as FormControl;
+  }
+
+  getSessionMovementPatternsControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('selectedMovementPatterns') as FormControl;
   }
 
   getSessionSupersetsControl(index: number): FormControl {
@@ -265,15 +293,28 @@ export class AiParametricDialogComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  removeTarget(sessionIndex: number, target: string) {
-    const control = this.getSessionTargetsControl(sessionIndex);
+  removeSelection(
+    sessionIndex: number,
+    controlName: 'selectedMuscleGroups' | 'selectedMovementPatterns',
+    target: string
+  ) {
+    const control = controlName === 'selectedMuscleGroups'
+      ? this.getSessionMuscleGroupsControl(sessionIndex)
+      : this.getSessionMovementPatternsControl(sessionIndex);
     const current = control.value as string[];
     control.setValue(current.filter(t => t !== target));
+    control.markAsDirty();
+    control.markAsTouched();
   }
 
-  getMuscleLabel(value: string): string {
-    const option = this.muscleGroupOptions.find(m => m.value === value);
+  getTargetLabel(value: string): string {
+    const option = [...this.muscleGroupOptions, ...this.movementPatternOptions].find(target => target.value === value);
     return option?.label || value;
+  }
+
+  hasSessionSelections(index: number): boolean {
+    return this.getSessionMuscleGroupsControl(index).value?.length > 0
+      || this.getSessionMovementPatternsControl(index).value?.length > 0;
   }
 
   isFormValid(): boolean {
@@ -285,16 +326,27 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   // Generate plan name from training goal
-  generatePlanName(trainingGoal: string): string {
-    const goalNames: { [key: string]: string } = {
-      'Hipertrofia': 'Plan de Ganancia Muscular',
-      'Pérdida de peso': 'Plan de Pérdida de Peso',
-      'Resistencia': 'Plan de Resistencia Muscular',
-      'Potencia': 'Plan de Fuerza y Potencia',
-      'Cardiovascular': 'Plan Cardiovascular',
-      'Cuerpo completo': 'Plan Fullbody'
+  generatePlanName(trainingGoal: TrainingGoal): string {
+    const goalNames: Record<TrainingGoal, string> = {
+      [TrainingGoal.HYPERTROPHY]: 'Plan de Ganancia Muscular',
+      [TrainingGoal.WEIGHT_LOSS]: 'Plan de Pérdida de Peso',
+      [TrainingGoal.ENDURANCE]: 'Plan de Resistencia Muscular',
+      [TrainingGoal.POWER]: 'Plan de Fuerza y Potencia',
+      [TrainingGoal.CARDIO]: 'Plan Cardiovascular'
     };
-    return goalNames[trainingGoal] || `Plan de Entrenamiento - ${trainingGoal}`;
+    return goalNames[trainingGoal];
+  }
+
+  getSelectedGoalProfile(): TrainingGoalProfile | null {
+    const selectedGoal = this.form.get('trainingGoal')?.value as unknown;
+    if (!this.isTrainingGoal(selectedGoal)) {
+      return null;
+    }
+    return getGoalProfile(selectedGoal);
+  }
+
+  private isTrainingGoal(value: unknown): value is TrainingGoal {
+    return typeof value === 'string' && Object.values(TrainingGoal).includes(value as TrainingGoal);
   }
 
   /**
@@ -441,7 +493,10 @@ export class AiParametricDialogComponent implements OnInit {
   private buildSessionBlueprint(formValue: any): { name: string; targets: string[]; includeSupersets: boolean }[] {
     return formValue.sessionBlueprint.map((session: any) => ({
       name: session.name,
-      targets: session.targets,
+      targets: [
+        ...(Array.isArray(session.selectedMuscleGroups) ? session.selectedMuscleGroups : []),
+        ...(Array.isArray(session.selectedMovementPatterns) ? session.selectedMovementPatterns : [])
+      ],
       includeSupersets: session.includeSupersets ?? true
     }));
   }

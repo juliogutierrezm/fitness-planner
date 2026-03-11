@@ -310,7 +310,7 @@
 
 
   <!-- Body -->
-  <div class="planner-body">
+  <div class="planner-body" cdkDropListGroup>
     <div class="visually-hidden" aria-live="polite">{{ liveMessage }}</div>
     <!-- Columna izquierda: Ejercicios y Planes anteriores -->
     <div class="left-column">
@@ -331,8 +331,8 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <cdk-virtual-scroll-viewport itemSize="36" class="vs">
-          <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
+          <div class="vs exercise-scroll-container">
+          <div *ngFor="let ex of filteredExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
@@ -362,7 +362,7 @@
                 </div>
               </ng-container>
             </div>
-          </cdk-virtual-scroll-viewport>
+          </div>
         </div>
 
       </aside>
@@ -394,16 +394,10 @@
     <!-- Sesiones verticales (drag & drop de sesiones) -->
     <section
       class="sessions"
-      cdkDropList
-      [cdkDropListData]="sessions"
-      [cdkDropListConnectedTo]="[]"
-      (cdkDropListDropped)="dropSession($event)"
     >
       <mat-card
         *ngFor="let s of sessions; trackBy: trackBySession"
         class="session-card"
-        cdkDrag
-        [cdkDragData]="s"
       >
         <div
           cdkDropList

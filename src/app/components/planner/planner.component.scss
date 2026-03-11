@@ -834,7 +834,7 @@
   .fav-list { display: flex; flex-wrap: wrap; gap: 6px; }
   .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-sm); background: #eef2ff; border: 1px solid #c7d2fe; font-size: 12px; }
   .block-title { font-size: 12px; color: var(--ink-500); margin: 4px 0; }
-  .vs { height: 54vh; width: 100%; overflow-x: hidden; }
+  .vs { height: 54vh; width: 100%; overflow-x: hidden; overflow-y: auto; }
 
   button[mat-mini-fab] {
     width: 26px;
@@ -1234,7 +1234,7 @@ mat-icon {
 }
 
 .cdk-drop-list-dragging .planner-table {
-  background: #2c648d;
+  background: #e8e8e8;
   border: 2px dashed #1976d2
 }
 

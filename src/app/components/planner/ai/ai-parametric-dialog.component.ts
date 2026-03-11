@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { trigger, transition, style, animate, query, group } from '@angular/animations';
 import { AiPlanRequest } from '../../../shared/models';
 import { TrainingGoal, TrainingGoalProfile, getGoalProfile } from '../../../shared/training-goal.config';
 import { ExerciseApiService } from '../../../exercise-api.service';
@@ -45,11 +46,60 @@ import { timer, of, Subscription, EMPTY } from 'rxjs';
   ],
   templateUrl: './ai-parametric-dialog.component.html',
   styleUrls: ['./ai-parametric-dialog.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    trigger('stepTransition', [
+      transition(':increment', [
+        query(':enter, :leave', style({ position: 'absolute', width: '100%', top: 0, left: 0 }), { optional: true }),
+        group([
+          query(':leave', [
+            style({ opacity: 1, transform: 'translateX(0)' }),
+            animate('220ms ease-in-out', style({ opacity: 0, transform: 'translateX(-30px)' }))
+          ], { optional: true }),
+          query(':enter', [
+            style({ opacity: 0, transform: 'translateX(30px)' }),
+            animate('220ms ease-in-out', style({ opacity: 1, transform: 'translateX(0)' }))
+          ], { optional: true })
+        ])
+      ]),
+      transition(':decrement', [
+        query(':enter, :leave', style({ position: 'absolute', width: '100%', top: 0, left: 0 }), { optional: true }),
+        group([
+          query(':leave', [
+            style({ opacity: 1, transform: 'translateX(0)' }),
+            animate('220ms ease-in-out', style({ opacity: 0, transform: 'translateX(30px)' }))
+          ], { optional: true }),
+          query(':enter', [
+            style({ opacity: 0, transform: 'translateX(-30px)' }),
+            animate('220ms ease-in-out', style({ opacity: 1, transform: 'translateX(0)' }))
+          ], { optional: true })
+        ])
+      ])
+    ])
+  ]
 })
 export class AiParametricDialogComponent implements OnInit {
   form!: FormGroup;
   isGenerating = false;
+
+  // Wizard step management
+  currentStep = signal(0);
+  readonly totalSteps = 3;
+  readonly stepLabels = ['Perfil', 'Configuración', 'Sesiones'];
+  readonly stepIcons = ['person', 'tune', 'calendar_view_week'];
+  isLastStep = computed(() => this.currentStep() === this.totalSteps - 1);
+  isFirstStep = computed(() => this.currentStep() === 0);
+
+  // Active session tab in Step 3
+  activeSessionIndex = signal(0);
+
+  setActiveSession(index: number): void {
+    const total = this.form?.get('totalSessions')?.value || 1;
+    if (index >= 0 && index < total) {
+      this.activeSessionIndex.set(index);
+      this.cdr.markForCheck();
+    }
+  }
 
 
 
@@ -67,7 +117,7 @@ export class AiParametricDialogComponent implements OnInit {
         'Aun aprende la tecnica de movimientos basicos.',
         'Requiere supervision frecuente y evita ejercicios complejos.'
       ],
-      nextAction: 'Siguiente accion: priorizar tecnica, ejercicios guiados y volumen moderado.'
+
     },
     {
       value: 'Intermedio',
@@ -78,18 +128,16 @@ export class AiParametricDialogComponent implements OnInit {
         'Ejecuta correctamente la mayoria de los ejercicios comunes.',
         'Tolera mayor volumen e intensidad con supervision ocasional.'
       ],
-      nextAction: 'Siguiente accion: introducir variaciones, superseries y progresiones controladas.'
     },
     {
       value: 'Avanzado',
       title: 'Avanzado',
       purpose: 'Finalidad: exponer al usuario a ejercicios complejos y estimulos de alta exigencia de forma segura.',
       criteria: [
-        '2-3 anos o mas de entrenamiento constante.',
+        '2-3 años o mas de entrenamiento constante.',
         'Tecnica solida y consistente.',
         'Entrena de forma autonoma y maneja ejercicios complejos o de alta intensidad.'
       ],
-      nextAction: 'Siguiente accion: ampliar variedad con ejercicios complejos y alta intensidad.'
     }
   ];
 
@@ -111,14 +159,13 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Peso corporal', value: 'Peso corporal' },
     { label: 'Suspensión', value: 'Rings' }
   ];
-
+  
   muscleGroupOptions = [
     { label: 'Abdominales', value: 'Abdominales' },
     { label: 'Abductores de cadera', value: 'Abductores de cadera' },
     { label: 'Aductores de cadera', value: 'Aductores de cadera' },
     { label: 'Antebrazos', value: 'Antebrazos' },
     { label: 'Bíceps', value: 'Bíceps' },
-    { label: 'Core', value: 'Core' },
     { label: 'Cuádriceps', value: 'Cuádriceps' },
     { label: 'Deltoides', value: 'Deltoides' },
     { label: 'Dorsales', value: 'Dorsales' },
@@ -131,18 +178,19 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Tríceps', value: 'Tríceps' },
     { label: 'Cuerpo completo', value: 'Cuerpo completo' }
   ];
-
+  
   movementPatternOptions = [
-    { label: 'Push', value: 'Push' },
-    { label: 'Pull', value: 'Pull' },
-    { label: 'Squat', value: 'Squat' },
-    { label: 'Lunge', value: 'Lunge' },
-    { label: 'Bend (Hinge)', value: 'Bend' },
+    { label: 'Cardio', value: 'Cardio' },
     { label: 'Carry', value: 'Carry' },
     { label: 'Complex', value: 'Complex' },
     { label: 'Conditioning', value: 'Conditioning' },
-    { label: 'Cardio', value: 'Cardio' },
-    { label: 'Mobility', value: 'Mobility' }
+    { label: 'Core', value: 'Core' },
+    { label: 'Hip (Hinge)', value: 'Bend' },
+    { label: 'Mobility', value: 'Mobility' },
+    { label: 'Lunge', value: 'Lunge' },
+    { label: 'Pull', value: 'Pull' },
+    { label: 'Push', value: 'Push' },
+    { label: 'Squat', value: 'Squat' },
   ];
 
   // Purpose: store planner-supplied user context for AI requests.
@@ -170,6 +218,57 @@ export class AiParametricDialogComponent implements OnInit {
 
   ngOnInit() {
     this.initForm();
+  }
+
+  // Wizard navigation
+  nextStep(): void {
+    if (this.currentStep() < this.totalSteps - 1 && this.isCurrentStepValid()) {
+      this.currentStep.update(s => s + 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  prevStep(): void {
+    if (this.currentStep() > 0) {
+      this.currentStep.update(s => s - 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  goToStep(step: number): void {
+    if (step >= 0 && step < this.totalSteps && step <= this.getMaxReachableStep()) {
+      this.currentStep.set(step);
+      this.cdr.markForCheck();
+    }
+  }
+
+  isCurrentStepValid(): boolean {
+    return this.isStepValid(this.currentStep());
+  }
+
+  isStepValid(step: number): boolean {
+    switch (step) {
+      case 0:
+        return this.form.get('difficulty')?.valid ?? false;
+      case 1: {
+        const goal = this.form.get('trainingGoal')?.valid ?? false;
+        const duration = this.form.get('sessionDuration')?.valid ?? false;
+        const exercises = this.form.get('expectedExercisesPerSession')?.valid ?? false;
+        const equipment = this.form.get('availableEquipment')?.valid ?? false;
+        return goal && duration && exercises && equipment;
+      }
+      case 2:
+        return (this.form.get('sessionBlueprint') as FormArray)?.valid ?? false;
+      default:
+        return false;
+    }
+  }
+
+  getMaxReachableStep(): number {
+    for (let i = 0; i < this.totalSteps; i++) {
+      if (!this.isStepValid(i)) return i;
+    }
+    return this.totalSteps - 1;
   }
 
 
@@ -248,6 +347,11 @@ export class AiParametricDialogComponent implements OnInit {
         selectedMovementPatterns: [existingMovementPatterns],
         includeSupersets: [existingIncludeSupersets]
       }, { validators: this.sessionTargetSelectionValidator }));
+    }
+
+    // Clamp active session index when sessions are reduced
+    if (this.activeSessionIndex() >= totalSessions) {
+      this.activeSessionIndex.set(Math.max(0, totalSessions - 1));
     }
   }
 

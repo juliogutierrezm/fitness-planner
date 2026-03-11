@@ -7,7 +7,7 @@ Angular 19 fitness planning application with custom AWS Cognito authentication, 
 - 🔐 Custom AWS Cognito authentication (signup, confirmacion, login, reset, force-change-password)
 - 🛡️ Protected routes with role-based guards (Admin, Trainer, Client, System)
 - 🏢 Multi-tenant architecture (modo gimnasio vs independiente) por `companyId`
-- 🤖 AI-powered workout plan generation (parametric + free-form prompt)
+- 🤖 AI-powered workout plan generation (3-step parametric wizard + free-form prompt)
 - 🌐 JWT token-based API authentication (auto-attached to API calls)
 - 📋 Workout planner with drag & drop, supersets, templates, and progressions
 - 👥 User management (clients, trainers) with role-based visibility
@@ -73,7 +73,7 @@ export const environment = {
 
 ### Core Modules
 - **Planner**: Workout plan creation/editing with drag & drop, supersets, templates, AI integration
-- **AI Plan Generation**: Parametric dialog + free-form prompt + polling + timeline visualization
+- **AI Plan Generation**: 3-step parametric wizard + free-form prompt + polling + timeline visualization
 - **Exercise Manager**: Exercise library with filters, pagination, inline editing (System group)
 - **Dashboard**: KPIs by tenant mode (gym admin, gym trainer, independent trainer)
 - **User Management**: Clients (CRUD, status, trainer assignment) + Trainers (admin management)

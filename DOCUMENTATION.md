@@ -1,6 +1,6 @@
 # Fitness Planner - Documentacion Tecnica del Repositorio
 
-Ultima actualizacion: 2026-03-05
+Ultima actualizacion: 2026-03-09
 
 ## 1) Contexto del proyecto
 Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
@@ -8,7 +8,7 @@ Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisic
 - Autorizacion por grupos Cognito (`Admin`, `Trainer`, `Client`, `System`).
 - Arquitectura multi-tenant por `companyId` (modo gimnasio vs independiente).
 - Gestion de usuarios, planes, plantillas, ejercicios, planes IA y metricas corporales.
-- Generacion de planes de entrenamiento con IA (dialogo parametrico + prompt libre).
+- Generacion de planes de entrenamiento con IA (wizard parametrico de 3 pasos + prompt libre).
 - Soporte bilingue (es/en) para nombres de ejercicios y generacion de PDF.
 - SPA Angular 19 para despliegue estatico en AWS S3 + CloudFront.
 
@@ -159,14 +159,21 @@ Archivo:
 - Superseries (agrupacion y desagrupacion).
 - Carga de planes previos.
 - Guardado de plantillas.
-- Integracion IA (dialogo parametrico + prompt libre + polling por `executionId`).
+- Integracion IA (wizard parametrico de 3 pasos + prompt libre + polling por `executionId`).
 - Enriquecimiento de sesiones con Exercise Library antes de render/guardar.
 - Previsualizacion del plan en dialogo usando `WorkoutPlanViewComponent` con layout de tabla y scroll horizontal para sesiones extensas.
+
+Flujo actual del dialogo parametrico de IA:
+- Paso 1 `Perfil`: muestra resumen del usuario disponible (nombre, edad, genero, lesiones) y captura nivel de experiencia.
+- Paso 2 `Configuracion`: captura objetivo, duracion, ejercicios esperados, equipo disponible y notas opcionales.
+- Paso 3 `Sesiones`: define blueprint por sesion con tabs, selector de sesion activa, grupos musculares, patrones de movimiento y opcion de superseries.
+- Navegacion progresiva: cada paso valida sus propios campos antes de permitir avanzar o saltar entre pasos.
+- UX reactiva: usa `signal`/`computed` de Angular para step actual, sesion activa y estado de navegacion, con animaciones laterales entre pasos.
 
 Subestructura del planner:
 - `ai/` — Dialogos de IA:
   - `ai-generation-dialog.component.ts`: inicia generacion IA.
-  - `ai-parametric-dialog.component.ts`: interfaz parametrica (dificultad, objetivo, equipo, blueprint de sesiones).
+  - `ai-parametric-dialog.component.ts`: wizard parametrico de 3 pasos con validacion por paso, transiciones animadas y blueprint por sesion con tabs.
   - `ai-prompt-dialog.component.ts`: generacion por prompt libre de texto.
 - `dialogs/` — Dialogos auxiliares:
   - `exercise-preview-dialog.component.ts`: preview de ejercicio.

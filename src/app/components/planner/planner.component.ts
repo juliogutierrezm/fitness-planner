@@ -1387,6 +1387,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     const connections = this.dragDropService.buildDropListConnections(this.sessions);
     this.exerciseListConnectedTo = connections.exerciseListConnectedTo;
     this.sessionsConnectedTo = connections.sessionsConnectedTo;
+    this.cdr.markForCheck();
   }
 
   private buildPlanItemFromExercise(ex: Exercise, overrides: Partial<PlanItem> = {}): PlanItem {
@@ -1402,6 +1403,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   drop(event: CdkDragDrop<any, any>, session?: Session) {
+    if (!session) return;
     const result = this.dragDropService.handleDrop(
       event,
       session!,

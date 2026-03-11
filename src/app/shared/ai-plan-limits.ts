@@ -6,7 +6,7 @@
  */
 
 /** Maximum AI-generated plans a trainer can create (trial version). */
-export const MAX_AI_PLANS_PER_TRAINER = 20;
+export const MAX_AI_PLANS_PER_TRAINER = 30;
 
 /** Quota snapshot used by planner, dashboard, and admin views. */
 export interface AiPlanQuota {

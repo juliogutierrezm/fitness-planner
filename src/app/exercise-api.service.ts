@@ -392,8 +392,8 @@ generatePlanFromAI(params: AiPlanRequest): Observable<{ executionId: string }> {
 }
 
 // Polling method for plan generation status - uses userId
-pollPlanGeneration(userId: string): Observable<any> {
-  return this.http.get(
+pollPlanGeneration(userId: string): Observable<PollingResponse> {
+  return this.http.get<PollingResponse>(
     `${this.apiBase}/generatePlanFromAI/${userId}`
   );
 }
@@ -401,8 +401,8 @@ pollPlanGeneration(userId: string): Observable<any> {
 pollPlanByExecution(
   userId: string,
   executionId: string
-): Observable<any> {
-  return this.http.get(
+): Observable<PollingResponse> {
+  return this.http.get<PollingResponse>(
     `${this.apiBase}/generatePlanFromAI/${userId}/${executionId}`
   );
 }

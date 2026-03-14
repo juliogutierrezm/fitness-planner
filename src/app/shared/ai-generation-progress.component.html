@@ -1,0 +1,36 @@
+<section
+  class="ai-progress-shell"
+  [class.ai-progress-shell--completed]="status === 'COMPLETED'"
+  role="status"
+  aria-live="polite"
+  [attr.aria-busy]="status === 'IN_PROGRESS'">
+  <div class="ai-progress-header">
+    <h2 class="ai-progress-header__title">{{ headerTitle }}</h2>
+
+    <div class="status-chip" [class.status-chip--completed]="status === 'COMPLETED'">
+      <mat-icon>{{ statusIcon }}</mat-icon>
+      <span>{{ statusLabel }}</span>
+    </div>
+  </div>
+
+  <div class="ai-loader-stage" aria-hidden="true">
+    <div class="ai-loader" [class.ai-loader--completed]="status === 'COMPLETED'">
+      <div class="ai-loader__ring"></div>
+      <div class="ai-loader__halo"></div>
+      <div class="ai-loader__core">
+        <span class="ai-loader__core-label">{{ loaderCoreLabel }}</span>
+      </div>
+    </div>
+
+    <p class="ai-progress-value">{{ progressLabel }}</p>
+  </div>
+
+  <p class="ai-progress-message" [class.ai-progress-message--completed]="status === 'COMPLETED'">
+    <span class="ai-progress-message__text">{{ currentMessage }}</span>
+    <span class="ai-progress-message__dots" *ngIf="showAnimatedDots" aria-hidden="true">
+      <span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </span>
+  </p>
+</section>

@@ -18,7 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -32,14 +32,13 @@ import { PreviousPlansDialogComponent } from './dialogs/previous-plans-dialog.co
 import { PlanPreviewDialogComponent } from './dialogs/plan-preview-dialog.component';
 import { AiPromptDialogComponent } from './ai/ai-prompt-dialog.component';
 import { AiParametricDialogComponent } from './ai/ai-parametric-dialog.component';
-import { AiGenerationDialogComponent } from './ai/ai-generation-dialog.component';
+import { AiGenerationDialogComponent, AiGenerationDialogData } from './ai/ai-generation-dialog.component';
 import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialog.component';
-import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
 import { PlanAssignmentService } from '../../services/plan-assignment.service';
 import { AiPlansService } from '../../services/ai-plans.service';
 import { AiPlanQuota } from '../../shared/ai-plan-limits';
-import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
+import { AiGenerationStatus, Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep } from '../../shared/models';
 import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
 import { PlannerFormService } from './services/planner-form.service';
 import { PlannerExerciseFilterService } from './services/planner-exercise-filter.service';
@@ -179,12 +178,13 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   // AI generation state
   isGenerating: boolean = false;
-  currentAiStep?: AiStep;
+  currentAiStep: AiStep | null = null;
+  currentAiStatus: AiGenerationStatus = 'PENDING';
   private pollingSub?: Subscription;
   private planAssignmentSub?: Subscription;
   private currentUserId: string | null = null;
   currentExecutionId!: string;
-  private aiGenDialogRef: any = null;
+  private aiGenDialogRef: MatDialogRef<AiGenerationDialogComponent> | null = null;
   /**
    * Purpose: track AI dialog flow timing + last visible signal for debugging.
    * Input: set on user interaction; Output: consumed by recordAiFlowSignal and template.
@@ -679,8 +679,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
   private resetAiGenerationState(): void {
     this.stopPolling();
     this.isGenerating = false;
-    this.currentAiStep = undefined;
+    this.currentAiStep = null;
+    this.currentAiStatus = 'PENDING';
     this.aiGenerationStartedAt = null;
+  }
+
+  private updateAiGenerationProgress(status: AiGenerationStatus, currentStep: AiStep | null): void {
+    this.currentAiStatus = status;
+    this.currentAiStep = currentStep;
+    this.aiGenDialogRef?.componentInstance.updateProgress({
+      currentStep,
+      status
+    });
   }
 
   ngOnDestroy(): void {
@@ -705,6 +715,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     );
 
     this.isGenerating = true;
+    this.updateAiGenerationProgress('PENDING', null);
 
     // Open the blocking modal dialog
     this.aiGenDialogRef = this.dialog.open(AiGenerationDialogComponent, {
@@ -716,7 +727,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       maxWidth: '95vw',
       height: '90vh',
       maxHeight: '90vh',
-      data: { currentAiStep: this.currentAiStep }
+      data: {
+        currentStep: this.currentAiStep,
+        status: this.currentAiStatus
+      } satisfies AiGenerationDialogData
     });
 
     this.pollingSub = interval(2500).pipe(
@@ -744,11 +758,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     // 🔁 Estado intermedio: continuar polling
     if (res.status === 'IN_PROGRESS') {
       console.log('[AI] Generation in progress:', res.currentStep);
-      this.currentAiStep = res.currentStep;
-      // Update dialog data with current step
-      if (this.aiGenDialogRef) {
-        this.aiGenDialogRef.componentInstance.data = { currentAiStep: this.currentAiStep };
-      }
+      this.updateAiGenerationProgress('IN_PROGRESS', res.currentStep);
       this.cdr.markForCheck();
       return; // ⚠️ NO detener polling
     }
@@ -756,6 +766,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     // ✅ Estado final: aplicar plan y detener polling
     if (res.status === 'COMPLETED') {
       console.log('[AI] Generation completed, applying plan');
+      this.updateAiGenerationProgress('COMPLETED', 'FINAL_VALIDATION');
 
       this.applyPlanToPlanner(res.plan);
       this.stopPolling();
@@ -771,7 +782,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 🟡 Cualquier otro estado se ignora
+    if (res.status === 'PENDING') {
+      this.updateAiGenerationProgress('PENDING', null);
+      this.cdr.markForCheck();
+    }
   });
   }
 

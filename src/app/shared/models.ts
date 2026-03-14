@@ -117,9 +117,12 @@ export type AiStep =
   | 'VALIDATING_INPUT'
   | 'FILTERING_EXERCISES'
   | 'STRUCTURING_PLAN'
+  | 'BUILDING_SESSION_STRUCTURE'
   | 'MATCHING_EXERCISES'
   | 'OPTIMIZING_LOAD'
   | 'FINAL_VALIDATION';
+
+export type AiGenerationStatus = 'IN_PROGRESS' | 'COMPLETED' | 'PENDING';
 
 export type PollingResponse =
   | { status: 'IN_PROGRESS'; currentStep: AiStep; updatedAt: string }

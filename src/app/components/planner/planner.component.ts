@@ -24,13 +24,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError, tap, finalize } from 'rxjs/operators';
-
-
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { PreviousPlansDialogComponent } from './dialogs/previous-plans-dialog.component';
 import { PlanPreviewDialogComponent } from './dialogs/plan-preview-dialog.component';
-import { AiPromptDialogComponent } from './ai/ai-prompt-dialog.component';
 import { AiParametricDialogComponent } from './ai/ai-parametric-dialog.component';
 import { AiGenerationDialogComponent, AiGenerationDialogData } from './ai/ai-generation-dialog.component';
 import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialog.component';
@@ -94,6 +91,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
+  private activeDragCount = 0;
   /**
    * Purpose: cache ExerciseLibrary data for AI plan enrichment.
    * Input/Output: filled after library load; consumed during plan hydration.
@@ -694,6 +692,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.finishDragInteraction();
     this.stopPolling();
     this.planAssignmentService.clearPlanData();
     if (this.planAssignmentSub) {
@@ -1409,6 +1408,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   dropSession(event: CdkDragDrop<Session[]>) {
+    this.finishDragInteraction();
     const reordered = this.dragDropService.reorderSessions(event, this.sessions);
     if (!reordered) return;
     this.rebuildDropLists();
@@ -1417,6 +1417,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   drop(event: CdkDragDrop<any, any>, session?: Session) {
+    this.finishDragInteraction();
     if (!session) return;
     const result = this.dragDropService.handleDrop(
       event,
@@ -1565,9 +1566,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  onDragStarted(): void {
+    this.activeDragCount += 1;
+
+    if (this.activeDragCount === 1) {
+      this.cdr.detach();
+    }
+  }
+
+  onDragEnded(): void {
+    this.finishDragInteraction();
+  }
+
   // Drag auto-scroll near viewport edges
   onDragMoved(event: any) {
     this.dragDropService.handleDragMoved(event);
+  }
+
+  private finishDragInteraction(): void {
+    this.dragDropService.stopAutoScroll();
+
+    if (this.activeDragCount === 0) return;
+
+    this.activeDragCount = 0;
+    this.cdr.reattach();
+    this.cdr.detectChanges();
   }
 
 

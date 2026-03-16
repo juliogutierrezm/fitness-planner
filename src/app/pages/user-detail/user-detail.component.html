@@ -27,7 +27,7 @@
           [routerLink]="['/planner']"
           [queryParams]="{ userId: uid }"
         >
-          <mat-icon>add</mat-icon>
+          <mat-icon>library_books</mat-icon>
           Crear plan
         </button>
         <button *ngIf="!isGymAdmin" mat-fab extended color="primary" (click)="openTemplateDialog()">

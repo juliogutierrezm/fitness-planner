@@ -222,10 +222,22 @@
               </mat-checkbox>
             </div>
 
-            <div class="session-plan-body-grid">
-              <!-- Left column: Muscle groups -->
-              <div class="session-col">
-                <mat-form-field appearance="outline" class="compact-blueprint-field">
+            <div class="session-plan-body">
+              <!-- Target type selector -->
+              <div class="target-type-selector">
+                <span class="target-type-label">Objetivo de la sesión</span>
+                <mat-radio-group
+                  [formControl]="getSessionTargetTypeControl(i)"
+                  class="target-type-radio-group"
+                  (change)="onTargetTypeChange(i)">
+                  <mat-radio-button value="muscle">Grupos musculares</mat-radio-button>
+                  <mat-radio-button value="movement">Patrones de movimiento</mat-radio-button>
+                </mat-radio-group>
+              </div>
+
+              <!-- Muscle groups (conditional) -->
+              <div class="session-target-block" *ngIf="getSessionTargetTypeControl(i).value === 'muscle'">
+                <mat-form-field appearance="outline" class="session-target-field">
                   <mat-label>Grupos musculares</mat-label>
                   <mat-select [formControl]="getSessionMuscleGroupsControl(i)" multiple>
                     <mat-option *ngFor="let muscle of muscleGroupOptions" [value]="muscle.value">
@@ -247,9 +259,9 @@
                 </div>
               </div>
 
-              <!-- Right column: Movement patterns -->
-              <div class="session-col">
-                <mat-form-field appearance="outline" class="compact-blueprint-field">
+              <!-- Movement patterns (conditional) -->
+              <div class="session-target-block" *ngIf="getSessionTargetTypeControl(i).value === 'movement'">
+                <mat-form-field appearance="outline" class="session-target-field">
                   <mat-label>Patrones de movimiento</mat-label>
                   <mat-select [formControl]="getSessionMovementPatternsControl(i)" multiple>
                     <mat-option *ngFor="let pattern of movementPatternOptions" [value]="pattern.value">

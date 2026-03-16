@@ -304,15 +304,20 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   private readonly sessionTargetSelectionValidator = (control: AbstractControl): ValidationErrors | null => {
-    const selectedMuscleGroups = Array.isArray(control.get('selectedMuscleGroups')?.value)
-      ? control.get('selectedMuscleGroups')?.value as string[]
-      : [];
-    const selectedMovementPatterns = Array.isArray(control.get('selectedMovementPatterns')?.value)
-      ? control.get('selectedMovementPatterns')?.value as string[]
-      : [];
-    return selectedMuscleGroups.length + selectedMovementPatterns.length > 0
-      ? null
-      : { targetsRequired: true };
+    const targetType = control.get('targetType')?.value;
+    if (targetType === 'muscle') {
+      const selected = Array.isArray(control.get('selectedMuscleGroups')?.value)
+        ? control.get('selectedMuscleGroups')?.value as string[]
+        : [];
+      return selected.length > 0 ? null : { targetsRequired: true };
+    }
+    if (targetType === 'movement') {
+      const selected = Array.isArray(control.get('selectedMovementPatterns')?.value)
+        ? control.get('selectedMovementPatterns')?.value as string[]
+        : [];
+      return selected.length > 0 ? null : { targetsRequired: true };
+    }
+    return { targetsRequired: true };
   };
 
   // Purpose: rebuild session blueprint while preserving existing target selections and supersets.
@@ -321,7 +326,9 @@ export class AiParametricDialogComponent implements OnInit {
   // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    const previousCount = sessionBlueprintArray.length;
     const existingValues = sessionBlueprintArray.controls.map((control) => ({
+      targetType: control.get('targetType')?.value ?? 'muscle',
       selectedMuscleGroups: Array.isArray(control.get('selectedMuscleGroups')?.value)
         ? [...(control.get('selectedMuscleGroups')?.value as string[])]
         : [],
@@ -338,11 +345,13 @@ export class AiParametricDialogComponent implements OnInit {
     }
 
     for (let i = 0; i < totalSessions; i++) {
+      const existingTargetType = existingValues[i]?.targetType ?? 'muscle';
       const existingMuscleGroups = existingValues[i]?.selectedMuscleGroups ?? [];
       const existingMovementPatterns = existingValues[i]?.selectedMovementPatterns ?? [];
       const existingIncludeSupersets = existingValues[i]?.includeSupersets ?? true;
       sessionBlueprintArray.push(this.fb.group({
         name: [`Sesion ${i + 1}`, Validators.required],
+        targetType: [existingTargetType],
         selectedMuscleGroups: [existingMuscleGroups],
         selectedMovementPatterns: [existingMovementPatterns],
         includeSupersets: [existingIncludeSupersets]
@@ -352,6 +361,11 @@ export class AiParametricDialogComponent implements OnInit {
     // Clamp active session index when sessions are reduced
     if (this.activeSessionIndex() >= totalSessions) {
       this.activeSessionIndex.set(Math.max(0, totalSessions - 1));
+    }
+
+    // Auto-activate new session when sessions are added
+    if (totalSessions > previousCount) {
+      this.activeSessionIndex.set(totalSessions - 1);
     }
   }
 
@@ -377,6 +391,21 @@ export class AiParametricDialogComponent implements OnInit {
   getSessionSupersetsControl(index: number): FormControl {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
     return sessionBlueprintArray.at(index).get('includeSupersets') as FormControl;
+  }
+
+  getSessionTargetTypeControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('targetType') as FormControl;
+  }
+
+  onTargetTypeChange(sessionIndex: number): void {
+    const targetType = this.getSessionTargetTypeControl(sessionIndex).value;
+    if (targetType === 'muscle') {
+      this.getSessionMovementPatternsControl(sessionIndex).setValue([]);
+    } else if (targetType === 'movement') {
+      this.getSessionMuscleGroupsControl(sessionIndex).setValue([]);
+    }
+    this.cdr.markForCheck();
   }
 
   decrementTotalSessions(): void {
@@ -417,8 +446,14 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   hasSessionSelections(index: number): boolean {
-    return this.getSessionMuscleGroupsControl(index).value?.length > 0
-      || this.getSessionMovementPatternsControl(index).value?.length > 0;
+    const targetType = this.getSessionTargetTypeControl(index).value;
+    if (targetType === 'muscle') {
+      return this.getSessionMuscleGroupsControl(index).value?.length > 0;
+    }
+    if (targetType === 'movement') {
+      return this.getSessionMovementPatternsControl(index).value?.length > 0;
+    }
+    return false;
   }
 
   isFormValid(): boolean {
@@ -595,14 +630,20 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   private buildSessionBlueprint(formValue: any): { name: string; targets: string[]; includeSupersets: boolean }[] {
-    return formValue.sessionBlueprint.map((session: any) => ({
-      name: session.name,
-      targets: [
-        ...(Array.isArray(session.selectedMuscleGroups) ? session.selectedMuscleGroups : []),
-        ...(Array.isArray(session.selectedMovementPatterns) ? session.selectedMovementPatterns : [])
-      ],
-      includeSupersets: session.includeSupersets ?? true
-    }));
+    return formValue.sessionBlueprint.map((session: any) => {
+      const targetType = session.targetType ?? 'muscle';
+      let targets: string[];
+      if (targetType === 'muscle') {
+        targets = Array.isArray(session.selectedMuscleGroups) ? session.selectedMuscleGroups : [];
+      } else {
+        targets = Array.isArray(session.selectedMovementPatterns) ? session.selectedMovementPatterns : [];
+      }
+      return {
+        name: session.name,
+        targets,
+        includeSupersets: session.includeSupersets ?? true
+      };
+    });
   }
 
   // Get form field error messages

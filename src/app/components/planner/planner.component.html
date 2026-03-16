@@ -17,7 +17,7 @@
     <button mat-mini-fab (click)="goBack()" matTooltip="Volver a la lista de planes">
       <mat-icon>arrow_back</mat-icon>
     </button>
-            <button
+        <button
           *ngIf="!isTemplateMode"
           mat-fab extended
           color="primary"
@@ -76,8 +76,8 @@
           [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
           [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
         >
-          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'list_alt' : 'list_alt') }}</mat-icon>
-          {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
+          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'library_books' : 'library_books') }}</mat-icon>
+          {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Guardar plan') }}
         </button>
       </div>
     </mat-card-header>
@@ -333,7 +333,7 @@
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
           <div class="vs exercise-scroll-container">
           <div *ngFor="let ex of filteredExercises; trackBy: trackByExercise"
-                 cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
+                 cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
@@ -394,11 +394,28 @@
     <!-- Sesiones verticales (drag & drop de sesiones) -->
     <section
       class="sessions"
+      cdkDropList
+      [cdkDropListData]="sessions"
+      [cdkDropListConnectedTo]="[]"
+      (cdkDropListDropped)="dropSession($event)"
     >
       <mat-card
         *ngFor="let s of sessions; trackBy: trackBySession"
         class="session-card"
+        cdkDrag
+        [cdkDragData]="s"
+        (cdkDragStarted)="onDragStarted()"
+        (cdkDragEnded)="onDragEnded()"
       >
+        <ng-template cdkDragPreview>
+          <div class="session-drag-preview">
+            <mat-icon>drag_indicator</mat-icon>
+            <div class="drag-preview__content">
+              <span class="drag-preview__title">{{ s.name }}</span>
+              <span class="drag-preview__meta">{{ s.items.length }} ejercicios</span>
+            </div>
+          </div>
+        </ng-template>
         <div
           cdkDropList
           [id]="'session-' + s.id"
@@ -439,7 +456,18 @@
                   <div class="planner-grid planner-row exercise-row"
                        cdkDrag
                        [cdkDragData]="item"
+                       (cdkDragStarted)="onDragStarted()"
+                       (cdkDragEnded)="onDragEnded()"
                        (cdkDragMoved)="onDragMoved($event)">
+                    <ng-template cdkDragPreview>
+                      <div class="plan-item-drag-preview">
+                        <mat-icon>fitness_center</mat-icon>
+                        <div class="drag-preview__content">
+                          <span class="drag-preview__title">{{ getDisplayName(item) }}</span>
+                          <span class="drag-preview__meta">{{ item.sets || '-' }} x {{ item.reps || '-' }}</span>
+                        </div>
+                      </div>
+                    </ng-template>
                     <div class="planner-cell control-cell">
                       <mat-checkbox
                         [(ngModel)]="item.selected"
@@ -500,7 +528,16 @@
 
                 <ng-container *ngIf="item.isGroup">
                   <!-- Superserie block rendered inline -->
-                  <div class="superserie-wrapper" cdkDrag [cdkDragData]="item" (cdkDragMoved)="onDragMoved($event)">
+                  <div class="superserie-wrapper" cdkDrag [cdkDragData]="item" (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
+                    <ng-template cdkDragPreview>
+                      <div class="plan-item-drag-preview plan-item-drag-preview--group">
+                        <mat-icon>offline_bolt</mat-icon>
+                        <div class="drag-preview__content">
+                          <span class="drag-preview__title">Superserie</span>
+                          <span class="drag-preview__meta">{{ item.children?.length || 0 }} ejercicios</span>
+                        </div>
+                      </div>
+                    </ng-template>
                     <div class="planner-grid planner-row superserie-header">
                       <div class="planner-cell control-cell trash-icon">
                         <button mat-mini-fab color="warn" (click)="ungroupGroup(s, i)" matTooltip="Desagrupar superserie">

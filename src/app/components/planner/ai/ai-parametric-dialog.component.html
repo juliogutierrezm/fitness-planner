@@ -262,7 +262,7 @@
               <!-- Movement patterns (conditional) -->
               <div class="session-target-block" *ngIf="getSessionTargetTypeControl(i).value === 'movement'">
                 <mat-form-field appearance="outline" class="session-target-field">
-                  <mat-label>Patrones de movimiento</mat-label>
+                  <mat-label>Tipo de ejercicio</mat-label>
                   <mat-select [formControl]="getSessionMovementPatternsControl(i)" multiple>
                     <mat-option *ngFor="let pattern of movementPatternOptions" [value]="pattern.value">
                       {{ pattern.label }}

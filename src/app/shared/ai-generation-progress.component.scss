@@ -48,12 +48,15 @@
 }
 
 .ai-progress-header__title {
-  color: var(--ai-ink);
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-size: clamp(0.98rem, 1vw + 0.7rem, 1.18rem);
   font-weight: 700;
   margin: 0;
-  max-width: 26ch;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .status-chip {

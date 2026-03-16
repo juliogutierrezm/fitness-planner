@@ -231,7 +231,7 @@
                   class="target-type-radio-group"
                   (change)="onTargetTypeChange(i)">
                   <mat-radio-button value="muscle">Grupos musculares</mat-radio-button>
-                  <mat-radio-button value="movement">Patrones de movimiento</mat-radio-button>
+                  <mat-radio-button value="movement">Tipos de ejercicio</mat-radio-button>
                 </mat-radio-group>
               </div>
 
@@ -278,7 +278,7 @@
                     </mat-chip>
                   </mat-chip-set>
                   <p class="session-plan-empty" *ngIf="!(getSessionMovementPatternsControl(i).value?.length)">
-                    Selecciona patrones de movimiento
+                    Selecciona tipos de ejercicio
                   </p>
                 </div>
               </div>
@@ -325,8 +325,7 @@
         [disabled]="!isFormValid()"
         (click)="confirm()"
         class="generate-btn">
-        <mat-icon *ngIf="!isGenerating">auto_awesome</mat-icon>
-        <mat-spinner *ngIf="isGenerating" diameter="20" class="spinner"></mat-spinner>
+        <mat-icon>auto_awesome</mat-icon>
         {{ isGenerating ? 'Generando...' : 'Generar Plan' }}
       </button>
     </div>

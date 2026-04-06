@@ -33,6 +33,13 @@ export interface Exercise {
   s3_key?: string;
 }
 
+export interface VideoSource {
+  type: 'S3' | 'YOUTUBE';
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  url?: string;
+}
+
 export interface PlanItem extends Partial<Exercise> {
   id: string;
   name: string;

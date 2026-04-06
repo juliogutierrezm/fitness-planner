@@ -1,17 +1,21 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Inject } from '@angular/core';
+import { interval, Subscription } from 'rxjs';
+import { switchMap, takeWhile, finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../../../exercise-api.service';
-import { Exercise } from '../../../../shared/models';
+import { Exercise, VideoSource } from '../../../../shared/models';
+import { sanitizeName } from '../../../../shared/shared-utils';
+import { AuthService } from '../../../../services/auth.service';
 
 // Allowed fields for update (from Lambda)
 const ALLOWED_FIELDS = [
@@ -38,6 +42,7 @@ const ALLOWED_FIELDS = [
     MatDialogModule,
     MatInputModule,
     MatFormFieldModule,
+    MatSelectModule,
     MatTabsModule,
     ReactiveFormsModule,
     MatProgressBarModule,
@@ -47,23 +52,36 @@ const ALLOWED_FIELDS = [
   styleUrl: './exercise-edit-dialog.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExerciseEditDialogComponent {
+export class ExerciseEditDialogComponent implements OnDestroy {
   @Output() exerciseSaved = new EventEmitter<any>();
   @Output() dialogClosed = new EventEmitter<void>();
 
   editForm: FormGroup;
   isCreationMode = false;
-  isUploading = false;
-  uploadedVideoUrl = '';
   uploadError = '';
+
+  // Video state management
+  videoState = {
+    uploading: false,
+    processing: false,
+    ready: false,
+    previewUrl: null as string | null,
+    thumbnailUrl: null as string | null,
+    s3Key: null as string | null
+  };
+
+  private pollingSubscription: Subscription | null = null;
+  private readonly POLLING_INTERVAL_MS = 3000;
+  private currentExerciseId: string | null = null;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: Exercise | null,
     private dialogRef: MatDialogRef<ExerciseEditDialogComponent>,
     private fb: FormBuilder,
     private api: ExerciseApiService,
-    private http: HttpClient,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {
     this.isCreationMode = !data;
 
@@ -94,7 +112,73 @@ export class ExerciseEditDialogComponent {
       functional: [data?.functional || ''],
       aliases: [Array.isArray(data?.aliases) ? data.aliases.join(', ') : data?.aliases || ''],
       preview_url: [data?.preview_url || ''],
-      s3_key: [data?.s3_key || '']
+      s3_key: [data?.s3_key || ''],
+
+      // Video type selection (creation only)
+      videoType: ['upload'],
+      videoUrl: ['']
+    });
+  }
+
+  get isVideoValid(): boolean {
+    if (!this.isCreationMode) return true;
+    const videoType = this.editForm.get('videoType')?.value;
+    if (videoType === 'upload') {
+      // Block if uploading, processing, or not ready
+      return this.videoState.ready && !!this.videoState.previewUrl;
+    }
+    if (videoType === 'url') {
+      return !!this.editForm.get('videoUrl')?.value?.trim();
+    }
+    return true;
+  }
+
+  get isUploading(): boolean {
+    return this.videoState.uploading;
+  }
+
+  get isProcessing(): boolean {
+    return this.videoState.processing;
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
+  private stopPolling(): void {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+  }
+
+  private startVideoStatusPolling(s3Key: string): void {
+    this.stopPolling();
+    
+    this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
+      switchMap(() => this.api.getVideoStatus(s3Key)),
+      takeWhile(status => !status.ready, true),
+      finalize(() => {
+        console.log('📹 Polling stopped');
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (status) => {
+        if (status.ready) {
+          this.videoState.processing = false;
+          this.videoState.ready = true;
+          this.videoState.previewUrl = status.previewUrl || null;
+          this.videoState.thumbnailUrl = status.thumbnailUrl || null;
+          console.log('✅ Video ready:', status);
+          this.cdr.markForCheck();
+        }
+      },
+      error: (err) => {
+        console.error('❌ Polling error:', err);
+        this.videoState.processing = false;
+        this.uploadError = 'Error verificando estado del video';
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -110,54 +194,79 @@ export class ExerciseEditDialogComponent {
       return;
     }
 
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    // Validate file size (50MB limit for videos)
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-      this.uploadError = 'El archivo no puede superar los 5MB';
+      this.uploadError = 'El archivo no puede superar los 50MB';
       return;
     }
 
     this.uploadError = '';
-    this.isUploading = true;
+    this.videoState = {
+      uploading: true,
+      processing: false,
+      ready: false,
+      previewUrl: null,
+      thumbnailUrl: null,
+      s3Key: null
+    };
+    this.cdr.markForCheck();
+
+    const exerciseId = `${sanitizeName(this.editForm.get('name_es')?.value || this.editForm.get('name')?.value)}_${Date.now()}`;
+    this.currentExerciseId = exerciseId;
+    const fileName = `${exerciseId}.mp4`;
 
     // Get presigned URL
-    this.api.getUploadUrl(file.name, file.type).subscribe({
-      next: (response: any) => {
-        if (response.uploadUrl) {
-          // Upload to S3
-          this.http.put(response.uploadUrl, file, {
-            headers: {
-              'Content-Type': file.type
-            },
-            reportProgress: true,
-            observe: 'events'
-          }).subscribe({
-            next: (event) => {
-              if (event.type === 4) { // HttpEventType.Response
-                // Upload complete
-                this.uploadedVideoUrl = response.preview_url;
-                this.editForm.patchValue({
-                  preview_url: response.preview_url,
-                  s3_key: response.s3_key
-                });
-                this.isUploading = false;
-              }
-            },
-            error: (err) => {
-              console.error('❌ Error subiendo video:', err);
-              this.uploadError = 'Error al subir el video';
-              this.isUploading = false;
+    this.api.getUploadUrl(fileName, file.type).subscribe({
+      next: async (response: any) => {
+        if (response?.uploadUrl) {
+          try {
+            // CRITICAL FIX: Upload to S3 using fetch WITHOUT headers
+            // Presigned URLs fail with 403 if extra headers are sent
+            const uploadResponse = await fetch(response.uploadUrl, {
+              method: 'PUT',
+              body: file
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error(`Upload failed: ${uploadResponse.status}`);
             }
-          });
+
+            // Upload complete - start processing phase
+            console.log('✅ Video uploaded to S3, starting processing...');
+            this.videoState.uploading = false;
+            this.videoState.processing = true;
+            this.videoState.s3Key = response.s3_key;
+
+            // If backend returns preview URLs immediately, use them
+            if (response.preview_url) {
+              this.videoState.previewUrl = response.preview_url;
+              this.videoState.thumbnailUrl = response.thumbnail_url || null;
+              this.videoState.processing = false;
+              this.videoState.ready = true;
+            } else {
+              // Start polling for video processing completion
+              this.startVideoStatusPolling(response.s3_key);
+            }
+
+            this.cdr.markForCheck();
+          } catch (err) {
+            console.error('❌ Error subiendo video:', err);
+            this.uploadError = 'Error al subir el video';
+            this.videoState.uploading = false;
+            this.cdr.markForCheck();
+          }
         } else {
           this.uploadError = 'Error obteniendo URL de subida';
-          this.isUploading = false;
+          this.videoState.uploading = false;
+          this.cdr.markForCheck();
         }
       },
       error: (err) => {
         console.error('❌ Error obteniendo URL de subida:', err);
         this.uploadError = 'Error obteniendo URL de subida';
-        this.isUploading = false;
+        this.videoState.uploading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -167,27 +276,62 @@ export class ExerciseEditDialogComponent {
       const formValue = this.editForm.value;
 
       if (this.isCreationMode) {
-        // Convert form arrays back to arrays
-        const exerciseData: Exercise = {
-          ...formValue,
+        const exerciseId = this.currentExerciseId || `${sanitizeName(this.editForm.get('name_es')?.value || this.editForm.get('name')?.value)}_${Date.now()}`;
+        this.currentExerciseId = exerciseId;
+
+        // Build video object based on videoType
+        let video: VideoSource | undefined;
+        const videoType = this.editForm.get('videoType')?.value;
+
+        if (videoType === 'upload' && this.videoState.ready && this.videoState.previewUrl) {
+          video = {
+            type: 'S3',
+            previewUrl: this.videoState.previewUrl,
+            thumbnailUrl: this.videoState.thumbnailUrl || undefined
+          };
+        } else if (videoType === 'url') {
+          const url = this.editForm.get('videoUrl')?.value?.trim();
+          if (url) {
+            video = {
+              type: 'YOUTUBE',
+              url
+            };
+          }
+        }
+
+        const exerciseData = {
+          id: this.currentExerciseId,
+          name_en: formValue.name || formValue.name_es,
+          name_es: formValue.name_es,
+          equipment_type: formValue.equipment_type,
+          muscle_group: formValue.muscle_group,
+          category: formValue.category,
+          description_en: formValue.description_en,
+          description_es: formValue.description_es,
+          exercise_type: formValue.exercise_type,
+          difficulty: formValue.difficulty,
+          movement_pattern: formValue.movement_pattern,
+          training_goal: formValue.training_goal,
+          functional: !!formValue.functional,
           tips: formValue.tips ? formValue.tips.split('\n').filter((t: string) => t.trim()) : [],
           common_mistakes: formValue.common_mistakes ? formValue.common_mistakes.split('\n').filter((m: string) => m.trim()) : [],
           aliases: formValue.aliases ? formValue.aliases.split(',').map((a: string) => a.trim()).filter((a: string) => a) : [],
-          secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : []
+          secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : [],
+          video
         };
 
         this.api.createExercise(exerciseData).subscribe({
           next: (response) => {
             if (response) {
-              this.exerciseSaved.emit(exerciseData);
-              this.dialogRef.close(exerciseData);
+              this.exerciseSaved.emit(response);
+              this.dialogRef.close(response);
             } else {
-              this.snackBar.open('❌ Error al crear el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+              this.snackBar.open('❌ Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
             }
           },
           error: (err) => {
             console.error('❌ Error creando ejercicio:', err);
-            this.snackBar.open('❌ Error al crear el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+            this.snackBar.open('❌ Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
           }
         });
       } else {

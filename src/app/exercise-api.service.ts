@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { catchError, tap, switchMap } from 'rxjs/operators';
-import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep } from './shared/models';
+import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep, VideoSource } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
 import { UserApiService } from './user-api.service';
@@ -113,14 +113,38 @@ export class ExerciseApiService {
   }
 
   // Lambda-based exercise creation
-  createExercise(exerciseData: any): Observable<any> {
-    // Generate unique ID for new exercise
-    const generatedId = `${sanitizeName(exerciseData.name_es)}_${Date.now()}`;
-    console.info('Generated Exercise ID:', generatedId);
+  createExercise(exerciseData: {
+    id?: string;
+    name_en: string;
+    name_es?: string;
+    equipment_type: string;
+    muscle_group: string;
+    category: string;
+    description_en?: string;
+    description_es?: string;
+    exercise_type?: string;
+    difficulty?: string;
+    movement_pattern?: string;
+    training_goal?: string;
+    functional?: boolean;
+    aliases?: string[];
+    secondary_muscles?: string[];
+    tips?: string[];
+    common_mistakes?: string[];
+    video?: VideoSource;
+  }): Observable<any> {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      console.error('❌ Usuario no autenticado');
+      return of(null);
+    }
 
-    // Transform exercise data to match Lambda expectations
+    // Generate ID from name_en
+    const id = exerciseData.id || `${sanitizeName(exerciseData.name_en)}_${Date.now()}`;
+
+    // Build payload - NEVER use legacy fields (preview_url, s3_key, thumbnail)
     const payload: any = {
-      id: generatedId,
+      id,
       name_en: exerciseData.name_en,
       name_es: exerciseData.name_es || '',
       equipment_type: exerciseData.equipment_type,
@@ -132,30 +156,33 @@ export class ExerciseApiService {
       difficulty: exerciseData.difficulty || '',
       movement_pattern: exerciseData.movement_pattern || '',
       training_goal: exerciseData.training_goal || '',
-      functional: exerciseData.functional || false,
-      preview_url: exerciseData.preview_url || '',
-      s3_key: exerciseData.s3_key || '',
-      thumbnail: exerciseData.thumbnail || ''
+      functional: exerciseData.functional || false
     };
 
     // Handle arrays
-    if (exerciseData.aliases && Array.isArray(exerciseData.aliases)) {
-      payload.aliases = exerciseData.aliases;
-    }
-    if (exerciseData.secondary_muscles && Array.isArray(exerciseData.secondary_muscles)) {
-      payload.secondary_muscles = exerciseData.secondary_muscles;
-    }
-    if (exerciseData.tips && Array.isArray(exerciseData.tips)) {
-      payload.tips = exerciseData.tips;
-    }
-    if (exerciseData.common_mistakes && Array.isArray(exerciseData.common_mistakes)) {
-      payload.common_mistakes = exerciseData.common_mistakes;
+    if (exerciseData.aliases?.length) payload.aliases = exerciseData.aliases;
+    if (exerciseData.secondary_muscles?.length) payload.secondary_muscles = exerciseData.secondary_muscles;
+    if (exerciseData.tips?.length) payload.tips = exerciseData.tips;
+    if (exerciseData.common_mistakes?.length) payload.common_mistakes = exerciseData.common_mistakes;
+
+    // Owner resolution - NEVER send both, NEVER send none
+    if (user.companyId && user.companyId !== 'INDEPENDENT') {
+      payload.companyId = user.companyId;
+    } else {
+      payload.trainerId = user.id;
     }
 
+    // Video - only if provided
+    if (exerciseData.video) {
+      payload.video = exerciseData.video;
+    }
+
+    console.log('📤 Creating exercise:', payload);
+
     return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
-      tap(() => console.log('✅ Ejercicio creado via Lambda:', generatedId)),
+      tap(() => console.log('✅ Ejercicio creado:', id)),
       catchError(err => {
-        console.error('❌ Error al crear ejercicio via Lambda:', err);
+        console.error('❌ Error al crear ejercicio:', err);
         return of(null);
       })
     );
@@ -174,6 +201,20 @@ export class ExerciseApiService {
       catchError(err => {
         console.error('❌ Error al obtener URL de subida:', err);
         return of(null);
+      })
+    );
+  }
+
+  // Check video processing status
+  getVideoStatus(s3Key: string): Observable<{ ready: boolean; previewUrl?: string; thumbnailUrl?: string }> {
+    const params = encodeURIComponent(s3Key);
+    return this.http.get<{ ready: boolean; previewUrl?: string; thumbnailUrl?: string }>(
+      `${this.apiBase}/video-status?s3_key=${params}`
+    ).pipe(
+      tap(res => console.log('🎬 Video status:', res)),
+      catchError(err => {
+        console.error('❌ Error checking video status:', err);
+        return of({ ready: false });
       })
     );
   }

@@ -55,6 +55,7 @@ import {
   parsePlanSessions,
   sortPlansByCreatedAt
 } from '../../shared/shared-utils';
+import { getThumbnailSource } from '../../shared/video-utils';
 
 @Component({
   selector: 'app-planner',
@@ -876,17 +877,15 @@ export class PlannerComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.api.getExerciseLibrary().pipe(
+    this.api.getAllExercises().pipe(
       finalize(() => {
         this.exercisesLoaded = true;
         this.updateInitialLoading();
         this.cdr.markForCheck();
       })
     ).subscribe({
-      next: (libraryResponse) => {
-        // Handle DynamoDB format if needed and flatten data
-        const rawItems = libraryResponse.items;
-        this.exercises = this.transformExercises(rawItems);
+      next: (exercises) => {
+        this.exercises = exercises;
         this.exerciseLibraryMap = new Map(this.exercises.map(ex => [ex.id, ex]));
         const enrichedSessions = enrichPlanSessionsFromLibrary(this.sessions, this.exerciseLibraryMap);
         if (enrichedSessions !== this.sessions) {
@@ -1177,49 +1176,6 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.stateService.persistUiState(this.sessions, this.getUiKey());
   }
 
-  private transformExercises(rawItems: any[]): Exercise[] {
-    return rawItems.map(item => this.flattenDynamoItem(item));
-  }
-
-  private flattenDynamoItem(raw: any): Exercise {
-    // Flatten DynamoDB format (e.g., {name_es: {S: "value"}} => {name_es: "value"})
-    const flattened: any = {};
-
-    for (const [key, value] of Object.entries(raw)) {
-      if (value && typeof value === 'object') {
-        if ('S' in value) {
-          // String value
-          flattened[key] = (value as any).S || '';
-        } else if ('N' in value) {
-          // Number value
-          flattened[key] = Number((value as any).N) || 0;
-        } else if ('BOOL' in value) {
-          // Boolean value
-          flattened[key] = (value as any).BOOL;
-        } else if ('L' in value) {
-          // List/Array value
-          const list = (value as any).L || [];
-          flattened[key] = list.map((item: any) => {
-            if (item.S !== undefined) return item.S;
-            if (item.N !== undefined) return Number(item.N);
-            if (item.BOOL !== undefined) return item.BOOL;
-            return item;
-          });
-        } else if ('SS' in value) {
-          // String Set
-          flattened[key] = (value as any).SS || [];
-        } else {
-          // Other types, keep as is
-          flattened[key] = value;
-        }
-      } else {
-        flattened[key] = value;
-      }
-    }
-
-    return flattened as Exercise;
-  }
-
   private getUiKey() {
     return `fp_planner_ui_${this.authService.getCurrentUserId() || 'anon'}`;
   }
@@ -1370,8 +1326,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   getPreviewUrl(exercise: Exercise | PlanItem): string | null {
-    const ex = exercise as any;
-    return ex.thumbnail || ex.preview_url || null;
+    return getThumbnailSource(exercise);
   }
 
   /**

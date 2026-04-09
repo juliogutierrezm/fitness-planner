@@ -9,13 +9,19 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Inject } from '@angular/core';
-import { interval, Subscription } from 'rxjs';
+import { Observable, interval, Subscription } from 'rxjs';
 import { switchMap, takeWhile, finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../../../exercise-api.service';
-import { Exercise, VideoSource } from '../../../../shared/models';
+import { Exercise, FilterOptions, VideoSource } from '../../../../shared/models';
 import { sanitizeName } from '../../../../shared/shared-utils';
-import { AuthService } from '../../../../services/auth.service';
+import { buildYoutubeEmbedUrl, getS3PreviewUrl, getThumbnailSource, getVideoSource, getYoutubeUrl } from '../../../../shared/video-utils';
+
+export interface ExerciseEditDialogData {
+  exercise: Exercise | null;
+  filterOptions: FilterOptions;
+}
 
 // Allowed fields for update (from Lambda)
 const ALLOWED_FIELDS = [
@@ -59,8 +65,20 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   editForm: FormGroup;
   isCreationMode = false;
   uploadError = '';
+  saving = false;
+  private exerciseId: string | null = null;
 
-  // Video state management
+  // Dropdown options from catalog
+  categoryOptions: string[];
+  muscleGroupOptions: string[];
+  equipmentTypeOptions: string[];
+  difficultyOptions: string[];
+
+  // Video: file held in memory until save
+  selectedVideoFile: File | null = null;
+  selectedVideoFileName: string | null = null;
+
+  // Video state (only active during save flow)
   videoState = {
     uploading: false,
     processing: false,
@@ -70,49 +88,53 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     s3Key: null as string | null
   };
 
+  private exercise: Exercise | null;
   private pollingSubscription: Subscription | null = null;
   private readonly POLLING_INTERVAL_MS = 3000;
-  private currentExerciseId: string | null = null;
 
   constructor(
-    @Inject(MAT_DIALOG_DATA) public data: Exercise | null,
+    @Inject(MAT_DIALOG_DATA) public data: ExerciseEditDialogData,
     private dialogRef: MatDialogRef<ExerciseEditDialogComponent>,
     private fb: FormBuilder,
     private api: ExerciseApiService,
     private snackBar: MatSnackBar,
-    private authService: AuthService,
+    private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef
   ) {
-    this.isCreationMode = !data;
+    this.exercise = data.exercise;
+    this.isCreationMode = !this.exercise;
 
+    // Populate dropdown options from catalog
+    this.categoryOptions = data.filterOptions.categoryOptions;
+    this.muscleGroupOptions = data.filterOptions.muscleGroupOptions;
+    this.equipmentTypeOptions = data.filterOptions.equipmentTypeOptions;
+    this.difficultyOptions = data.filterOptions.difficultyOptions;
+
+    const ex = this.exercise;
     this.editForm = this.fb.group({
       // General Tab
-      name: [data?.name || ''],
-      name_es: [data?.name_es || data?.name || '', Validators.required],
-      name_en: [data?.name_en || ''],
-      category: [data?.category || '', Validators.required],
-      exercise_type: [data?.exercise_type || data?.category || ''],  // Optional
-      difficulty: [data?.difficulty || ''],
-      training_goal: [data?.training_goal || ''],
-      description_es: [data?.description_es || ''],
-      description_en: [data?.description_en || ''],
+      name_es: [ex?.name_es || ex?.name || '', Validators.required],
+      name_en: [ex?.name_en || ''],
+      category: [ex?.category || '', Validators.required],
+      exercise_type: [ex?.exercise_type || ''],
+      difficulty: [ex?.difficulty || '', Validators.required],
+      training_goal: [ex?.training_goal || ''],
+      description_es: [ex?.description_es || ''],
+      description_en: [ex?.description_en || ''],
 
       // Technique Tab
-      tips: [Array.isArray(data?.tips) ? data.tips.join('\n') : data?.tips || ''],
-      common_mistakes: [Array.isArray(data?.common_mistakes) ? data.common_mistakes.join('\n') : data?.common_mistakes || ''],
-      plane_of_motion: [data?.plane_of_motion || ''],
-      movement_pattern: [data?.movement_pattern || ''],
-      secondary_muscles: [Array.isArray(data?.secondary_muscles) ? data.secondary_muscles.join(', ') : data?.secondary_muscles || ''],
+      tips: [Array.isArray(ex?.tips) ? ex.tips.join('\n') : ex?.tips || ''],
+      common_mistakes: [Array.isArray(ex?.common_mistakes) ? ex.common_mistakes.join('\n') : ex?.common_mistakes || ''],
+      plane_of_motion: [ex?.plane_of_motion || ''],
+      movement_pattern: [ex?.movement_pattern || ''],
+      secondary_muscles: [Array.isArray(ex?.secondary_muscles) ? ex.secondary_muscles.join(', ') : ex?.secondary_muscles || ''],
 
       // Equipment Tab
-      equipment: [data?.equipment || ''],
-      equipment_type: [data?.equipment_type || data?.equipment || '', Validators.required],
-      equipment_specific: [data?.equipment_specific || ''],
-      muscle_group: [data?.muscle_group || data?.muscle || '', Validators.required],
-      functional: [data?.functional || ''],
-      aliases: [Array.isArray(data?.aliases) ? data.aliases.join(', ') : data?.aliases || ''],
-      preview_url: [data?.preview_url || ''],
-      s3_key: [data?.s3_key || ''],
+      equipment_type: [ex?.equipment_type || '', Validators.required],
+      equipment_specific: [ex?.equipment_specific || ''],
+      muscle_group: [ex?.muscle_group || '', Validators.required],
+      functional: [ex?.functional || false],
+      aliases: [Array.isArray(ex?.aliases) ? ex.aliases.join(', ') : ex?.aliases || ''],
 
       // Video type selection (creation only)
       videoType: ['upload'],
@@ -124,21 +146,12 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     if (!this.isCreationMode) return true;
     const videoType = this.editForm.get('videoType')?.value;
     if (videoType === 'upload') {
-      // Block if uploading, processing, or not ready
-      return this.videoState.ready && !!this.videoState.previewUrl;
+      return !!this.selectedVideoFile;
     }
     if (videoType === 'url') {
       return !!this.editForm.get('videoUrl')?.value?.trim();
     }
     return true;
-  }
-
-  get isUploading(): boolean {
-    return this.videoState.uploading;
-  }
-
-  get isProcessing(): boolean {
-    return this.videoState.processing;
   }
 
   ngOnDestroy(): void {
@@ -152,41 +165,15 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     }
   }
 
-  private startVideoStatusPolling(s3Key: string): void {
-    this.stopPolling();
-    
-    this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
-      switchMap(() => this.api.getVideoStatus(s3Key)),
-      takeWhile(status => !status.ready, true),
-      finalize(() => {
-        console.log('📹 Polling stopped');
-        this.cdr.markForCheck();
-      })
-    ).subscribe({
-      next: (status) => {
-        if (status.ready) {
-          this.videoState.processing = false;
-          this.videoState.ready = true;
-          this.videoState.previewUrl = status.previewUrl || null;
-          this.videoState.thumbnailUrl = status.thumbnailUrl || null;
-          console.log('✅ Video ready:', status);
-          this.cdr.markForCheck();
-        }
-      },
-      error: (err) => {
-        console.error('❌ Polling error:', err);
-        this.videoState.processing = false;
-        this.uploadError = 'Error verificando estado del video';
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
 
     const file = input.files[0];
+    console.log('📦 FILE SELECTED:', file);
+    console.log('🆔 GENERATED exerciseId:', this.exerciseId);
+    console.log('📛 CURRENT name_es:', this.editForm.value.name_es);
+    console.log('📛 CURRENT name_en:', this.editForm.value.name_en);
 
     // Validate file type
     if (!file.type.startsWith('video/')) {
@@ -194,173 +181,550 @@ export class ExerciseEditDialogComponent implements OnDestroy {
       return;
     }
 
-    // Validate file size (50MB limit for videos)
+    // Validate file size (50MB limit)
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       this.uploadError = 'El archivo no puede superar los 50MB';
       return;
     }
 
+    // Store file in memory — no upload until save
     this.uploadError = '';
-    this.videoState = {
-      uploading: true,
-      processing: false,
-      ready: false,
-      previewUrl: null,
-      thumbnailUrl: null,
-      s3Key: null
-    };
+    this.selectedVideoFile = file;
+    this.selectedVideoFileName = file.name;
+    this.cdr.markForCheck();
+  }
+
+  onSave(): void {
+    if (!this.editForm.valid || this.saving) return;
+
+    const formValue = this.editForm.value;
+    this.exerciseId = this.isCreationMode
+      ? `${sanitizeName((formValue.name_es?.trim() || formValue.name_en?.trim() || ''))}_${Date.now()}`
+      : this.exercise?.id || null;
+    console.log('🆔 GENERATED exerciseId:', this.exerciseId);
+    console.log('📛 CURRENT name_es:', this.editForm.value.name_es);
+    console.log('📛 CURRENT name_en:', this.editForm.value.name_en);
+
+    if (this.isCreationMode) {
+      this.saveNewExercise(formValue);
+    } else {
+      this.saveExistingExercise(formValue);
+    }
+  }
+
+  private saveNewExercise(formValue: any): void {
+    // Validate name before proceeding
+    const nameEs = formValue.name_es?.trim();
+    const nameEn = formValue.name_en?.trim();
+    if (!nameEs && !nameEn) {
+      this.snackBar.open('El nombre del ejercicio es obligatorio.', 'Cerrar', { duration: 4000 });
+      return;
+    }
+
+    // Generate exerciseId at save time only
+    const exerciseId = this.exerciseId || `${sanitizeName(nameEs || nameEn)}_${Date.now()}`;
+    this.exerciseId = exerciseId;
+    const videoType = this.editForm.get('videoType')?.value;
+
+    if (videoType === 'upload' && this.selectedVideoFile) {
+      this.uploadVideoAndCreate(exerciseId, formValue);
+    } else if (videoType === 'url') {
+      const url = this.editForm.get('videoUrl')?.value?.trim();
+      const video: VideoSource | undefined = url
+        ? { type: 'YOUTUBE', youtubeUrl: url, url }
+        : undefined;
+      this.createExercise(exerciseId, formValue, video);
+    } else {
+      this.createExercise(exerciseId, formValue, undefined);
+    }
+  }
+
+  private uploadVideoAndCreate(exerciseId: string, formValue: any): void {
+    this.saving = true;
+    this.videoState.uploading = true;
     this.cdr.markForCheck();
 
-    const exerciseId = `${sanitizeName(this.editForm.get('name_es')?.value || this.editForm.get('name')?.value)}_${Date.now()}`;
-    this.currentExerciseId = exerciseId;
     const fileName = `${exerciseId}.mp4`;
+    const file = this.selectedVideoFile!;
+    console.log('⬆️ Upload request:', {
+      fileName,
+      exerciseId: this.exerciseId
+    });
 
-    // Get presigned URL
     this.api.getUploadUrl(fileName, file.type).subscribe({
       next: async (response: any) => {
-        if (response?.uploadUrl) {
-          try {
-            // CRITICAL FIX: Upload to S3 using fetch WITHOUT headers
-            // Presigned URLs fail with 403 if extra headers are sent
-            const uploadResponse = await fetch(response.uploadUrl, {
-              method: 'PUT',
-              body: file
-            });
-
-            if (!uploadResponse.ok) {
-              throw new Error(`Upload failed: ${uploadResponse.status}`);
-            }
-
-            // Upload complete - start processing phase
-            console.log('✅ Video uploaded to S3, starting processing...');
-            this.videoState.uploading = false;
-            this.videoState.processing = true;
-            this.videoState.s3Key = response.s3_key;
-
-            // If backend returns preview URLs immediately, use them
-            if (response.preview_url) {
-              this.videoState.previewUrl = response.preview_url;
-              this.videoState.thumbnailUrl = response.thumbnail_url || null;
-              this.videoState.processing = false;
-              this.videoState.ready = true;
-            } else {
-              // Start polling for video processing completion
-              this.startVideoStatusPolling(response.s3_key);
-            }
-
-            this.cdr.markForCheck();
-          } catch (err) {
-            console.error('❌ Error subiendo video:', err);
-            this.uploadError = 'Error al subir el video';
-            this.videoState.uploading = false;
-            this.cdr.markForCheck();
-          }
-        } else {
+        if (!response?.uploadUrl) {
           this.uploadError = 'Error obteniendo URL de subida';
+          this.saving = false;
+          this.videoState.uploading = false;
+          this.cdr.markForCheck();
+          return;
+        }
+
+        try {
+          const uploadResponse = await fetch(response.uploadUrl, {
+            method: 'PUT',
+            body: file
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(`Upload failed: ${uploadResponse.status}`);
+          }
+
+          this.videoState.uploading = false;
+          this.videoState.s3Key = response.s3_key;
+          console.log('✅ Upload completed:', {
+            previewUrl: response.preview_url || this.videoState.previewUrl
+          });
+
+          if (response.preview_url) {
+            // Backend returned URLs immediately
+            const video = this.buildS3VideoPayload(response.preview_url, response.thumbnail_url);
+            this.createExercise(exerciseId, formValue, video);
+          } else {
+            // Poll for processing completion, then create
+            this.videoState.processing = true;
+            this.cdr.markForCheck();
+            this.pollAndCreate(response.s3_key, exerciseId, formValue);
+          }
+        } catch (err) {
+          console.error('Error subiendo video:', err);
+          this.uploadError = 'Error al subir el video';
+          this.saving = false;
           this.videoState.uploading = false;
           this.cdr.markForCheck();
         }
       },
       error: (err) => {
-        console.error('❌ Error obteniendo URL de subida:', err);
+        console.error('Error obteniendo URL de subida:', err);
         this.uploadError = 'Error obteniendo URL de subida';
+        this.saving = false;
         this.videoState.uploading = false;
         this.cdr.markForCheck();
       }
     });
   }
 
-  onSave(): void {
-    if (this.editForm.valid) {
-      const formValue = this.editForm.value;
+  private pollAndCreate(s3Key: string, exerciseId: string, formValue: any): void {
+    this.stopPolling();
 
-      if (this.isCreationMode) {
-        const exerciseId = this.currentExerciseId || `${sanitizeName(this.editForm.get('name_es')?.value || this.editForm.get('name')?.value)}_${Date.now()}`;
-        this.currentExerciseId = exerciseId;
+    this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
+      switchMap(() => this.api.getVideoStatus(s3Key)),
+      takeWhile(status => !status.ready, true),
+      finalize(() => this.cdr.markForCheck())
+    ).subscribe({
+      next: (status) => {
+        if (status.ready) {
+          this.videoState.processing = false;
+          this.videoState.ready = true;
+          this.videoState.previewUrl = status.previewUrl || null;
+          this.videoState.thumbnailUrl = status.thumbnailUrl || null;
+          console.log('✅ Upload completed:', {
+            previewUrl: this.videoState.previewUrl
+          });
+          this.cdr.markForCheck();
 
-        // Build video object based on videoType
-        let video: VideoSource | undefined;
-        const videoType = this.editForm.get('videoType')?.value;
+          const video = this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl);
+          this.createExercise(exerciseId, formValue, video);
+        }
+      },
+      error: (err) => {
+        console.error('Polling error:', err);
+        this.videoState.processing = false;
+        this.uploadError = 'Error verificando estado del video';
+        this.saving = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
 
-        if (videoType === 'upload' && this.videoState.ready && this.videoState.previewUrl) {
-          video = {
-            type: 'S3',
-            previewUrl: this.videoState.previewUrl,
-            thumbnailUrl: this.videoState.thumbnailUrl || undefined
-          };
-        } else if (videoType === 'url') {
-          const url = this.editForm.get('videoUrl')?.value?.trim();
-          if (url) {
-            video = {
-              type: 'YOUTUBE',
-              url
-            };
-          }
+  private createExercise(exerciseId: string, formValue: any, video: VideoSource | undefined): void {
+    this.saving = true;
+    this.cdr.markForCheck();
+    this.exerciseId = exerciseId;
+
+    const exerciseData = this.buildCleanExercisePayload({
+      id: exerciseId,
+      name_en: formValue.name_en || formValue.name_es,
+      name_es: formValue.name_es,
+      equipment_type: formValue.equipment_type,
+      muscle_group: formValue.muscle_group,
+      category: formValue.category,
+      description_en: formValue.description_en,
+      description_es: formValue.description_es,
+      exercise_type: formValue.exercise_type,
+      difficulty: formValue.difficulty,
+      movement_pattern: formValue.movement_pattern,
+      training_goal: formValue.training_goal,
+      functional: !!formValue.functional,
+      tips: formValue.tips ? formValue.tips.split('\n').filter((t: string) => t.trim()) : [],
+      common_mistakes: formValue.common_mistakes ? formValue.common_mistakes.split('\n').filter((m: string) => m.trim()) : [],
+      aliases: formValue.aliases ? formValue.aliases.split(',').map((a: string) => a.trim()).filter((a: string) => a) : [],
+      secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : [],
+      video
+    });
+    console.log('🔍 ID consistency check:', {
+      generatedId: this.exerciseId,
+      payloadId: exerciseData.id
+    });
+    console.log('🚀 FINAL PAYLOAD:', JSON.stringify(exerciseData, null, 2));
+
+    this.api.createExercise(exerciseData).subscribe({
+      next: (response) => {
+        this.saving = false;
+        if (response) {
+          const shouldPollForThumbnail = !!(this.selectedVideoFile && exerciseData.video?.type === 'S3' && !exerciseData.video.thumbnailUrl);
+          this.exerciseSaved.emit({
+            response,
+            exerciseId: exerciseData.id,
+            shouldPollForThumbnail
+          });
+          this.dialogRef.close({
+            saved: true,
+            exerciseId: exerciseData.id,
+            shouldPollForThumbnail
+          });
+        } else {
+          this.snackBar.open('Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error creando ejercicio:', err);
+        this.saving = false;
+        this.snackBar.open('Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private saveExistingExercise(formValue: any): void {
+    if (this.selectedVideoFile) {
+      this.uploadVideoAndUpdateExisting(formValue);
+      return;
+    }
+
+    this.persistExistingExercise(formValue);
+  }
+
+  private uploadVideoAndUpdateExisting(formValue: any): void {
+    const exerciseId = this.exercise?.id;
+    const file = this.selectedVideoFile;
+    if (!exerciseId || !file) {
+      this.persistExistingExercise(formValue);
+      return;
+    }
+    this.exerciseId = exerciseId;
+
+    this.saving = true;
+    this.videoState.uploading = true;
+    this.cdr.markForCheck();
+    console.log('⬆️ Upload request:', {
+      fileName: `${exerciseId}.mp4`,
+      exerciseId: this.exerciseId
+    });
+
+    this.api.getUploadUrl(`${exerciseId}.mp4`, file.type || 'video/mp4').subscribe({
+      next: async (response: any) => {
+        if (!response?.uploadUrl) {
+          this.uploadError = 'Error obteniendo URL de subida';
+          this.saving = false;
+          this.videoState.uploading = false;
+          this.cdr.markForCheck();
+          return;
         }
 
-        const exerciseData = {
-          id: this.currentExerciseId,
-          name_en: formValue.name || formValue.name_es,
-          name_es: formValue.name_es,
-          equipment_type: formValue.equipment_type,
-          muscle_group: formValue.muscle_group,
-          category: formValue.category,
-          description_en: formValue.description_en,
-          description_es: formValue.description_es,
-          exercise_type: formValue.exercise_type,
-          difficulty: formValue.difficulty,
-          movement_pattern: formValue.movement_pattern,
-          training_goal: formValue.training_goal,
-          functional: !!formValue.functional,
-          tips: formValue.tips ? formValue.tips.split('\n').filter((t: string) => t.trim()) : [],
-          common_mistakes: formValue.common_mistakes ? formValue.common_mistakes.split('\n').filter((m: string) => m.trim()) : [],
-          aliases: formValue.aliases ? formValue.aliases.split(',').map((a: string) => a.trim()).filter((a: string) => a) : [],
-          secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : [],
-          video
-        };
+        try {
+          const uploadResponse = await fetch(response.uploadUrl, {
+            method: 'PUT',
+            body: file
+          });
 
-        this.api.createExercise(exerciseData).subscribe({
-          next: (response) => {
-            if (response) {
-              this.exerciseSaved.emit(response);
-              this.dialogRef.close(response);
-            } else {
-              this.snackBar.open('❌ Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
-            }
-          },
-          error: (err) => {
-            console.error('❌ Error creando ejercicio:', err);
-            this.snackBar.open('❌ Error al crear el ejercicio.', 'Cerrar', { duration: 4000 });
+          if (!uploadResponse.ok) {
+            throw new Error(`Upload failed: ${uploadResponse.status}`);
           }
-        });
-      } else {
-        // Edit mode - update existing exercise
-        const updatedExercise: Exercise = {
-          ...this.data!,
-          ...formValue,
-          tips: formValue.tips ? formValue.tips.split('\n').filter((t: string) => t.trim()) : [],
-          common_mistakes: formValue.common_mistakes ? formValue.common_mistakes.split('\n').filter((m: string) => m.trim()) : [],
-          aliases: formValue.aliases ? formValue.aliases.split(',').map((a: string) => a.trim()).filter((a: string) => a) : [],
-          secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : []
-        };
 
-        this.api.updateExerciseLibraryItem(this.data!.id, updatedExercise).subscribe({
-          next: (response: {ok: boolean, updated: Partial<Exercise>}) => {
-            if (response.ok) {
-              this.exerciseSaved.emit(response);
-              this.dialogRef.close(response);
-            } else {
-              this.snackBar.open('❌ Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
-            }
-          },
-          error: (err) => {
-            console.error('❌ Error actualizando ejercicio:', err);
-            this.snackBar.open('❌ Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+          this.videoState.uploading = false;
+          this.videoState.s3Key = response.s3_key || this.exercise?.s3_key || null;
+          console.log('✅ Upload completed:', {
+            previewUrl: response.preview_url || this.videoState.previewUrl
+          });
+
+          if (response.preview_url) {
+            this.persistExistingExercise(
+              formValue,
+              this.buildS3VideoPayload(response.preview_url, response.thumbnail_url),
+              response.s3_key || null
+            );
+            return;
           }
-        });
+
+          this.videoState.processing = true;
+          this.cdr.markForCheck();
+          this.pollAndUpdateExisting(response.s3_key, formValue);
+        } catch (err) {
+          console.error('Error subiendo video en edición:', err);
+          this.uploadError = 'Error al subir el video';
+          this.saving = false;
+          this.videoState.uploading = false;
+          this.cdr.markForCheck();
+        }
+      },
+      error: (err) => {
+        console.error('Error obteniendo URL de subida para edición:', err);
+        this.uploadError = 'Error obteniendo URL de subida';
+        this.saving = false;
+        this.videoState.uploading = false;
+        this.cdr.markForCheck();
       }
+    });
+  }
+
+  private pollAndUpdateExisting(s3Key: string, formValue: any): void {
+    this.stopPolling();
+
+    this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
+      switchMap(() => this.api.getVideoStatus(s3Key)),
+      takeWhile(status => !status.ready, true),
+      finalize(() => this.cdr.markForCheck())
+    ).subscribe({
+      next: (status) => {
+        if (!status.ready) {
+          return;
+        }
+
+        this.videoState.processing = false;
+        this.videoState.ready = true;
+        this.videoState.previewUrl = status.previewUrl || null;
+        this.videoState.thumbnailUrl = status.thumbnailUrl || null;
+        console.log('✅ Upload completed:', {
+          previewUrl: this.videoState.previewUrl
+        });
+        this.persistExistingExercise(
+          formValue,
+          this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl),
+          s3Key
+        );
+      },
+      error: (err) => {
+        console.error('Polling error en edición:', err);
+        this.videoState.processing = false;
+        this.uploadError = 'Error verificando estado del video';
+        this.saving = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private persistExistingExercise(
+    formValue: any,
+    uploadedVideo?: VideoSource,
+    uploadedS3Key?: string | null
+  ): void {
+    this.saving = true;
+    this.cdr.markForCheck();
+    this.exerciseId = this.exercise?.id || this.exerciseId;
+
+    const updatedExercise: Exercise = {
+      ...this.exercise!,
+      ...formValue,
+      tips: formValue.tips ? formValue.tips.split('\n').filter((t: string) => t.trim()) : [],
+      common_mistakes: formValue.common_mistakes ? formValue.common_mistakes.split('\n').filter((m: string) => m.trim()) : [],
+      aliases: formValue.aliases ? formValue.aliases.split(',').map((a: string) => a.trim()).filter((a: string) => a) : [],
+      secondary_muscles: formValue.secondary_muscles ? formValue.secondary_muscles.split(',').map((m: string) => m.trim()).filter((m: string) => m) : []
+    };
+
+    const video = uploadedVideo || this.buildExistingVideoPayload();
+    if (video) {
+      updatedExercise.video = video;
     }
+
+    if (uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key) {
+      updatedExercise.s3_key = uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key;
+    }
+    const payloadToSave = this.canSaveAsCustom(this.exercise)
+      ? this.buildCleanExercisePayload(updatedExercise)
+      : updatedExercise;
+    console.log('🔍 ID consistency check:', {
+      generatedId: this.exerciseId,
+      payloadId: payloadToSave.id
+    });
+    console.log('🚀 FINAL PAYLOAD:', JSON.stringify(payloadToSave, null, 2));
+
+    this.getUpdateRequest(payloadToSave).subscribe({
+      next: (response) => {
+        this.saving = false;
+        this.videoState.uploading = false;
+        this.videoState.processing = false;
+        if (this.wasSaveSuccessful(response)) {
+          const shouldPollForThumbnail = !!(uploadedVideo && payloadToSave.video?.type === 'S3' && !payloadToSave.video.thumbnailUrl);
+          this.exerciseSaved.emit({
+            response,
+            exerciseId: payloadToSave.id,
+            shouldPollForThumbnail
+          });
+          this.dialogRef.close({
+            saved: true,
+            exerciseId: payloadToSave.id,
+            shouldPollForThumbnail
+          });
+        } else {
+          this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error actualizando ejercicio:', err);
+        this.saving = false;
+        this.videoState.uploading = false;
+        this.videoState.processing = false;
+        this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private getUpdateRequest(updatedExercise: Exercise): Observable<any> {
+    if (this.canSaveAsCustom(this.exercise)) {
+      return this.api.updateExercise(updatedExercise);
+    }
+
+    return this.api.updateExerciseLibraryItem(this.exercise!.id, updatedExercise);
+  }
+
+  private canSaveAsCustom(exercise: Exercise | null): boolean {
+    return (exercise as any)?.source === 'CUSTOM';
+  }
+
+  private wasSaveSuccessful(response: any): boolean {
+    if (this.canSaveAsCustom(this.exercise)) {
+      return !!response;
+    }
+
+    return !!response?.ok;
+  }
+
+  getCurrentVideoSource() {
+    return getVideoSource(this.getCurrentMediaContext());
+  }
+
+  getCurrentThumbnail(): string | null {
+    return this.videoState.thumbnailUrl
+      || getThumbnailSource(this.getCurrentMediaContext());
+  }
+
+  getCurrentYoutubeUrl(): string | null {
+    return getYoutubeUrl(this.getCurrentMediaContext());
+  }
+
+  getCurrentS3PreviewUrl(): string | null {
+    return this.videoState.previewUrl
+      || getS3PreviewUrl(this.getCurrentMediaContext());
+  }
+
+  hasExistingVideo(): boolean {
+    return Boolean(this.getCurrentVideoSource());
+  }
+
+  sanitizeYoutubeUrl(url: string): SafeResourceUrl | null {
+    const embedUrl = buildYoutubeEmbedUrl(url);
+    return embedUrl
+      ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl)
+      : null;
+  }
+
+  private getCurrentMediaContext(): Exercise {
+    const baseExercise = { ...(this.exercise || {}) } as Exercise;
+    if (this.videoState.previewUrl || this.videoState.thumbnailUrl) {
+      baseExercise.video = this.buildS3VideoPayload(
+        this.videoState.previewUrl || undefined,
+        this.videoState.thumbnailUrl || undefined
+      );
+      baseExercise.preview_url = this.videoState.previewUrl || baseExercise.preview_url;
+      baseExercise.thumbnail = this.videoState.thumbnailUrl || baseExercise.thumbnail;
+    }
+    return baseExercise;
+  }
+
+  private buildExistingVideoPayload(): VideoSource | undefined {
+    const previewUrl = getS3PreviewUrl(this.exercise);
+    const youtubeUrl = getYoutubeUrl(this.exercise);
+    const thumbnailUrl = getThumbnailSource(this.exercise);
+
+    if (!previewUrl && !youtubeUrl && !thumbnailUrl) {
+      return undefined;
+    }
+
+    return {
+      type: previewUrl ? 'S3' : 'YOUTUBE',
+      previewUrl: previewUrl || undefined,
+      youtubeUrl: youtubeUrl || undefined,
+      thumbnailUrl: thumbnailUrl || undefined,
+      url: youtubeUrl || undefined
+    };
+  }
+
+  private buildS3VideoPayload(
+    previewUrl?: string | null,
+    thumbnailUrl?: string | null
+  ): VideoSource {
+    const youtubeUrl = getYoutubeUrl(this.exercise);
+    return {
+      type: 'S3',
+      previewUrl: previewUrl || undefined,
+      thumbnailUrl: thumbnailUrl || undefined,
+      youtubeUrl: youtubeUrl || undefined
+    };
+  }
+
+  private buildCleanExercisePayload<T extends Record<string, any>>(exerciseData: T): T {
+    const payload: Record<string, any> = { ...exerciseData };
+    payload['video'] = this.normalizeVideoPayload(payload['video']);
+
+    delete payload['previewUrl'];
+    delete payload['thumbnailUrl'];
+    delete payload['preview_url'];
+    delete payload['s3_key'];
+    delete payload['videoType'];
+    delete payload['videoUrl'];
+    delete payload['youtube_url'];
+    delete payload['thumbnail'];
+
+    return payload as T;
+  }
+
+  private normalizeVideoPayload(video: VideoSource | undefined): VideoSource | undefined {
+    if (!video) {
+      return undefined;
+    }
+
+    if (video.type === 'S3') {
+      const normalizedVideo: VideoSource = {
+        type: 'S3',
+        previewUrl: video.previewUrl
+      };
+
+      if (video.thumbnailUrl) {
+        normalizedVideo.thumbnailUrl = video.thumbnailUrl;
+      }
+
+      return normalizedVideo;
+    }
+
+    const normalizedVideo: VideoSource = {
+      type: 'YOUTUBE'
+    };
+
+    if (video.youtubeUrl) {
+      normalizedVideo.youtubeUrl = video.youtubeUrl;
+    }
+
+    if (video.url) {
+      normalizedVideo.url = video.url;
+    }
+
+    return normalizedVideo;
   }
 
   isFieldEditable(field: string): boolean {

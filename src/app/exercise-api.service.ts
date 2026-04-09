@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
-import { catchError, tap, switchMap } from 'rxjs/operators';
+import { catchError, map, tap, switchMap } from 'rxjs/operators';
 import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep, VideoSource } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
@@ -90,9 +90,23 @@ export class ExerciseApiService {
     );
   }
 
+  getAllExercises(): Observable<Exercise[]> {
+    return this.http.get<ExerciseLibraryResponse>(this.exerciseUrl).pipe(
+      map(res => res.items),
+      tap(exercises => console.log('📋 Ejercicios combinados obtenidos:', exercises.length)),
+      catchError(err => {
+        console.error('❌ Error al obtener ejercicios combinados:', err);
+        return of([]);
+      })
+    );
+  }
+
   updateExerciseLibraryItem(id: string, exercise: Exercise): Observable<{ok: boolean, updated: Partial<Exercise>}> {
     const payload = this.sanitizeExerciseUpdatePayload(exercise);
     const url = `${this.exerciseLibUrl}/${encodeURIComponent(id)}`;
+    console.log('🌐 REQUEST BODY:', JSON.stringify(payload, null, 2));
+    console.log('🌐 REQUEST URL:', url);
+    console.log('🌐 UPDATE URL:', url);
     return this.http.put<{ok: boolean, updated: Partial<Exercise>}>(url, payload).pipe(
       tap(res => console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated)),
       catchError(err => {
@@ -103,13 +117,7 @@ export class ExerciseApiService {
   }
 
   getExercises(): Observable<Exercise[]> {
-    return this.http.get<Exercise[]>(this.exerciseUrl).pipe(
-      tap(exs => console.log('📋 Ejercicios obtenidos:', exs)),
-      catchError(err => {
-        console.error('❌ Error al obtener ejercicios:', err);
-        return of([]);
-      })
-    );
+    return this.getAllExercises();
   }
 
   // Lambda-based exercise creation
@@ -177,7 +185,8 @@ export class ExerciseApiService {
       payload.video = exerciseData.video;
     }
 
-    console.log('📤 Creating exercise:', payload);
+    console.log('🌐 REQUEST BODY:', JSON.stringify(payload, null, 2));
+    console.log('🌐 REQUEST URL:', this.exerciseUrl);
 
     return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
       tap(() => console.log('✅ Ejercicio creado:', id)),
@@ -220,7 +229,11 @@ export class ExerciseApiService {
   }
 
   updateExercise(ex: Exercise): Observable<any> {
-    return this.http.put(this.exerciseUrl, ex).pipe(
+    const updateUrl = `${this.exerciseUrl}/${encodeURIComponent(ex.id)}`;
+    console.log('🌐 REQUEST BODY:', JSON.stringify(ex, null, 2));
+    console.log('🌐 REQUEST URL:', this.exerciseUrl);
+    console.log('🌐 UPDATE URL:', updateUrl);
+    return this.http.put(updateUrl, ex).pipe(
       tap(() => console.log('✏️ Ejercicio actualizado:', ex)),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio:', err);

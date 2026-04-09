@@ -4,7 +4,9 @@ import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Exercise, PlanItem } from '../../../shared/models';
+import { buildYoutubeEmbedUrl, getVideoSource } from '../../../shared/video-utils';
 
 @Component({
   selector: 'app-exercise-preview-dialog',
@@ -24,10 +26,11 @@ import { Exercise, PlanItem } from '../../../shared/models';
         </button>
       </div>
       <div class="preview-content">
-        <ng-container *ngIf="getVideoUrl(); else noPreview">
+        <ng-container *ngIf="getVideoSource() as video; else noPreview">
           <video
+            *ngIf="video.type === 'S3'"
             class="preview-video"
-            [src]="getVideoUrl()"
+            [src]="video.url"
             controls
             autoplay
             muted
@@ -36,6 +39,13 @@ import { Exercise, PlanItem } from '../../../shared/models';
             preload="metadata">
             Tu navegador no soporta el elemento de video.
           </video>
+          <iframe
+            *ngIf="video.type === 'YOUTUBE' && sanitizeYoutubeUrl(video.url)"
+            class="preview-video"
+            [src]="sanitizeYoutubeUrl(video.url)"
+            frameborder="0"
+            allowfullscreen>
+          </iframe>
         </ng-container>
         <ng-template #noPreview>
           <div class="no-preview-message">
@@ -151,7 +161,8 @@ export class ExercisePreviewDialogComponent {
   constructor(
     public dialogRef: MatDialogRef<ExercisePreviewDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { exercise: Exercise | PlanItem },
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private sanitizer: DomSanitizer
   ) {}
 
   close(): void {
@@ -159,15 +170,22 @@ export class ExercisePreviewDialogComponent {
   }
 
   onVideoError(event: Event): void {
-    console.error('Error loading video:', this.data.exercise.preview_url);
+    console.error('Error loading video:', this.getVideoSource());
     this.snackBar.open('Error al cargar el video de preview', undefined, { duration: 3000 });
   }
 
   onVideoLoaded(): void {
-    console.log('Video preview loaded:', this.getVideoUrl());
+    console.log('Video preview loaded:', this.getVideoSource());
   }
 
-  getVideoUrl(): string | null {
-    return this.data.exercise.preview_url || null;
+  getVideoSource() {
+    return getVideoSource(this.data.exercise);
+  }
+
+  sanitizeYoutubeUrl(url: string): SafeResourceUrl | null {
+    const embedUrl = buildYoutubeEmbedUrl(url);
+    return embedUrl
+      ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl)
+      : null;
   }
 }

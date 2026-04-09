@@ -39,10 +39,16 @@
         </div>
 
         <!-- Media -->
-        <div class="field-group" *ngIf="exercise.preview_url || exercise.youtube_url">
+        <div class="field-group" *ngIf="getResolvedVideoSource() as video">
           <h3>Multimedia</h3>
-          <video *ngIf="exercise.preview_url" [src]="exercise.preview_url" controls style="max-width: 100%;"></video>
-          <div class="field" *ngIf="exercise.youtube_url"><strong>YouTube:</strong> <a [href]="exercise.youtube_url" target="_blank">{{ exercise.youtube_url }}</a></div>
+          <video *ngIf="video.type === 'S3'" [src]="getCacheBustedUrl(video.url)" controls style="max-width: 100%;"></video>
+          <iframe
+            *ngIf="video.type === 'YOUTUBE' && sanitizeYoutubeUrl(video.url)"
+            [src]="sanitizeYoutubeUrl(video.url)"
+            style="width: 100%; min-height: 320px;"
+            frameborder="0"
+            allowfullscreen>
+          </iframe>
         </div>
 
         <!-- Metadata -->

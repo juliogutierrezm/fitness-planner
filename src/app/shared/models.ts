@@ -31,12 +31,16 @@ export interface Exercise {
   created_at?: string;
   updated_at?: string;
   s3_key?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  video?: VideoSource;
 }
 
 export interface VideoSource {
   type: 'S3' | 'YOUTUBE';
   previewUrl?: string;
   thumbnailUrl?: string;
+  youtubeUrl?: string;
   url?: string;
 }
 
@@ -61,7 +65,11 @@ export interface PlanItem extends Partial<Exercise> {
   groupId?: string;        // identifier shared by header and its children
   // Video fields for consistency with Exercise
   preview_url?: string;
+  youtube_url?: string;
   thumbnail?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  video?: VideoSource;
 }
 
 

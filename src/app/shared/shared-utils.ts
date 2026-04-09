@@ -1,4 +1,5 @@
 import { Exercise, PlanItem, Session } from './models';
+import { getThumbnailSource, getVideoSource } from './video-utils';
 
 const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
 const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
@@ -24,6 +25,10 @@ function hasExerciseName(item: PlanItem): boolean {
 }
 
 function hasExerciseMedia(item: PlanItem): boolean {
+  if (getVideoSource(item) || getThumbnailSource(item)) {
+    return true;
+  }
+
   return MEDIA_FIELDS.some(field => {
     const value = (item as PlanItem & Record<string, unknown>)[field];
     if (typeof value === 'string') {
@@ -204,6 +209,22 @@ function mergeExerciseWithSession(base: Exercise, item: PlanItem): PlanItem {
   });
 
   merged.id = base.id;
+
+  const videoSource = getVideoSource(base);
+  const thumbnailSource = getThumbnailSource(base);
+  if (videoSource?.type === 'S3') {
+    merged.preview_url = videoSource.url;
+  }
+  if (videoSource?.type === 'YOUTUBE') {
+    merged.youtube_url = videoSource.url;
+  }
+  if (thumbnailSource) {
+    merged.thumbnail = thumbnailSource;
+  }
+  if ((base as any).video) {
+    merged.video = (base as any).video;
+  }
+
   return merged;
 }
 

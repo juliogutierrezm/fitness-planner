@@ -9,30 +9,46 @@
           <mat-label>Nombre (ES) *</mat-label>
           <input matInput formControlName="name_es">
         </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('category')">
           <mat-label>Categoría *</mat-label>
-          <input matInput formControlName="category">
+          <mat-select formControlName="category">
+            <mat-option *ngFor="let opt of categoryOptions" [value]="opt">{{ opt }}</mat-option>
+          </mat-select>
         </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('muscle_group')">
           <mat-label>Grupo Muscular *</mat-label>
-          <input matInput formControlName="muscle_group">
+          <mat-select formControlName="muscle_group">
+            <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
+          </mat-select>
         </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('equipment_type')">
           <mat-label>Tipo de Equipo *</mat-label>
-          <input matInput formControlName="equipment_type">
+          <mat-select formControlName="equipment_type">
+            <mat-option *ngFor="let opt of equipmentTypeOptions" [value]="opt">{{ opt }}</mat-option>
+          </mat-select>
         </mat-form-field>
+
+          <mat-form-field *ngIf="isCreationMode || isFieldEditable('difficulty')">
+            <mat-label>Dificultad *</mat-label>
+            <mat-select formControlName="difficulty">
+              <mat-option value="">Sin dificultad</mat-option>
+              <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('exercise_type')">
           <mat-label>Tipo de Ejercicio</mat-label>
           <input matInput formControlName="exercise_type">
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('difficulty')">
-          <mat-label>Dificultad</mat-label>
-          <input matInput formControlName="difficulty">
-        </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('training_goal')">
           <mat-label>Meta de Entrenamiento</mat-label>
           <input matInput formControlName="training_goal">
         </mat-form-field>
+
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('description_es')">
           <mat-label>Descripción (ES)</mat-label>
           <textarea matInput formControlName="description_es" rows="3"></textarea>
@@ -42,60 +58,93 @@
           <textarea matInput formControlName="description_en" rows="3"></textarea>
         </mat-form-field>
 
-        <!-- Video Section - Only for creation -->
-        <div style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;" *ngIf="isCreationMode">
+        <!-- Video Section -->
+        <div style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
           <h4>Video del Ejercicio</h4>
-          
-          <!-- Video Type Selection -->
-          <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 1rem;">
-            <mat-label>Tipo de Video</mat-label>
-            <mat-select formControlName="videoType">
-              <mat-option value="upload">Subir Video (S3)</mat-option>
-              <mat-option value="url">URL de YouTube</mat-option>
-            </mat-select>
-          </mat-form-field>
 
-          <!-- S3 Upload -->
-          <ng-container *ngIf="editForm.get('videoType')?.value === 'upload'">
+          <ng-container *ngIf="!isCreationMode">
+            <div *ngIf="hasExistingVideo(); else noExistingVideo" style="margin-bottom: 1rem;">
+              <p style="margin-bottom: 0.5rem;"><strong>Video actual</strong></p>
+
+              <video
+                *ngIf="getCurrentVideoSource()?.type === 'S3' && getCurrentS3PreviewUrl()"
+                [src]="getCurrentS3PreviewUrl()!"
+                controls
+                style="width: 100%; max-height: 220px; margin-bottom: 0.75rem;">
+              </video>
+
+              <iframe
+                *ngIf="getCurrentVideoSource()?.type === 'YOUTUBE' && getCurrentYoutubeUrl() && sanitizeYoutubeUrl(getCurrentYoutubeUrl()!)"
+                [src]="sanitizeYoutubeUrl(getCurrentYoutubeUrl()!)"
+                style="width: 100%; height: 220px; margin-bottom: 0.75rem;"
+                frameborder="0"
+                allowfullscreen>
+              </iframe>
+
+              <a *ngIf="getCurrentVideoSource()?.type === 'YOUTUBE' && getCurrentYoutubeUrl()"
+                 [href]="getCurrentYoutubeUrl()!"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                Abrir video en YouTube
+              </a>
+            </div>
+
+            <ng-template #noExistingVideo>
+              <p style="color: #666; margin-bottom: 1rem;">No hay video asociado actualmente.</p>
+            </ng-template>
+
+            <p style="margin-bottom: 0.5rem;">Puedes mantener el video actual o seleccionar un archivo nuevo para reemplazarlo.</p>
             <input
               type="file"
               accept="video/*"
               (change)="onFileSelected($event)"
               style="margin-bottom: 1rem;"
-              [disabled]="videoState.uploading || videoState.processing">
-
-            <!-- Uploading state -->
-            <div *ngIf="videoState.uploading" style="margin-bottom: 1rem;">
-              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-              <p>Subiendo video...</p>
-            </div>
-
-            <!-- Processing state -->
-            <div *ngIf="videoState.processing" style="margin-bottom: 1rem;">
-              <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
-              <p>Procesando video... esto puede tomar unos segundos</p>
-            </div>
-
-            <!-- Ready state -->
-            <div *ngIf="videoState.ready && videoState.previewUrl" style="margin-bottom: 1rem;">
-              <p style="color: green;">✅ Video listo</p>
-              <video
-                [src]="videoState.previewUrl"
-                controls
-                style="width: 100%; max-height: 200px;">
-              </video>
-            </div>
-
-            <p *ngIf="uploadError" style="color: red;">{{ uploadError }}</p>
+              [disabled]="saving">
           </ng-container>
 
-          <!-- YouTube URL -->
-          <mat-form-field *ngIf="editForm.get('videoType')?.value === 'url'" 
-                          appearance="outline" style="width: 100%;">
-            <mat-label>URL de YouTube</mat-label>
-            <input matInput formControlName="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
-            <mat-hint>Pega la URL completa del video</mat-hint>
-          </mat-form-field>
+          <ng-container *ngIf="isCreationMode">
+            <!-- Video Type Selection -->
+            <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 1rem;">
+              <mat-label>Tipo de Video</mat-label>
+              <mat-select formControlName="videoType">
+                <mat-option value="upload">Subir Video (S3)</mat-option>
+                <mat-option value="url">URL de YouTube</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- S3 Upload - file held in memory until save -->
+            <ng-container *ngIf="editForm.get('videoType')?.value === 'upload'">
+              <input
+                type="file"
+                accept="video/*"
+                (change)="onFileSelected($event)"
+                style="margin-bottom: 1rem;"
+                [disabled]="saving">
+            </ng-container>
+
+            <!-- YouTube URL -->
+            <mat-form-field *ngIf="editForm.get('videoType')?.value === 'url'"
+                            appearance="outline" style="width: 100%;">
+              <mat-label>URL de YouTube</mat-label>
+              <input matInput formControlName="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
+              <mat-hint>Pega la URL completa del video</mat-hint>
+            </mat-form-field>
+          </ng-container>
+
+          <p *ngIf="selectedVideoFileName" style="color: #555; margin: 0.5rem 0;">
+            Archivo seleccionado: <strong>{{ selectedVideoFileName }}</strong>
+          </p>
+
+          <div *ngIf="videoState.uploading" style="margin-bottom: 1rem;">
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            <p>Subiendo video...</p>
+          </div>
+          <div *ngIf="videoState.processing" style="margin-bottom: 1rem;">
+            <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
+            <p>Procesando video... esto puede tomar unos segundos</p>
+          </div>
+
+          <p *ngIf="uploadError" style="color: red;">{{ uploadError }}</p>
         </div>
       </div>
     </mat-tab>
@@ -135,15 +184,14 @@
         </mat-form-field>
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('functional')">
           <mat-label>Funcional</mat-label>
-          <input matInput formControlName="functional" placeholder="Ej: Push, Pull, Core">
+          <mat-select formControlName="functional">
+            <mat-option [value]="false">No</mat-option>
+            <mat-option [value]="true">Sí</mat-option>
+          </mat-select>
         </mat-form-field>
         <mat-form-field *ngIf="isCreationMode || isFieldEditable('aliases')">
           <mat-label>Alias/Variaciones</mat-label>
           <input matInput formControlName="aliases" placeholder="Nombres alternativos separados por comas">
-        </mat-form-field>
-        <mat-form-field *ngIf="!isCreationMode">
-          <mat-label>Video Preview URL</mat-label>
-          <input matInput formControlName="preview_url" readonly>
         </mat-form-field>
       </div>
     </mat-tab>
@@ -151,6 +199,9 @@
   </form>
 </mat-dialog-content>
 <mat-dialog-actions align="end">
-  <button mat-fab extended (click)="onClose()">Cancelar</button>
-  <button mat-fab extended color="primary" (click)="onSave()" [disabled]="editForm.invalid || videoState.uploading || videoState.processing || !isVideoValid">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</button>
+  <button mat-fab extended (click)="onClose()" [disabled]="saving">Cancelar</button>
+  <button mat-fab extended color="primary" (click)="onSave()" [disabled]="editForm.invalid || saving || !isVideoValid">
+    <span *ngIf="!saving">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</span>
+    <span *ngIf="saving">Guardando...</span>
+  </button>
 </mat-dialog-actions>

@@ -350,7 +350,8 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   private openEditDialog(exercise: Exercise | null): void {
     const dialogRef = this.dialog.open(ExerciseEditDialogComponent, {
       data: { exercise, filterOptions: this.filterOptions },
-      width: '800px'
+      width: '960px',
+      maxWidth: '96vw'
     });
 
     let saveHandled = false;

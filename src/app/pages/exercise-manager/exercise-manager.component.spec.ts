@@ -2,11 +2,12 @@ import { ChangeDetectorRef } from '@angular/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
 import { Exercise } from '../../shared/models';
 import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
+import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
 import { ExerciseManagerComponent } from './exercise-manager.component';
 
 describe('ExerciseManagerComponent', () => {
@@ -111,4 +112,24 @@ describe('ExerciseManagerComponent', () => {
 
     expect(api.getExerciseById).toHaveBeenCalledTimes(15);
   }));
+
+  it('opens the edit dialog with the wider layout config', () => {
+    const { component } = createComponent();
+    const exerciseSaved = new Subject<any>();
+    const afterClosed = new Subject<any>();
+    const dialogRef = {
+      componentInstance: { exerciseSaved },
+      afterClosed: () => afterClosed.asObservable()
+    };
+
+    const dialog = (component as any).dialog as jasmine.SpyObj<MatDialog>;
+    dialog.open.and.returnValue(dialogRef as any);
+
+    component.onCreateNewClicked();
+
+    expect(dialog.open).toHaveBeenCalledWith(ExerciseEditDialogComponent, jasmine.objectContaining({
+      width: '960px',
+      maxWidth: '96vw'
+    }));
+  });
 });

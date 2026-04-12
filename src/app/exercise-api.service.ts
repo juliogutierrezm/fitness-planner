@@ -153,17 +153,18 @@ export class ExerciseApiService {
     const payload: any = {
       id,
       name_en: exerciseData.name_en,
-      name_es: exerciseData.name_es || '',
+      name_es: exerciseData.name_es || exerciseData.name_en,
       equipment_type: exerciseData.equipment_type,
       muscle_group: exerciseData.muscle_group,
       category: exerciseData.category,
-      description_en: exerciseData.description_en || '',
-      description_es: exerciseData.description_es || '',
-      exercise_type: exerciseData.exercise_type || '',
-      difficulty: exerciseData.difficulty || '',
-      movement_pattern: exerciseData.movement_pattern || '',
-      training_goal: exerciseData.training_goal || ''
+      difficulty: exerciseData.difficulty || ''
     };
+
+    if (exerciseData.description_en?.trim()) payload.description_en = exerciseData.description_en.trim();
+    if (exerciseData.description_es?.trim()) payload.description_es = exerciseData.description_es.trim();
+    if (exerciseData.exercise_type?.trim()) payload.exercise_type = exerciseData.exercise_type.trim();
+    if (exerciseData.movement_pattern?.trim()) payload.movement_pattern = exerciseData.movement_pattern.trim();
+    if (exerciseData.training_goal?.trim()) payload.training_goal = exerciseData.training_goal.trim();
 
     // Handle arrays
     if (exerciseData.aliases?.length) payload.aliases = exerciseData.aliases;

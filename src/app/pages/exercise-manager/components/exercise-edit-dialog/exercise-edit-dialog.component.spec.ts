@@ -70,10 +70,10 @@ describe('ExerciseEditDialogComponent', () => {
       cdr
     );
 
-    return { component, api, dialogRef };
+    return { component, api, dialogRef, snackBar };
   }
 
-  it('loads persisted fields into the form', () => {
+  it('starts on step one and loads persisted values', () => {
     const existingExercise = createExercise({
       description_es: 'Descripcion actual',
       tips: [' Mantener core activo ', 'Bajar con control'],
@@ -87,6 +87,7 @@ describe('ExerciseEditDialogComponent', () => {
 
     const { component } = createComponent(existingExercise);
 
+    expect(component.currentStep).toBe(1);
     expect(component.editForm.get('description_es')?.value).toBe('Descripcion actual');
     expect(component.editForm.get('tips')?.value).toBe(' Mantener core activo \nBajar con control');
     expect(component.editForm.get('common_mistakes')?.value).toBe(' No bloquear codos \nPerder alineacion');
@@ -95,77 +96,111 @@ describe('ExerciseEditDialogComponent', () => {
     expect(component.editForm.get('youtubeUrl')?.value).toBe('https://www.youtube.com/watch?v=abc123xyz99');
   });
 
-  it('sanitizes multiline and csv fields before saving', () => {
-    const { component, api } = createComponent(createExercise());
+  it('cleanArray removes empty values and returns undefined when nothing remains', () => {
+    const { component } = createComponent(null);
 
-    component.editForm.patchValue({
-      tips: ' tip 1 \n \n tip 2 ',
-      common_mistakes: ' error 1 \n   \n error 2 ',
-      aliases: ' alias 1 , , alias 2 ',
-      secondary_muscles: ' triceps , , hombro ',
-      videoType: 'NONE'
-    });
-
-    (component as any).persistExistingExercise(component.editForm.getRawValue(), null);
-
-    const payload = api.updateExercise.calls.mostRecent().args[0] as Exercise;
-    expect(payload.tips).toEqual(['tip 1', 'tip 2']);
-    expect(payload.common_mistakes).toEqual(['error 1', 'error 2']);
-    expect(payload.aliases).toEqual(['alias 1', 'alias 2']);
-    expect(payload.secondary_muscles).toEqual(['triceps', 'hombro']);
+    expect((component as any).cleanArray(['  ', '', ' tip 1 ', ' tip 2 '])).toEqual(['tip 1', 'tip 2']);
+    expect((component as any).cleanArray(['  ', '', '   '])).toBeUndefined();
   });
 
-  it('sends video as null when videoType is NONE', () => {
-    const { component, api } = createComponent(createExercise({
-      video: {
-        type: 'S3',
-        previewUrl: 'https://cdn.example.com/original.mp4',
-        thumbnailUrl: 'https://cdn.example.com/original.jpg'
-      }
+  it('builds a full create payload without empty optional fields and with name_en fallback', () => {
+    const { component } = createComponent(null);
+
+    const payload = (component as any).buildExercisePayload({
+      name_es: 'Sentadilla',
+      name_en: '   ',
+      category: 'Strength',
+      difficulty: 'Intermedio',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Legs',
+      videoType: 'NONE',
+      training_goal: '   ',
+      exercise_type: '',
+      description_es: '   ',
+      tips: '  \n ',
+      common_mistakes: '',
+      secondary_muscles: ', ,'
+    }, 'full', 'exercise-1');
+
+    expect(payload.name_en).toBe('Sentadilla');
+    expect(payload.tips).toBeUndefined();
+    expect(payload.common_mistakes).toBeUndefined();
+    expect(payload.secondary_muscles).toBeUndefined();
+    expect(payload.training_goal).toBeUndefined();
+    expect(payload.exercise_type).toBeUndefined();
+    expect(payload.description_es).toBeUndefined();
+    expect(payload.video).toBeNull();
+  });
+
+  it('builds a quick create payload with only the minimum valid fields', () => {
+    const { component } = createComponent(null);
+
+    const payload = (component as any).buildExercisePayload({
+      name_es: 'Sentadilla',
+      name_en: '',
+      category: 'Strength',
+      difficulty: 'Intermedio',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Legs',
+      videoType: 'NONE',
+      tips: 'tip 1',
+      description_es: 'Descripcion opcional'
+    }, 'quick', 'exercise-2');
+
+    expect(payload).toEqual(jasmine.objectContaining({
+      id: 'exercise-2',
+      name_es: 'Sentadilla',
+      name_en: 'Sentadilla',
+      category: 'Strength',
+      difficulty: 'Intermedio',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Legs',
+      video: null
+    }));
+    expect(payload.tips).toBeUndefined();
+    expect(payload.description_es).toBeUndefined();
+  });
+
+  it('preserves existing optional fields on quick edit', () => {
+    const { component } = createComponent(createExercise({
+      description_es: 'Se conserva',
+      tips: ['Tip guardado'],
+      common_mistakes: ['Error guardado']
     }));
 
-    component.editForm.patchValue({ videoType: 'NONE' });
-    component.onSave();
+    const payload = (component as any).buildExercisePayload({
+      name_es: 'Lagartija',
+      name_en: '',
+      category: 'Strength',
+      difficulty: 'Avanzado',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Chest',
+      videoType: 'NONE',
+      tips: '',
+      common_mistakes: '',
+      description_es: ''
+    }, 'quick', 'exercise-1');
 
-    const payload = api.updateExercise.calls.mostRecent().args[0] as Exercise;
-    expect(payload.video).toBeNull();
-    expect((payload as any).functional).toBeUndefined();
+    expect(payload.description_es).toBe('Se conserva');
+    expect(payload.tips).toEqual(['Tip guardado']);
+    expect(payload.common_mistakes).toEqual(['Error guardado']);
+    expect(payload.difficulty).toBe('Avanzado');
   });
 
   it('builds an exclusive youtube payload with derived thumbnail', () => {
-    const { component, api } = createComponent(createExercise());
+    const { component } = createComponent(createExercise());
 
     component.editForm.patchValue({
       videoType: 'YOUTUBE',
       youtubeUrl: 'https://www.youtube.com/watch?v=abc123xyz99'
     });
-    component.onSave();
 
-    const payload = api.updateExercise.calls.mostRecent().args[0] as Exercise;
+    const payload = (component as any).buildExercisePayload(component.editForm.getRawValue(), 'full', 'exercise-1');
+
     expect(payload.video).toEqual({
       type: 'YOUTUBE',
       youtubeUrl: 'https://www.youtube.com/watch?v=abc123xyz99',
       thumbnailUrl: 'https://img.youtube.com/vi/abc123xyz99/hqdefault.jpg'
-    });
-  });
-
-  it('keeps an exclusive s3 payload without youtube fields', () => {
-    const { component, api } = createComponent(createExercise({
-      video: {
-        type: 'S3',
-        previewUrl: 'https://cdn.example.com/original.mp4',
-        thumbnailUrl: 'https://cdn.example.com/original.jpg'
-      }
-    }));
-
-    component.editForm.patchValue({ videoType: 'S3' });
-    component.onSave();
-
-    const payload = api.updateExercise.calls.mostRecent().args[0] as Exercise;
-    expect(payload.video).toEqual({
-      type: 'S3',
-      previewUrl: 'https://cdn.example.com/original.mp4',
-      thumbnailUrl: 'https://cdn.example.com/original.jpg'
     });
   });
 
@@ -191,7 +226,26 @@ describe('ExerciseEditDialogComponent', () => {
     expect(component.editForm.get('youtubeUrl')?.value).toBe('');
   });
 
-  it('allows creating an exercise without video', () => {
+  it('moves to the optional step only when step one is valid', () => {
+    const { component } = createComponent(null);
+
+    component.goToOptionalStep();
+    expect(component.currentStep).toBe(1);
+
+    component.editForm.patchValue({
+      name_es: 'Sentadilla',
+      category: 'Strength',
+      difficulty: 'Intermedio',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Legs',
+      videoType: 'NONE'
+    });
+
+    component.goToOptionalStep();
+    expect(component.currentStep).toBe(2);
+  });
+
+  it('supports quick save with a minimum payload', () => {
     const { component, api } = createComponent(null);
 
     component.editForm.patchValue({
@@ -200,17 +254,15 @@ describe('ExerciseEditDialogComponent', () => {
       muscle_group: 'Legs',
       equipment_type: 'Bodyweight',
       difficulty: 'Intermedio',
-      videoType: 'NONE'
+      videoType: 'NONE',
+      tips: 'tip ignorado'
     });
 
-    component.onSave();
+    component.onQuickSave();
 
     const payload = api.createExercise.calls.mostRecent().args[0] as any;
+    expect(payload.name_en).toBe('Sentadilla');
+    expect(payload.tips).toBeUndefined();
     expect(payload.video).toBeNull();
-  });
-
-  it('does not include functional in the form', () => {
-    const { component } = createComponent(createExercise());
-    expect(component.editForm.contains('functional')).toBeFalse();
   });
 });

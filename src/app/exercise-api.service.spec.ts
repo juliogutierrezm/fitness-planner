@@ -67,6 +67,10 @@ describe('ExerciseApiService', () => {
     const req = httpMock.expectOne(`${environment.apiBase}/exercise`);
     expect(req.request.method).toBe('POST');
     expect(Object.prototype.hasOwnProperty.call(req.request.body, 'video')).toBeFalse();
+    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'description_en')).toBeFalse();
+    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'description_es')).toBeFalse();
+    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'exercise_type')).toBeFalse();
+    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'training_goal')).toBeFalse();
     req.flush({ ok: true });
   });
 });

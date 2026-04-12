@@ -5,233 +5,265 @@
 
 <mat-dialog-content>
   <form [formGroup]="editForm" class="exercise-form">
-    <section class="form-section">
-      <div class="section-header">
-        <mat-icon>info</mat-icon>
-        <div>
-          <h3>Información general</h3>
-          <p>Datos principales del ejercicio y su clasificación.</p>
-        </div>
+    <div class="step-shell">
+      <div class="step-indicator">
+        <button
+          type="button"
+          class="step-pill"
+          [class.active]="currentStep === 1"
+          (click)="goToStep(1)">
+          Paso 1 de 2
+        </button>
+        <button
+          type="button"
+          class="step-pill optional"
+          [class.active]="currentStep === 2"
+          (click)="goToStep(2)">
+          Paso 2 opcional
+        </button>
       </div>
 
-      <div class="form-grid">
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('name_es')">
-          <mat-label>Nombre (ES) *</mat-label>
-          <input matInput formControlName="name_es">
-          <mat-icon matPrefix>fitness_center</mat-icon>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode">
-          <mat-label>Nombre (EN)</mat-label>
-          <input matInput formControlName="name_en">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('category')">
-          <mat-label>Categoría *</mat-label>
-          <mat-select formControlName="category">
-            <mat-option *ngFor="let opt of categoryOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('muscle_group')">
-          <mat-label>Grupo muscular *</mat-label>
-          <mat-select formControlName="muscle_group">
-            <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('equipment_type')">
-          <mat-label>Tipo de equipo *</mat-label>
-          <mat-select formControlName="equipment_type">
-            <mat-option *ngFor="let opt of equipmentTypeOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('difficulty')">
-          <mat-label>Dificultad *</mat-label>
-          <mat-select formControlName="difficulty">
-            <mat-option value="">Sin dificultad</mat-option>
-            <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('exercise_type')">
-          <mat-label>Tipo de ejercicio</mat-label>
-          <input matInput formControlName="exercise_type">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('training_goal')">
-          <mat-label>Meta de entrenamiento</mat-label>
-          <input matInput formControlName="training_goal">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode">
-          <mat-label>Equipo específico</mat-label>
-          <input matInput formControlName="equipment_specific" placeholder="Ej: mancuerna, barra, máquina Smith">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('aliases')">
-          <mat-label>Alias / variaciones</mat-label>
-          <input matInput formControlName="aliases" placeholder="Separados por comas">
-        </mat-form-field>
-      </div>
-    </section>
-
-    <section class="form-section">
-      <div class="section-header">
-        <mat-icon>description</mat-icon>
-        <div>
-          <h3>Descripción</h3>
-          <p>Texto descriptivo, recomendaciones y grupos musculares auxiliares.</p>
-        </div>
-      </div>
-
-      <div class="form-grid">
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('description_es')">
-          <mat-label>Descripción (ES)</mat-label>
-          <textarea matInput formControlName="description_es" rows="4"></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode">
-          <mat-label>Descripción (EN)</mat-label>
-          <textarea matInput formControlName="description_en" rows="4"></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('tips')">
-          <mat-label>Tips</mat-label>
-          <textarea matInput formControlName="tips" rows="4" placeholder="Un tip por línea"></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
-          <mat-label>Errores comunes</mat-label>
-          <textarea matInput formControlName="common_mistakes" rows="4" placeholder="Un error por línea"></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode">
-          <mat-label>Plano de movimiento</mat-label>
-          <input matInput formControlName="plane_of_motion" placeholder="Ej: sagital, frontal, transversal">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" *ngIf="isCreationMode">
-          <mat-label>Patrón de movimiento</mat-label>
-          <input matInput formControlName="movement_pattern" placeholder="Ej: aceleración, deceleración">
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
-          <mat-label>Músculos secundarios</mat-label>
-          <input matInput formControlName="secondary_muscles" placeholder="Separados por comas">
-        </mat-form-field>
-      </div>
-    </section>
-
-    <section class="form-section">
-      <div class="section-header">
-        <mat-icon>videocam</mat-icon>
-        <div>
-          <h3>Video</h3>
-          <p>Selecciona una sola fuente de video para evitar conflictos.</p>
-        </div>
-      </div>
-
-      <div class="video-section">
-        <mat-radio-group formControlName="videoType" class="video-type-group" aria-label="Tipo de video">
-          <mat-radio-button value="NONE">Sin video</mat-radio-button>
-          <mat-radio-button value="YOUTUBE">YouTube</mat-radio-button>
-          <mat-radio-button value="S3">Archivo S3</mat-radio-button>
-        </mat-radio-group>
-
-        <div *ngIf="selectedVideoType === 'NONE'" class="video-empty-state">
-          El ejercicio se guardará sin video asociado.
+      <section *ngIf="currentStep === 1" class="form-section">
+        <div class="section-header">
+          <mat-icon>flash_on</mat-icon>
+          <div>
+            <h3>Paso 1: Información principal</h3>
+            <p>Completa lo mínimo para guardar el ejercicio rápido y sin fricción.</p>
+          </div>
         </div>
 
-        <div *ngIf="selectedVideoType === 'YOUTUBE'" class="video-mode">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>URL de YouTube</mat-label>
-            <input matInput formControlName="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
-            <mat-icon matPrefix>ondemand_video</mat-icon>
-            <mat-hint>Pega la URL completa del video.</mat-hint>
+        <div class="step-one-grid">
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('name_es')">
+            <mat-label>Nombre *</mat-label>
+            <input matInput formControlName="name_es">
+            <mat-icon matPrefix>fitness_center</mat-icon>
           </mat-form-field>
 
-          <div *ngIf="getYoutubePreviewUrl()" class="video-preview-card">
-            <p class="video-label">Vista previa YouTube</p>
-            <iframe
-              [src]="getYoutubePreviewUrl()!"
-              class="video-iframe"
-              frameborder="0"
-              allowfullscreen>
-            </iframe>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('category')">
+            <mat-label>Categoría *</mat-label>
+            <mat-select formControlName="category">
+              <mat-option *ngFor="let opt of categoryOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('difficulty')">
+            <mat-label>Dificultad *</mat-label>
+            <mat-select formControlName="difficulty">
+              <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('equipment_type')">
+            <mat-label>Tipo de equipo *</mat-label>
+            <mat-select formControlName="equipment_type">
+              <mat-option *ngFor="let opt of equipmentTypeOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('muscle_group')">
+            <mat-label>Grupo muscular *</mat-label>
+            <mat-select formControlName="muscle_group">
+              <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <section class="video-card full-span">
+            <div class="section-header compact">
+              <mat-icon>videocam</mat-icon>
+              <div>
+                <h3>Video</h3>
+                <p>Opcional. Elige solo una fuente.</p>
+              </div>
+            </div>
+
+            <div class="video-section">
+              <mat-radio-group formControlName="videoType" class="video-type-group" aria-label="Tipo de video">
+                <mat-radio-button value="NONE">Sin video</mat-radio-button>
+                <mat-radio-button value="YOUTUBE">YouTube</mat-radio-button>
+                <mat-radio-button value="S3">Archivo S3</mat-radio-button>
+              </mat-radio-group>
+
+              <div *ngIf="selectedVideoType === 'NONE'" class="video-empty-state">
+                Puedes guardar el ejercicio sin video.
+              </div>
+
+              <div *ngIf="selectedVideoType === 'YOUTUBE'" class="video-mode">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>URL de YouTube</mat-label>
+                  <input matInput formControlName="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+                  <mat-icon matPrefix>ondemand_video</mat-icon>
+                </mat-form-field>
+
+                <div *ngIf="getYoutubePreviewUrl()" class="video-preview-card compact">
+                  <iframe
+                    [src]="getYoutubePreviewUrl()!"
+                    class="video-iframe"
+                    frameborder="0"
+                    allowfullscreen>
+                  </iframe>
+                </div>
+              </div>
+
+              <div *ngIf="selectedVideoType === 'S3'" class="video-mode">
+                <div class="upload-area inline">
+                  <input
+                    #fileInput
+                    type="file"
+                    accept="video/*"
+                    (change)="onFileSelected($event)"
+                    style="display: none"
+                    [disabled]="saving">
+
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="upload-btn"
+                    (click)="fileInput.click()"
+                    [disabled]="saving">
+                    <mat-icon>cloud_upload</mat-icon>
+                    {{ selectedVideoFileName ? 'Cambiar video' : 'Seleccionar video' }}
+                  </button>
+
+                  <p class="upload-hint">MP4, MOV o WebM. Máximo 50MB.</p>
+                </div>
+
+                <div *ngIf="selectedVideoFileName" class="selected-file-info">
+                  <mat-icon class="file-icon">movie</mat-icon>
+                  <span class="file-name">{{ selectedVideoFileName }}</span>
+                </div>
+
+                <div *ngIf="selectedVideoPreviewUrl" class="video-preview-card compact">
+                  <video [src]="selectedVideoPreviewUrl" controls muted class="video-player"></video>
+                </div>
+
+                <div *ngIf="!selectedVideoPreviewUrl && getExistingS3PreviewUrl()" class="video-preview-card compact">
+                  <video [src]="getExistingS3PreviewUrl()!" controls class="video-player"></video>
+                </div>
+
+                <div *ngIf="!selectedVideoPreviewUrl && !getExistingS3PreviewUrl()" class="video-empty-state">
+                  No hay un archivo S3 cargado actualmente.
+                </div>
+              </div>
+
+              <div *ngIf="videoState.uploading" class="progress-area">
+                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                <p>Subiendo video...</p>
+              </div>
+
+              <div *ngIf="videoState.processing" class="progress-area processing-area">
+                <mat-spinner diameter="28"></mat-spinner>
+                <p>Procesando video...</p>
+              </div>
+
+              <p *ngIf="uploadError" class="upload-error">{{ uploadError }}</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section *ngIf="currentStep === 2" class="form-section">
+        <div class="section-header">
+          <mat-icon>description</mat-icon>
+          <div>
+            <h3>Paso 2: Detalles opcionales</h3>
+            <p>Puedes guardar sin completar esta parte. Solo se enviará lo que tenga contenido real.</p>
           </div>
         </div>
 
-        <div *ngIf="selectedVideoType === 'S3'" class="video-mode">
-          <div class="upload-area">
-            <input
-              #fileInput
-              type="file"
-              accept="video/*"
-              (change)="onFileSelected($event)"
-              style="display: none"
-              [disabled]="saving">
+        <div class="form-grid">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode">
+            <mat-label>Nombre (EN)</mat-label>
+            <input matInput formControlName="name_en" placeholder="Si lo dejas vacío, se usará Nombre (ES)">
+          </mat-form-field>
 
-            <button
-              mat-fab
-              extended
-              type="button"
-              class="upload-btn"
-              (click)="fileInput.click()"
-              [disabled]="saving">
-              <mat-icon>cloud_upload</mat-icon>
-              {{ selectedVideoFileName ? 'Cambiar video' : 'Seleccionar video' }}
-            </button>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('exercise_type')">
+            <mat-label>Tipo de ejercicio</mat-label>
+            <input matInput formControlName="exercise_type">
+          </mat-form-field>
 
-            <p class="upload-hint">MP4, MOV o WebM. Máximo 50MB.</p>
-          </div>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('training_goal')">
+            <mat-label>Meta de entrenamiento</mat-label>
+            <input matInput formControlName="training_goal">
+          </mat-form-field>
 
-          <div *ngIf="selectedVideoFileName" class="selected-file-info">
-            <mat-icon class="file-icon">movie</mat-icon>
-            <span class="file-name">{{ selectedVideoFileName }}</span>
-          </div>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode">
+            <mat-label>Equipo específico</mat-label>
+            <input matInput formControlName="equipment_specific">
+          </mat-form-field>
 
-          <div *ngIf="selectedVideoPreviewUrl" class="video-preview-card">
-            <p class="video-label">Vista previa local</p>
-            <video [src]="selectedVideoPreviewUrl" controls muted class="video-player"></video>
-          </div>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode">
+            <mat-label>Plano de movimiento</mat-label>
+            <input matInput formControlName="plane_of_motion">
+          </mat-form-field>
 
-          <div *ngIf="!selectedVideoPreviewUrl && getExistingS3PreviewUrl()" class="video-preview-card">
-            <p class="video-label">Video actual</p>
-            <video [src]="getExistingS3PreviewUrl()!" controls class="video-player"></video>
-          </div>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode">
+            <mat-label>Patrón de movimiento</mat-label>
+            <input matInput formControlName="movement_pattern">
+          </mat-form-field>
 
-          <div *ngIf="!selectedVideoPreviewUrl && !getExistingS3PreviewUrl()" class="video-empty-state">
-            No hay un archivo S3 cargado actualmente.
-          </div>
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('description_es')">
+            <mat-label>Descripción (ES)</mat-label>
+            <textarea matInput formControlName="description_es" rows="4"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode">
+            <mat-label>Descripción (EN)</mat-label>
+            <textarea matInput formControlName="description_en" rows="4"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('tips')">
+            <mat-label>Tips</mat-label>
+            <textarea matInput formControlName="tips" rows="4" placeholder="Un tip por línea"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
+            <mat-label>Errores comunes</mat-label>
+            <textarea matInput formControlName="common_mistakes" rows="4" placeholder="Un error por línea"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
+            <mat-label>Músculos secundarios</mat-label>
+            <input matInput formControlName="secondary_muscles" placeholder="Separados por comas">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('aliases')">
+            <mat-label>Alias / variaciones</mat-label>
+            <input matInput formControlName="aliases" placeholder="Separados por comas">
+          </mat-form-field>
         </div>
-
-        <div *ngIf="videoState.uploading" class="progress-area">
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          <p>Subiendo video...</p>
-        </div>
-
-        <div *ngIf="videoState.processing" class="progress-area processing-area">
-          <mat-spinner diameter="32"></mat-spinner>
-          <p>Procesando video... esto puede tomar unos segundos.</p>
-        </div>
-
-        <p *ngIf="uploadError" class="upload-error">{{ uploadError }}</p>
-      </div>
-    </section>
+      </section>
+    </div>
   </form>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end" class="dialog-actions">
-  <button mat-fab extended class="btn-cancel" (click)="onClose()" [disabled]="saving">
-    <mat-icon>close</mat-icon>
-    Cancelar
-  </button>
+  <ng-container *ngIf="currentStep === 1; else optionalStepActions">
+    <button mat-stroked-button class="btn-cancel" (click)="onClose()" [disabled]="saving">
+      <mat-icon>close</mat-icon>
+      Cancelar
+    </button>
 
-  <button mat-fab extended class="btn-save" (click)="onSave()" [disabled]="editForm.invalid || saving || !isVideoValid">
-    <mat-icon *ngIf="!saving">save</mat-icon>
-    <span *ngIf="!saving">{{ isCreationMode ? 'Crear ejercicio' : 'Guardar cambios' }}</span>
-    <span *ngIf="saving">Guardando...</span>
-  </button>
+    <button mat-flat-button class="btn-quick" (click)="onQuickSave()" [disabled]="saving || !isStepOneValid">
+      <mat-icon>bolt</mat-icon>
+      Guardar rápido
+    </button>
+
+    <button mat-flat-button class="btn-save" (click)="goToOptionalStep()" [disabled]="saving || !isStepOneValid">
+      <mat-icon>arrow_forward</mat-icon>
+      Continuar
+    </button>
+  </ng-container>
+
+  <ng-template #optionalStepActions>
+    <button mat-stroked-button class="btn-cancel" (click)="goToStep(1)" [disabled]="saving">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </button>
+
+    <button mat-flat-button class="btn-save" (click)="onSave()" [disabled]="saving || !isStepOneValid">
+      <mat-icon *ngIf="!saving">save</mat-icon>
+      <span *ngIf="!saving">{{ isCreationMode ? 'Crear ejercicio' : 'Guardar cambios' }}</span>
+      <span *ngIf="saving">Guardando...</span>
+    </button>
+  </ng-template>
 </mat-dialog-actions>

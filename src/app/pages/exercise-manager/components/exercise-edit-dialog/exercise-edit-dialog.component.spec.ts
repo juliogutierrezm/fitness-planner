@@ -76,6 +76,8 @@ describe('ExerciseEditDialogComponent', () => {
   it('starts on step one and loads persisted values', () => {
     const existingExercise = createExercise({
       description_es: 'Descripcion actual',
+      exercise_type: 'Compuesto',
+      training_goal: 'Fuerza',
       tips: [' Mantener core activo ', 'Bajar con control'],
       common_mistakes: [' No bloquear codos ', 'Perder alineacion'],
       secondary_muscles: ['Triceps', ' Deltoides '],
@@ -89,6 +91,8 @@ describe('ExerciseEditDialogComponent', () => {
 
     expect(component.currentStep).toBe(1);
     expect(component.editForm.get('description_es')?.value).toBe('Descripcion actual');
+    expect(component.editForm.get('exercise_type')?.value).toBe('Compuesto');
+    expect(component.editForm.get('training_goal')?.value).toBe('Fuerza');
     expect(component.editForm.get('tips')?.value).toBe(' Mantener core activo \nBajar con control');
     expect(component.editForm.get('common_mistakes')?.value).toBe(' No bloquear codos \nPerder alineacion');
     expect(component.editForm.get('secondary_muscles')?.value).toBe('Triceps,  Deltoides ');

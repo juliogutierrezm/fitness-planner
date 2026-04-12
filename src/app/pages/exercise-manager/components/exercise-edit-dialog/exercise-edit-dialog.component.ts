@@ -115,31 +115,8 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     this.equipmentTypeOptions = data.filterOptions.equipmentTypeOptions;
     this.difficultyOptions = data.filterOptions.difficultyOptions;
 
-    const ex = this.exercise;
-    const initialVideoType = this.resolveInitialVideoType(ex);
-    const initialYoutubeUrl = initialVideoType === 'YOUTUBE' ? (getYoutubeUrl(ex) || '') : '';
-
-    this.editForm = this.fb.group({
-      name_es: [ex?.name_es || ex?.name || '', Validators.required],
-      name_en: [ex?.name_en || ''],
-      category: [ex?.category || '', Validators.required],
-      difficulty: [ex?.difficulty || '', Validators.required],
-      equipment_type: [ex?.equipment_type || '', Validators.required],
-      muscle_group: [ex?.muscle_group || '', Validators.required],
-      videoType: [initialVideoType],
-      youtubeUrl: [initialYoutubeUrl],
-      exercise_type: [ex?.exercise_type || ''],
-      training_goal: [ex?.training_goal || ''],
-      description_es: [ex?.description_es || ''],
-      description_en: [ex?.description_en || ''],
-      tips: [this.joinMultiline(ex?.tips)],
-      common_mistakes: [this.joinMultiline(ex?.common_mistakes)],
-      secondary_muscles: [this.joinCsv(ex?.secondary_muscles)],
-      aliases: [this.joinCsv(ex?.aliases)],
-      plane_of_motion: [ex?.plane_of_motion || ''],
-      movement_pattern: [ex?.movement_pattern || ''],
-      equipment_specific: [ex?.equipment_specific || '']
-    });
+    this.editForm = this.createForm();
+    this.patchExerciseIntoForm(this.exercise);
 
     this.videoTypeSubscription = this.editForm.get('videoType')?.valueChanges.subscribe((type: VideoSelectorType) => {
       this.handleVideoTypeChange(type);
@@ -634,6 +611,61 @@ export class ExerciseEditDialogComponent implements OnDestroy {
 
   private markStepOneTouched(): void {
     this.STEP_ONE_FIELDS.forEach(field => this.editForm.get(field)?.markAsTouched());
+  }
+
+  private createForm(): FormGroup {
+    return this.fb.group({
+      name_es: ['', Validators.required],
+      name_en: [''],
+      category: ['', Validators.required],
+      difficulty: ['', Validators.required],
+      equipment_type: ['', Validators.required],
+      muscle_group: ['', Validators.required],
+      videoType: ['NONE'],
+      youtubeUrl: [''],
+      exercise_type: [''],
+      training_goal: [''],
+      description_es: [''],
+      description_en: [''],
+      tips: [''],
+      common_mistakes: [''],
+      secondary_muscles: [''],
+      aliases: [''],
+      plane_of_motion: [''],
+      movement_pattern: [''],
+      equipment_specific: ['']
+    });
+  }
+
+  private patchExerciseIntoForm(exercise: Exercise | null): void {
+    if (!exercise) {
+      return;
+    }
+
+    const videoType = this.resolveInitialVideoType(exercise);
+    this.editForm.patchValue({
+      name_es: exercise.name_es || exercise.name || '',
+      name_en: exercise.name_en || '',
+      category: exercise.category || '',
+      difficulty: exercise.difficulty || '',
+      equipment_type: exercise.equipment_type || '',
+      muscle_group: exercise.muscle_group || '',
+      videoType,
+      youtubeUrl: videoType === 'YOUTUBE' ? (getYoutubeUrl(exercise) || '') : '',
+      exercise_type: exercise.exercise_type || '',
+      training_goal: exercise.training_goal || '',
+      description_es: exercise.description_es || '',
+      description_en: exercise.description_en || '',
+      tips: this.joinMultiline(exercise.tips),
+      common_mistakes: this.joinMultiline(exercise.common_mistakes),
+      secondary_muscles: this.joinCsv(exercise.secondary_muscles),
+      aliases: this.joinCsv(exercise.aliases),
+      plane_of_motion: exercise.plane_of_motion || '',
+      movement_pattern: exercise.movement_pattern || '',
+      equipment_specific: exercise.equipment_specific || ''
+    }, { emitEvent: false });
+
+    this.cdr.markForCheck();
   }
 
   private joinMultiline(values?: string[] | string | null): string {

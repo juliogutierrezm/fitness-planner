@@ -396,9 +396,8 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     let attempts = 0;
     this.mediaRefreshIntervalId = setInterval(() => {
       attempts += 1;
-      this.api.getAllExercises().pipe(take(1)).subscribe({
-        next: (exercises) => {
-          const refreshedExercise = exercises.find(ex => ex.id === exerciseId);
+      this.api.getExerciseById(exerciseId).pipe(take(1)).subscribe({
+        next: (refreshedExercise) => {
           if (refreshedExercise) {
             this.replaceExerciseInMemory(refreshedExercise);
           }

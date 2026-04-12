@@ -34,6 +34,11 @@ export function buildYoutubeEmbedUrl(url: string | null | undefined): string | n
   return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
 }
 
+export function buildYoutubeThumbnailUrl(url: string | null | undefined): string | null {
+  const videoId = extractYoutubeId(url);
+  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+}
+
 export function getS3PreviewUrl(exercise: ExerciseLike): string | null {
   const record = asRecord(exercise);
   const video = getVideoObject(exercise);
@@ -85,11 +90,5 @@ export function getThumbnailSource(exercise: ExerciseLike): string | null {
     return explicitThumbnail;
   }
 
-  const youtubeUrl = getYoutubeUrl(exercise);
-  const youtubeId = extractYoutubeId(youtubeUrl);
-  if (youtubeId) {
-    return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
-  }
-
-  return null;
+  return buildYoutubeThumbnailUrl(getYoutubeUrl(exercise));
 }

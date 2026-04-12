@@ -33,7 +33,7 @@ export interface Exercise {
   s3_key?: string;
   previewUrl?: string;
   thumbnailUrl?: string;
-  video?: VideoSource;
+  video?: VideoSource | null;
 }
 
 export interface VideoSource {
@@ -69,7 +69,7 @@ export interface PlanItem extends Partial<Exercise> {
   thumbnail?: string;
   previewUrl?: string;
   thumbnailUrl?: string;
-  video?: VideoSource;
+  video?: VideoSource | null;
 }
 
 

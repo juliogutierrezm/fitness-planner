@@ -23,7 +23,8 @@ describe('ExerciseManagerComponent', () => {
   function createComponent() {
     const api = jasmine.createSpyObj<ExerciseApiService>('ExerciseApiService', [
       'getAllExercises',
-      'deleteExercise'
+      'deleteExercise',
+      'getExerciseById'
     ]);
     const authService = jasmine.createSpyObj<AuthService>('AuthService', ['isGymAdmin', 'isSystem']);
     authService.isGymAdmin.and.returnValue(false);
@@ -73,7 +74,7 @@ describe('ExerciseManagerComponent', () => {
     component.exercises$ = of(initialExercises);
     (component as any).rebuildFilteredExercises();
 
-    api.getAllExercises.and.returnValue(of(refreshedExercises));
+    api.getExerciseById.and.returnValue(of(refreshedExercises[0]));
     const loadExercisesSpy = spyOn(component, 'loadExercises');
 
     (component as any).startMediaRefreshPolling('ex-1');
@@ -83,13 +84,13 @@ describe('ExerciseManagerComponent', () => {
     component.exercises$.subscribe(exercises => currentExercises = exercises);
 
     expect(loadExercisesSpy).not.toHaveBeenCalled();
-    expect(api.getAllExercises).toHaveBeenCalledTimes(1);
+    expect(api.getExerciseById).toHaveBeenCalledTimes(1);
     expect(currentExercises[0].id).toBe('ex-1');
     expect(currentExercises[0].video?.thumbnailUrl).toBe('https://cdn.example.com/thumb.jpg');
     expect(currentExercises[1]).toEqual(initialExercises[1]);
 
     tick(4000);
-    expect(api.getAllExercises).toHaveBeenCalledTimes(1);
+    expect(api.getExerciseById).toHaveBeenCalledTimes(1);
   }));
 
   it('stops polling after the configured max attempts when no thumbnail is found', fakeAsync(() => {
@@ -102,12 +103,12 @@ describe('ExerciseManagerComponent', () => {
     component.exercises$ = of(exercisesWithoutThumbnail);
     (component as any).rebuildFilteredExercises();
 
-    api.getAllExercises.and.returnValue(of(exercisesWithoutThumbnail));
+    api.getExerciseById.and.returnValue(of(exercisesWithoutThumbnail[0]));
 
     (component as any).startMediaRefreshPolling('ex-1');
     tick(2000 * 15);
     tick(4000);
 
-    expect(api.getAllExercises).toHaveBeenCalledTimes(15);
+    expect(api.getExerciseById).toHaveBeenCalledTimes(15);
   }));
 });

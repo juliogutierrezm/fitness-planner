@@ -21,7 +21,6 @@ const ALLOWED_FIELDS = [
   "training_goal",
   "common_mistakes",
   "tips",
-  "functional",
   "description_es",
   "aliases",
   "video"
@@ -135,12 +134,11 @@ export class ExerciseApiService {
     difficulty?: string;
     movement_pattern?: string;
     training_goal?: string;
-    functional?: boolean;
     aliases?: string[];
     secondary_muscles?: string[];
     tips?: string[];
     common_mistakes?: string[];
-    video?: VideoSource;
+    video?: VideoSource | null;
   }): Observable<any> {
     const user = this.authService.getCurrentUser();
     if (!user) {
@@ -164,8 +162,7 @@ export class ExerciseApiService {
       exercise_type: exerciseData.exercise_type || '',
       difficulty: exerciseData.difficulty || '',
       movement_pattern: exerciseData.movement_pattern || '',
-      training_goal: exerciseData.training_goal || '',
-      functional: exerciseData.functional || false
+      training_goal: exerciseData.training_goal || ''
     };
 
     // Handle arrays
@@ -182,7 +179,7 @@ export class ExerciseApiService {
     }
 
     // Video - only if provided
-    if (exerciseData.video) {
+    if (Object.prototype.hasOwnProperty.call(exerciseData, 'video')) {
       payload.video = exerciseData.video;
     }
 
@@ -210,6 +207,18 @@ export class ExerciseApiService {
       tap(res => console.log('🔗 URL de subida obtenida:', res)),
       catchError(err => {
         console.error('❌ Error al obtener URL de subida:', err);
+        return of(null);
+      })
+    );
+  }
+
+  // Get a single exercise by ID
+  getExerciseById(id: string): Observable<Exercise | null> {
+    const url = `${this.exerciseUrl}/${encodeURIComponent(id)}`;
+    return this.http.get<Exercise>(url).pipe(
+      tap(ex => console.log('📋 Ejercicio obtenido:', ex?.id)),
+      catchError(err => {
+        console.error('❌ Error al obtener ejercicio por ID:', err);
         return of(null);
       })
     );

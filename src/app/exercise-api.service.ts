@@ -23,7 +23,8 @@ const ALLOWED_FIELDS = [
   "tips",
   "functional",
   "description_es",
-  "aliases"
+  "aliases",
+  "video"
 ];
 
 // Protected fields that must be excluded from update payloads
@@ -230,11 +231,14 @@ export class ExerciseApiService {
 
   updateExercise(ex: Exercise): Observable<any> {
     const updateUrl = `${this.exerciseUrl}/${encodeURIComponent(ex.id)}`;
-    console.log('🌐 REQUEST BODY:', JSON.stringify(ex, null, 2));
-    console.log('🌐 REQUEST URL:', this.exerciseUrl);
-    console.log('🌐 UPDATE URL:', updateUrl);
-    return this.http.put(updateUrl, ex).pipe(
-      tap(() => console.log('✏️ Ejercicio actualizado:', ex)),
+
+    // ✅ USAR MISMO SANITIZE QUE LIBRARY
+    const payload = this.sanitizeExerciseUpdatePayload(ex);
+
+    console.log('🌐 CLEAN UPDATE PAYLOAD:', JSON.stringify(payload, null, 2));
+
+    return this.http.put(updateUrl, payload).pipe(
+      tap(() => console.log('✏️ Ejercicio actualizado:', payload)),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio:', err);
         return of(null);
@@ -243,7 +247,7 @@ export class ExerciseApiService {
   }
 
   deleteExercise(id: string): Observable<any> {
-    return this.http.delete(`${this.exerciseUrl}?id=${id}`).pipe(
+    return this.http.delete(`${this.apiBase}/exercise/${encodeURIComponent(id)}`).pipe(
       tap(() => console.log(`🗑️ Ejercicio eliminado ${id}`)),
       catchError(err => {
         console.error('❌ Error al eliminar ejercicio:', err);

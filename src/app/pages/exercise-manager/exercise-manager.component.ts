@@ -5,8 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { finalize, map, shareReplay, take, tap } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
@@ -16,6 +15,7 @@ import { ExerciseFiltersComponent } from './components/exercise-filters/exercise
 import { ExerciseTableComponent } from './components/exercise-table/exercise-table.component';
 import { ExerciseVideoDialogComponent } from './components/exercise-video-dialog/exercise-video-dialog.component';
 import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
 import { getThumbnailSource } from '../../shared/video-utils';
 
@@ -40,7 +40,6 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   loading = false;
   exercises$!: Observable<Exercise[]>;
   filteredExercises$!: Observable<Exercise[]>;
-  mediaCacheToken = Date.now();
 
   // Current filters data
   currentFilters: ExerciseFilters = {
@@ -71,12 +70,12 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   private readonly MEDIA_REFRESH_INTERVAL_MS = 2000;
   private readonly MEDIA_REFRESH_MAX_ATTEMPTS = 15;
   private mediaRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
+  private exercisesSnapshot: Exercise[] = [];
 
   constructor(
     private api: ExerciseApiService,
     private authService: AuthService,
     private dialog: MatDialog,
-    private router: Router,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private inlineOptionsService: InlineEditOptionsService
@@ -175,12 +174,12 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   }
 
   loadExercises(onLoaded?: (exercises: Exercise[]) => void): void {
-    this.mediaCacheToken = Date.now();
     const startTime = Date.now();
     this.loading = true;
 
     this.exercises$ = this.api.getAllExercises().pipe(
       tap((exercises) => {
+        this.exercisesSnapshot = [...exercises];
         this.populateFilterOptions(exercises);
 
         const catalogs = this.inlineOptionsService.buildCatalogs(
@@ -237,8 +236,49 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     this.openEditDialog(exercise);
   }
 
-  onViewDetails(exercise: Exercise): void {
-    this.router.navigate(['/exercise-detail', exercise.id]);
+  /**
+   * Purpose: delete a custom exercise after user confirmation.
+   * Input: Exercise to delete. Output: void.
+   * Error handling: shows snackbar on error, reloads list on success.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onDeleteExercise(exercise: Exercise): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Eliminar Ejercicio',
+        message: `¿Estás seguro de que deseas eliminar "${exercise.name_es || exercise.name}"? Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        icon: 'delete'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+
+      this.loading = true;
+      this.cdr.markForCheck();
+
+      this.api.deleteExercise(exercise.id).pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (response) => {
+          if (response) {
+            this.snackBar.open('Ejercicio eliminado correctamente.', 'Cerrar', FeedbackConfig.successConfig());
+            this.loadExercises();
+          } else {
+            this.snackBar.open('Error al eliminar el ejercicio.', 'Cerrar', FeedbackConfig.errorConfig());
+          }
+        },
+        error: (err) => {
+          console.error('Error deleting exercise:', err);
+          this.snackBar.open('Error al eliminar el ejercicio.', 'Cerrar', FeedbackConfig.errorConfig());
+        }
+      });
+    });
   }
 
   onOpenVideo(exercise: Exercise): void {
@@ -299,12 +339,11 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
       data: exercise,
       width: '600px'
     }).componentInstance.viewDetailsClicked.subscribe(selectedExercise => {
+      // Only open edit dialog for custom exercises
       if ((selectedExercise as any)?.source === 'CUSTOM') {
         this.openEditDialog(selectedExercise);
-        return;
       }
-
-      this.onViewDetails(selectedExercise);
+      // System exercises: no action (edit not allowed)
     });
   }
 
@@ -357,15 +396,44 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     let attempts = 0;
     this.mediaRefreshIntervalId = setInterval(() => {
       attempts += 1;
-      this.loadExercises((exercises) => {
-        const refreshedExercise = exercises.find(ex => ex.id === exerciseId);
-        const hasThumbnail = Boolean(refreshedExercise && getThumbnailSource(refreshedExercise));
+      this.api.getAllExercises().pipe(take(1)).subscribe({
+        next: (exercises) => {
+          const refreshedExercise = exercises.find(ex => ex.id === exerciseId);
+          if (refreshedExercise) {
+            this.replaceExerciseInMemory(refreshedExercise);
+          }
 
-        if (hasThumbnail || attempts >= this.MEDIA_REFRESH_MAX_ATTEMPTS) {
-          this.stopMediaRefreshPolling();
+          const hasThumbnail = Boolean(refreshedExercise && getThumbnailSource(refreshedExercise));
+          if (hasThumbnail || attempts >= this.MEDIA_REFRESH_MAX_ATTEMPTS) {
+            this.stopMediaRefreshPolling();
+          }
+        },
+        error: () => {
+          if (attempts >= this.MEDIA_REFRESH_MAX_ATTEMPTS) {
+            this.stopMediaRefreshPolling();
+          }
         }
       });
     }, this.MEDIA_REFRESH_INTERVAL_MS);
+  }
+
+  private replaceExerciseInMemory(updatedExercise: Exercise): void {
+    if (!this.exercisesSnapshot.length) {
+      return;
+    }
+
+    const exerciseIndex = this.exercisesSnapshot.findIndex(ex => ex.id === updatedExercise.id);
+    if (exerciseIndex === -1) {
+      return;
+    }
+
+    const nextExercises = [...this.exercisesSnapshot];
+    nextExercises[exerciseIndex] = updatedExercise;
+
+    this.exercisesSnapshot = nextExercises;
+    this.exercises$ = of(nextExercises).pipe(shareReplay(1));
+    this.rebuildFilteredExercises();
+    this.cdr.markForCheck();
   }
 
   private stopMediaRefreshPolling(): void {

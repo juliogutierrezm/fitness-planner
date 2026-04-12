@@ -46,12 +46,11 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
   dataSource = new MatTableDataSource<Exercise>([]);
 
   @Input() exercises: Exercise[] | null = [];
-  @Input() cacheBustToken = Date.now();
   @Input() initialPaginatorState: PaginatorState | null = null;
   @Input() inlineCatalogs: InlineEditCatalogs | null = null;
 
   @Output() editExercise = new EventEmitter<Exercise>();
-  @Output() viewDetails = new EventEmitter<Exercise>();
+  @Output() deleteExercise = new EventEmitter<Exercise>();
   @Output() openVideoPreview = new EventEmitter<Exercise>();
   @Output() paginatorChanged = new EventEmitter<PaginatorState>();
 
@@ -141,8 +140,8 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
     this.editExercise.emit(ex);
   }
 
-  onViewDetails(ex: Exercise): void {
-    this.viewDetails.emit(ex);
+  onDeleteExercise(ex: Exercise): void {
+    this.deleteExercise.emit(ex);
   }
 
   onOpenVideo(ex: Exercise): void {
@@ -171,14 +170,5 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
 
   getPreviewUrl(exercise: Exercise): string | null {
     return getThumbnailSource(exercise);
-  }
-
-  getCacheBustedUrl(url: string | null | undefined): string | null {
-    if (!url) {
-      return null;
-    }
-
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}t=${this.cacheBustToken}`;
   }
 }

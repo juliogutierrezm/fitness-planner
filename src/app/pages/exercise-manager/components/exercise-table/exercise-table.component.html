@@ -5,12 +5,15 @@
         <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Acciones</th>
             <td mat-cell *matCellDef="let ex" class="actions-cell">
-                <button mat-icon-button (click)="onViewDetails(ex)" matTooltip="Ver detalles">
-                    <mat-icon>visibility</mat-icon>
-                </button>
-                <button *ngIf="canEdit(ex)" mat-icon-button color="primary" (click)="onEditExercise(ex)" matTooltip="Editar ejercicio">
-                    <mat-icon>edit</mat-icon>
-                </button>
+                <div class="action-buttons" *ngIf="canEdit(ex)">
+                    <button mat-mini-fab class="btn-edit" (click)="onEditExercise(ex)" matTooltip="Editar ejercicio">
+                        <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-mini-fab class="btn-delete" (click)="onDeleteExercise(ex)" matTooltip="Eliminar ejercicio">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                </div>
+                <span *ngIf="!canEdit(ex)" class="no-actions">—</span>
             </td>
         </ng-container>
 
@@ -34,7 +37,7 @@
                      class="hover-preview"
                      [style.left.px]="previewPosition.x"
                      [style.top.px]="previewPosition.y">
-                    <img *ngIf="getCacheBustedUrl(getPreviewUrl(hoveredExercise)) as previewUrl"
+                    <img *ngIf="getPreviewUrl(hoveredExercise) as previewUrl"
                          [src]="previewUrl"
                          alt="Vista previa"
                          class="preview-image"

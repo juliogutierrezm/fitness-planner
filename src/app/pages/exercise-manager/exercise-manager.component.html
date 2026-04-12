@@ -31,11 +31,10 @@
           <app-exercise-table
             *ngIf="exercises.length; else emptyState"
             [exercises]="exercises"
-            [cacheBustToken]="mediaCacheToken"
             [inlineCatalogs]="inlineCatalogs"
             [initialPaginatorState]="paginatorState"
             (editExercise)="onEditExercise($event)"
-            (viewDetails)="onViewDetails($event)"
+            (deleteExercise)="onDeleteExercise($event)"
             (openVideoPreview)="onOpenVideo($event)"
             (paginatorChanged)="onPaginatorChanged($event)">
           </app-exercise-table>

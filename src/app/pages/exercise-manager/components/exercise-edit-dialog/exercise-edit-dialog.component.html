@@ -1,82 +1,100 @@
-<h2 mat-dialog-title>{{ isCreationMode ? 'Crear Nuevo Ejercicio' : 'Editar Ejercicio' }}</h2>
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon class="title-icon">{{ isCreationMode ? 'add_circle' : 'edit' }}</mat-icon>
+  {{ isCreationMode ? 'Crear Nuevo Ejercicio' : 'Editar Ejercicio' }}
+</h2>
 <mat-dialog-content>
-  <form [formGroup]="editForm" style="height: 100%;">
-    <mat-tab-group>
+  <form [formGroup]="editForm" class="exercise-form">
+    <mat-tab-group animationDuration="200ms" class="exercise-tabs">
     <!-- General Tab -->
-    <mat-tab label="General">
-      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('name_es')">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">info</mat-icon>
+        General
+      </ng-template>
+      <div class="tab-content">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('name_es')">
           <mat-label>Nombre (ES) *</mat-label>
           <input matInput formControlName="name_es">
+          <mat-icon matPrefix>fitness_center</mat-icon>
         </mat-form-field>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('category')">
-          <mat-label>Categoría *</mat-label>
-          <mat-select formControlName="category">
-            <mat-option *ngFor="let opt of categoryOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <div class="form-row">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('category')">
+            <mat-label>Categoría *</mat-label>
+            <mat-select formControlName="category">
+              <mat-option *ngFor="let opt of categoryOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('muscle_group')">
-          <mat-label>Grupo Muscular *</mat-label>
-          <mat-select formControlName="muscle_group">
-            <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('muscle_group')">
+            <mat-label>Grupo Muscular *</mat-label>
+            <mat-select formControlName="muscle_group">
+              <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('equipment_type')">
-          <mat-label>Tipo de Equipo *</mat-label>
-          <mat-select formControlName="equipment_type">
-            <mat-option *ngFor="let opt of equipmentTypeOptions" [value]="opt">{{ opt }}</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <div class="form-row">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('equipment_type')">
+            <mat-label>Tipo de Equipo *</mat-label>
+            <mat-select formControlName="equipment_type">
+              <mat-option *ngFor="let opt of equipmentTypeOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
 
-          <mat-form-field *ngIf="isCreationMode || isFieldEditable('difficulty')">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('difficulty')">
             <mat-label>Dificultad *</mat-label>
             <mat-select formControlName="difficulty">
               <mat-option value="">Sin dificultad</mat-option>
               <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
             </mat-select>
           </mat-form-field>
+        </div>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('exercise_type')">
-          <mat-label>Tipo de Ejercicio</mat-label>
-          <input matInput formControlName="exercise_type">
-        </mat-form-field>
+        <div class="form-row">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('exercise_type')">
+            <mat-label>Tipo de Ejercicio</mat-label>
+            <input matInput formControlName="exercise_type">
+          </mat-form-field>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('training_goal')">
-          <mat-label>Meta de Entrenamiento</mat-label>
-          <input matInput formControlName="training_goal">
-        </mat-form-field>
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('training_goal')">
+            <mat-label>Meta de Entrenamiento</mat-label>
+            <input matInput formControlName="training_goal">
+          </mat-form-field>
+        </div>
 
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('description_es')">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('description_es')">
           <mat-label>Descripción (ES)</mat-label>
           <textarea matInput formControlName="description_es" rows="3"></textarea>
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode">
+
+        <mat-form-field appearance="outline" *ngIf="isCreationMode">
           <mat-label>Descripción (EN)</mat-label>
           <textarea matInput formControlName="description_en" rows="3"></textarea>
         </mat-form-field>
 
         <!-- Video Section -->
-        <div style="margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
-          <h4>Video del Ejercicio</h4>
+        <div class="video-section">
+          <div class="video-section-header">
+            <mat-icon>videocam</mat-icon>
+            <h4>Video del Ejercicio</h4>
+          </div>
 
           <ng-container *ngIf="!isCreationMode">
-            <div *ngIf="hasExistingVideo(); else noExistingVideo" style="margin-bottom: 1rem;">
-              <p style="margin-bottom: 0.5rem;"><strong>Video actual</strong></p>
+            <div *ngIf="hasExistingVideo(); else noExistingVideo" class="existing-video-container">
+              <p class="video-label"><strong>Video actual</strong></p>
 
               <video
                 *ngIf="getCurrentVideoSource()?.type === 'S3' && getCurrentS3PreviewUrl()"
                 [src]="getCurrentS3PreviewUrl()!"
                 controls
-                style="width: 100%; max-height: 220px; margin-bottom: 0.75rem;">
+                class="video-player">
               </video>
 
               <iframe
                 *ngIf="getCurrentVideoSource()?.type === 'YOUTUBE' && getCurrentYoutubeUrl() && sanitizeYoutubeUrl(getCurrentYoutubeUrl()!)"
                 [src]="sanitizeYoutubeUrl(getCurrentYoutubeUrl()!)"
-                style="width: 100%; height: 220px; margin-bottom: 0.75rem;"
+                class="video-iframe"
                 frameborder="0"
                 allowfullscreen>
               </iframe>
@@ -84,91 +102,151 @@
               <a *ngIf="getCurrentVideoSource()?.type === 'YOUTUBE' && getCurrentYoutubeUrl()"
                  [href]="getCurrentYoutubeUrl()!"
                  target="_blank"
-                 rel="noopener noreferrer">
-                Abrir video en YouTube
+                 rel="noopener noreferrer"
+                 class="youtube-link">
+                <mat-icon>open_in_new</mat-icon> Abrir en YouTube
               </a>
             </div>
 
             <ng-template #noExistingVideo>
-              <p style="color: #666; margin-bottom: 1rem;">No hay video asociado actualmente.</p>
+              <p class="no-video-text">No hay video asociado actualmente.</p>
             </ng-template>
 
-            <p style="margin-bottom: 0.5rem;">Puedes mantener el video actual o seleccionar un archivo nuevo para reemplazarlo.</p>
-            <input
-              type="file"
-              accept="video/*"
-              (change)="onFileSelected($event)"
-              style="margin-bottom: 1rem;"
-              [disabled]="saving">
+            <p class="video-hint">Puedes mantener el video actual o seleccionar un archivo nuevo para reemplazarlo.</p>
+
+            <!-- Styled upload for edit mode -->
+            <div class="upload-area">
+              <input
+                #fileInputEdit
+                type="file"
+                accept="video/*"
+                (change)="onFileSelected($event)"
+                style="display: none"
+                [disabled]="saving">
+              <button
+                mat-fab extended
+                type="button"
+                class="upload-btn"
+                (click)="fileInputEdit.click()"
+                [disabled]="saving">
+                <mat-icon>cloud_upload</mat-icon>
+                {{ selectedVideoFileName ? 'Cambiar Video' : 'Subir Video' }}
+              </button>
+              <p class="upload-hint">MP4, MOV o WebM. Máximo 50MB.</p>
+            </div>
           </ng-container>
 
           <ng-container *ngIf="isCreationMode">
             <!-- Video Type Selection -->
-            <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 1rem;">
+            <mat-form-field appearance="outline" class="full-width">
               <mat-label>Tipo de Video</mat-label>
               <mat-select formControlName="videoType">
-                <mat-option value="upload">Subir Video (S3)</mat-option>
-                <mat-option value="url">URL de YouTube</mat-option>
+                <mat-option value="upload">
+                  <mat-icon>cloud_upload</mat-icon> Subir Video (S3)
+                </mat-option>
+                <mat-option value="url">
+                  <mat-icon>ondemand_video</mat-icon> URL de YouTube
+                </mat-option>
               </mat-select>
             </mat-form-field>
 
-            <!-- S3 Upload - file held in memory until save -->
+            <!-- S3 Upload -->
             <ng-container *ngIf="editForm.get('videoType')?.value === 'upload'">
-              <input
-                type="file"
-                accept="video/*"
-                (change)="onFileSelected($event)"
-                style="margin-bottom: 1rem;"
-                [disabled]="saving">
+              <div class="upload-area">
+                <input
+                  #fileInputCreate
+                  type="file"
+                  accept="video/*"
+                  (change)="onFileSelected($event)"
+                  style="display: none"
+                  [disabled]="saving">
+                <button
+                  mat-fab extended
+                  type="button"
+                  class="upload-btn"
+                  (click)="fileInputCreate.click()"
+                  [disabled]="saving">
+                  <mat-icon>cloud_upload</mat-icon>
+                  {{ selectedVideoFileName ? 'Cambiar Video' : 'Seleccionar Video' }}
+                </button>
+                <p class="upload-hint">MP4, MOV o WebM. Máximo 50MB.</p>
+              </div>
             </ng-container>
 
             <!-- YouTube URL -->
             <mat-form-field *ngIf="editForm.get('videoType')?.value === 'url'"
-                            appearance="outline" style="width: 100%;">
+                            appearance="outline" class="full-width">
               <mat-label>URL de YouTube</mat-label>
               <input matInput formControlName="videoUrl" placeholder="https://www.youtube.com/watch?v=...">
+              <mat-icon matPrefix>ondemand_video</mat-icon>
               <mat-hint>Pega la URL completa del video</mat-hint>
             </mat-form-field>
           </ng-container>
 
-          <p *ngIf="selectedVideoFileName" style="color: #555; margin: 0.5rem 0;">
-            Archivo seleccionado: <strong>{{ selectedVideoFileName }}</strong>
-          </p>
+          <!-- Selected file info + preview -->
+          <div *ngIf="selectedVideoFileName" class="selected-file-info">
+            <mat-icon class="file-icon">movie</mat-icon>
+            <span class="file-name">{{ selectedVideoFileName }}</span>
+          </div>
 
-          <div *ngIf="videoState.uploading" style="margin-bottom: 1rem;">
+          <div *ngIf="selectedVideoPreviewUrl" class="video-preview-container">
+            <p class="video-label"><strong>Vista previa</strong></p>
+            <video
+              [src]="selectedVideoPreviewUrl"
+              controls
+              muted
+              class="video-player">
+            </video>
+          </div>
+
+          <div *ngIf="videoState.uploading" class="progress-area">
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
             <p>Subiendo video...</p>
           </div>
-          <div *ngIf="videoState.processing" style="margin-bottom: 1rem;">
+          <div *ngIf="videoState.processing" class="progress-area">
             <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
             <p>Procesando video... esto puede tomar unos segundos</p>
           </div>
 
-          <p *ngIf="uploadError" style="color: red;">{{ uploadError }}</p>
+          <p *ngIf="uploadError" class="upload-error">{{ uploadError }}</p>
+
+          <!-- YouTube URL (optional, available in both create and edit modes) -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>URL de YouTube (opcional)</mat-label>
+            <input matInput formControlName="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+            <mat-icon matPrefix>ondemand_video</mat-icon>
+            <mat-hint>Puedes agregar una URL de YouTube además del video S3</mat-hint>
+          </mat-form-field>
         </div>
       </div>
     </mat-tab>
 
     <!-- Technique Tab -->
-    <mat-tab label="Técnica">
-      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('tips')">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">psychology</mat-icon>
+        Técnica
+      </ng-template>
+      <div class="tab-content">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('tips')">
           <mat-label>Tips</mat-label>
           <textarea matInput formControlName="tips" rows="3" placeholder="Consejos para ejecutar correctamente..."></textarea>
+          <mat-icon matPrefix>lightbulb</mat-icon>
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
           <mat-label>Errores Comunes</mat-label>
           <textarea matInput formControlName="common_mistakes" rows="3" placeholder="Errores frecuentes a evitar..."></textarea>
+          <mat-icon matPrefix>warning</mat-icon>
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode">
           <mat-label>Plano de Movimiento</mat-label>
           <input matInput formControlName="plane_of_motion" placeholder="Ej: Sagital, Frontal, Transversal">
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode">
           <mat-label>Patrón de Movimiento</mat-label>
           <input matInput formControlName="movement_pattern" placeholder="Ej: Aceleración, Deceleración">
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
           <mat-label>Músculos Secundarios</mat-label>
           <input matInput formControlName="secondary_muscles" placeholder="Músculos auxiliares separados por comas">
         </mat-form-field>
@@ -176,20 +254,24 @@
     </mat-tab>
 
     <!-- Equipment Tab -->
-    <mat-tab label="Equipo">
-      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-        <mat-form-field *ngIf="isCreationMode">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">build</mat-icon>
+        Equipo
+      </ng-template>
+      <div class="tab-content">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode">
           <mat-label>Equipo Específico</mat-label>
           <input matInput formControlName="equipment_specific" placeholder="Ej: Mancuerna, Barra, Máquina Smith">
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('functional')">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('functional')">
           <mat-label>Funcional</mat-label>
           <mat-select formControlName="functional">
             <mat-option [value]="false">No</mat-option>
             <mat-option [value]="true">Sí</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field *ngIf="isCreationMode || isFieldEditable('aliases')">
+        <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('aliases')">
           <mat-label>Alias/Variaciones</mat-label>
           <input matInput formControlName="aliases" placeholder="Nombres alternativos separados por comas">
         </mat-form-field>
@@ -198,9 +280,13 @@
   </mat-tab-group>
   </form>
 </mat-dialog-content>
-<mat-dialog-actions align="end">
-  <button mat-fab extended (click)="onClose()" [disabled]="saving">Cancelar</button>
-  <button mat-fab extended color="primary" (click)="onSave()" [disabled]="editForm.invalid || saving || !isVideoValid">
+<mat-dialog-actions align="end" class="dialog-actions">
+  <button mat-fab extended class="btn-cancel" (click)="onClose()" [disabled]="saving">
+    <mat-icon>close</mat-icon>
+    Cancelar
+  </button>
+  <button mat-fab extended class="btn-save" (click)="onSave()" [disabled]="editForm.invalid || saving || !isVideoValid">
+    <mat-icon *ngIf="!saving">save</mat-icon>
     <span *ngIf="!saving">{{ isCreationMode ? 'Crear Ejercicio' : 'Guardar Cambios' }}</span>
     <span *ngIf="saving">Guardando...</span>
   </button>

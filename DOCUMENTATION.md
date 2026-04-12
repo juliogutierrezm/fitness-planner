@@ -1,6 +1,6 @@
 # Fitness Planner - Documentacion Tecnica del Repositorio
 
-Ultima actualizacion: 2026-03-09
+Ultima actualizacion: 2026-04-08
 
 ## 1) Contexto del proyecto
 Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
@@ -235,6 +235,11 @@ Archivos:
 - Filtros avanzados, paginacion y edicion inline/dialogo.
 - Modificaciones (create/update/delete) condicionadas en UI al grupo `System`.
 - Subcomponentes modulares: `exercise-detail`, `exercise-edit-dialog`, `exercise-filters`, `exercise-table`, `exercise-video-dialog`.
+- Manejo de video con soporte dual S3 y YouTube via `video-utils`.
+- Cache-busting para URLs de video con `mediaCacheToken`.
+- Componente `ExerciseManagerComponent` usa observables (`exercises$`, `filteredExercises$`) con ChangeDetectionStrategy.OnPush.
+- `ExerciseTableComponent` gestiona ejercicios directamente con estado de paginacion persistente.
+- `ExerciseVideoDialogComponent` soporta ambas fuentes de video (S3 nativo y YouTube embed) con URLs cache-busted.
 
 Archivo:
 - `src/app/pages/exercise-manager/exercise-manager.component.ts`
@@ -345,7 +350,25 @@ Base URL: `environment.apiBase`.
 - `training-methods.config.ts`: tipo `TrainingMethod` (13 metodos: standard, pyramid, reverse_pyramid, superset, giant_set, drop_set, circuit, emom, amrap, cluster, contrast, interval, steady_state), definiciones con descripcion.
 - `ai-plan-limits.ts`: `MAX_AI_PLANS_PER_TRAINER = 20`, interfaz `AiPlanQuota`.
 
-### 9.3 Feedback y logging (`src/app/shared/feedback-utils.ts`)
+### 9.3 Modelos e interfaces (`src/app/shared/models.ts`)
+Interfaces principales del dominio:
+- `Exercise`: ejercicio base con campos de video (`video`, `previewUrl`, `youtube_url`, etc.).
+- `VideoSource`: tipo de fuente de video (`type: 'S3' | 'YOUTUBE'`) con URLs asociadas.
+- `PlanItem`: item de plan con soporte para agrupacion (`isGroupHeader`, `isChild`, `groupId`).
+- `Session`: sesion de entrenamiento con items.
+- `WorkoutPlan`: plan completo con sesiones y metadata.
+- `AiPlanRequest`: payload para generacion de plan IA.
+- `AiStep`, `AiGenerationStatus`, `PollingResponse`: tipos para polling de generacion IA.
+- `ExerciseFilters`: filtros del gestor de ejercicios.
+- `FilterOptions`: opciones de filtros disponibles.
+- `PaginatorState`: estado de paginacion (pageIndex, pageSize).
+- `InlineEditCatalogs`: catalogos para edicion inline en tabla de ejercicios.
+
+Constantes:
+- `EXERCISE_DIFFICULTY_OPTIONS`: opciones de dificultad (Principiante, Intermedio, Avanzado).
+- `EXERCISE_MUSCLE_TYPE_OPTIONS`: tipos de musculo (Aislado, Compuesto).
+
+### 9.4 Feedback y logging (`src/app/shared/feedback-utils.ts`)
 - `FeedbackTheme` enum: SUCCESS, ERROR, INFO.
 - `OperationType` enum: CREATE, UPDATE.
 - `FeedbackConfig`: duraciones y configs de MatSnackBar.
@@ -353,24 +376,36 @@ Base URL: `environment.apiBase`.
 - `ErrorMapper`: mapeo de errores HTTP (400, 401, 403, 413, 422, 429, 500, 502, 503, 504) a mensajes amigables.
 - `DevLogger`: logging estructurado para desarrollo.
 
-### 9.4 Localizacion (`src/app/shared/locale.utils.ts`)
+### 9.5 Localizacion (`src/app/shared/locale.utils.ts`)
 - `detectUserLocale()`: deteccion de locale del navegador (es/en).
 - `getLocalizedExerciseName()`: nombre de ejercicio con cadena de fallback (name_es -> name_en -> name).
 - `getLocalizedEquipmentLabel()`: label de equipo localizado.
 - `getPdfLabels()`: diccionario de labels para PDF (bilingue, 20+ pares).
 
-### 9.5 Validadores de auth (`src/app/shared/auth-validators.ts`)
+### 9.6 Validadores de auth (`src/app/shared/auth-validators.ts`)
 - `matchFieldsValidator()`: comparacion de campos (passwords).
 - `passwordPolicyValidator()`: validacion de fortaleza de contrasena.
 
-### 9.6 Errores de auth (`src/app/shared/auth-error-utils.ts`)
+Errores de auth (`src/app/shared/auth-error-utils.ts`):
 - `getAuthErrorName()`: extrae identificador de error Cognito.
 - `mapCognitoError()`: mensajes amigables para 15+ tipos de error Cognito.
 
-### 9.7 Pipes
+### 9.7 Video (`src/app/shared/video-utils.ts`)
+Funciones utilitarias para manejo de videos de ejercicios (S3 y YouTube):
+- `extractYoutubeId()`: extrae el ID de video de una URL de YouTube.
+- `buildYoutubeEmbedUrl()`: construye URL de embed de YouTube a partir de una URL.
+- `getS3PreviewUrl()`: obtiene URL de preview de S3 desde objeto Exercise o PlanItem.
+- `getYoutubeUrl()`: obtiene URL de YouTube desde objeto Exercise o PlanItem.
+- `getVideoSource()`: resuelve la fuente de video activa (retorna `{ type: 'S3' | 'YOUTUBE', url }` o null).
+- `getThumbnailSource()`: obtiene URL de thumbnail (detecta automaticamente thumbnails de YouTube si no hay explicito).
+
+Interfaz exportada:
+- `ResolvedVideoSource`: tipo de fuente de video resuelta con `type` y `url`.
+
+### 9.8 Pipes
 - `UserDisplayNamePipe` (`userDisplayName`): formatea nombre de display de usuario (givenName + familyName con fallback a email).
 
-### 9.8 Componentes compartidos
+### 9.9 Componentes compartidos
 - `AiGenerationTimelineComponent`: timeline visual de progreso de generacion IA (6 pasos secuenciales: analisis de perfil, estrategia, estructura, seleccion de ejercicios, optimizacion, validacion final).
 
 ## 10) Configuracion de entorno
@@ -440,7 +475,7 @@ fitness-planner/
 |   |   |   |-- user-plans-dialog/
 |   |   |   `-- users/
 |   |   |-- services/
-|   |   `-- shared/                # Utils, configs, pipes, feedback, locale
+|   |   `-- shared/                # Utils, configs, pipes, feedback, locale, video-utils, models
 |   |-- aws/
 |   |-- environments/
 |   `-- main.ts
@@ -455,7 +490,7 @@ fitness-planner/
 ```
 
 ## 14) Estado de pruebas (unitarias)
-Specs presentes actualmente (16 archivos):
+Specs presentes actualmente (18 archivos):
 - `src/app/app.component.spec.ts`
 - `src/app/services/client-body-metrics.service.spec.ts`
 - `src/app/services/auth.service.spec.ts`
@@ -468,10 +503,12 @@ Specs presentes actualmente (16 archivos):
 - `src/app/pages/dashboard/dashboard.component.spec.ts`
 - `src/app/components/workout-plan-view/workout-plan-view.component.spec.ts`
 - `src/app/components/planner/planner.component.spec.ts`
+- `src/app/components/planner/ai/ai-parametric-dialog.component.spec.ts`
 - `src/app/components/planner/services/planner-state.service.spec.ts`
 - `src/app/components/planner/services/planner-form.service.spec.ts`
 - `src/app/components/planner/services/planner-exercise-filter.service.spec.ts`
 - `src/app/components/planner/services/planner-drag-drop.service.spec.ts`
+- `src/app/shared/ai-generation-progress.component.spec.ts`
 
 Cobertura funcional existe en modulos clave, pero no cubre toda la superficie del producto.
 
@@ -494,6 +531,8 @@ Cobertura funcional existe en modulos clave, pero no cubre toda la superficie de
 - Theme: `src/app/services/theme.service.ts`
 - PDF: `src/app/services/pdf-generator.service.ts`
 - Localizacion: `src/app/shared/locale.utils.ts`
+- Video: `src/app/shared/video-utils.ts`
+- Modelos: `src/app/shared/models.ts`
 - Configs de entrenamiento: `src/app/shared/training-goal.config.ts`, `src/app/shared/training-methods.config.ts`
 - Feedback/UX: `src/app/shared/feedback-utils.ts`
 - Utilidades compartidas: `src/app/shared/shared-utils.ts`

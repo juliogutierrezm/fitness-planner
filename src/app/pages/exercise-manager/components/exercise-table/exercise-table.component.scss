@@ -116,37 +116,83 @@ tr.mdc-data-table__row {
 
 /* Actions cell styling */
 .actions-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+  vertical-align: middle !important;
 }
 
-/* Action button styling - consistent with users component */
+/* Action buttons container */
+.action-buttons {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons .mat-mdc-mini-fab {
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  }
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    color: #fff;
+  }
+
+  /* Edit button gradient */
+  &.btn-edit {
+    background: linear-gradient(135deg, var(--accent-500, #06B6D4), var(--primary-color, #1976d2));
+  }
+
+  /* Delete button gradient */
+  &.btn-delete {
+    background: linear-gradient(135deg, var(--warn-500, #F97316), #e53935);
+  }
+}
+
+/* No actions indicator */
+.no-actions {
+  color: #bbb;
+  font-size: 0.9rem;
+  text-align: center;
+  display: block;
+}
+
+/* Video icon-button gradient */
 button[mat-icon-button] {
   width: 32px;
   height: 32px;
   min-width: 32px;
   padding: 0;
   line-height: 32px;
-  background: linear-gradient(
-    135deg,
-    var(--accent-500),
-    var(--primary-color, #1976d2)
-  );
-  
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-500, #06B6D4), var(--primary-color, #1976d2));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  }
+
   mat-icon {
-    color: #e4e6eb;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+    color: #fff;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
   }
 }
 
 /* No video indicator */
 .no-video {
-  color: #999;
-  font-size: 1.2rem;
+  color: #bbb;
+  font-size: 1rem;
 }
 
 /* Hover preview overlay */

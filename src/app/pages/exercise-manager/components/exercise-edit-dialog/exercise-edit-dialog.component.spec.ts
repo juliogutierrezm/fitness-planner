@@ -90,14 +90,12 @@ describe('ExerciseEditDialogComponent', () => {
     expect(api.getExerciseById).not.toHaveBeenCalled();
   });
 
-  it('starts on step one and loads persisted values', () => {
+  it('starts on step one and loads persisted step-two values', () => {
     const existingExercise = createExercise({
       description_es: 'Descripcion actual',
       exercise_type: 'Compuesto',
-      training_goal: 'Fuerza',
       tips: [' Mantener core activo ', 'Bajar con control'],
       common_mistakes: [' No bloquear codos ', 'Perder alineacion'],
-      secondary_muscles: ['Triceps', ' Deltoides '],
       video: {
         type: 'YOUTUBE',
         youtubeUrl: 'https://www.youtube.com/watch?v=abc123xyz99'
@@ -109,10 +107,8 @@ describe('ExerciseEditDialogComponent', () => {
     expect(component.currentStep).toBe(1);
     expect(component.editForm.get('description_es')?.value).toBe('Descripcion actual');
     expect(component.editForm.get('exercise_type')?.value).toBe('Compuesto');
-    expect(component.editForm.get('training_goal')?.value).toBe('Fuerza');
     expect(component.editForm.get('tips')?.value).toBe(' Mantener core activo \nBajar con control');
     expect(component.editForm.get('common_mistakes')?.value).toBe(' No bloquear codos \nPerder alineacion');
-    expect(component.editForm.get('secondary_muscles')?.value).toBe('Triceps,  Deltoides ');
     expect(component.editForm.get('videoType')?.value).toBe('YOUTUBE');
     expect(component.editForm.get('youtubeUrl')?.value).toBe('https://www.youtube.com/watch?v=abc123xyz99');
   });
@@ -131,15 +127,11 @@ describe('ExerciseEditDialogComponent', () => {
   it('patches optional arrays with empty fallbacks when they are missing', () => {
     const { component } = createComponent(createExercise({
       tips: undefined,
-      common_mistakes: undefined,
-      secondary_muscles: undefined,
-      aliases: undefined
+      common_mistakes: undefined
     }));
 
     expect(component.editForm.get('tips')?.value).toBe('');
     expect(component.editForm.get('common_mistakes')?.value).toBe('');
-    expect(component.editForm.get('secondary_muscles')?.value).toBe('');
-    expect(component.editForm.get('aliases')?.value).toBe('');
   });
 
   it('cleanArray removes empty values and returns undefined when nothing remains', () => {
@@ -160,20 +152,16 @@ describe('ExerciseEditDialogComponent', () => {
       equipment_type: 'Bodyweight',
       muscle_group: 'Legs',
       videoType: 'NONE',
-      training_goal: '   ',
-      exercise_type: '',
+      exercise_type: 'Compuesto',
       description_es: '   ',
       tips: '  \n ',
-      common_mistakes: '',
-      secondary_muscles: ', ,'
+      common_mistakes: ''
     }, 'full', 'exercise-1');
 
     expect(payload.name_en).toBe('Sentadilla');
     expect(payload.tips).toBeUndefined();
     expect(payload.common_mistakes).toBeUndefined();
-    expect(payload.secondary_muscles).toBeUndefined();
-    expect(payload.training_goal).toBeUndefined();
-    expect(payload.exercise_type).toBeUndefined();
+    expect(payload.exercise_type).toBe('Compuesto');
     expect(payload.description_es).toBeUndefined();
     expect(payload.video).toBeNull();
   });
@@ -189,8 +177,9 @@ describe('ExerciseEditDialogComponent', () => {
       equipment_type: 'Bodyweight',
       muscle_group: 'Legs',
       videoType: 'NONE',
-      tips: 'tip 1',
-      description_es: 'Descripcion opcional'
+      tips: 'tip ignorado',
+      description_es: 'Descripcion opcional',
+      exercise_type: 'Compuesto'
     }, 'quick', 'exercise-2');
 
     expect(payload).toEqual(jasmine.objectContaining({
@@ -201,6 +190,7 @@ describe('ExerciseEditDialogComponent', () => {
       difficulty: 'Intermedio',
       equipment_type: 'Bodyweight',
       muscle_group: 'Legs',
+      exercise_type: 'Compuesto',
       video: null
     }));
     expect(payload.tips).toBeUndefined();
@@ -210,6 +200,7 @@ describe('ExerciseEditDialogComponent', () => {
   it('preserves existing optional fields on quick edit', () => {
     const { component } = createComponent(createExercise({
       description_es: 'Se conserva',
+      exercise_type: 'Aislado',
       tips: ['Tip guardado'],
       common_mistakes: ['Error guardado']
     }));
@@ -221,6 +212,7 @@ describe('ExerciseEditDialogComponent', () => {
       difficulty: 'Avanzado',
       equipment_type: 'Bodyweight',
       muscle_group: 'Chest',
+      exercise_type: 'Aislado',
       videoType: 'NONE',
       tips: '',
       common_mistakes: '',
@@ -228,6 +220,7 @@ describe('ExerciseEditDialogComponent', () => {
     }, 'quick', 'exercise-1');
 
     expect(payload.description_es).toBe('Se conserva');
+    expect(payload.exercise_type).toBe('Aislado');
     expect(payload.tips).toEqual(['Tip guardado']);
     expect(payload.common_mistakes).toEqual(['Error guardado']);
     expect(payload.difficulty).toBe('Avanzado');
@@ -284,6 +277,7 @@ describe('ExerciseEditDialogComponent', () => {
       difficulty: 'Intermedio',
       equipment_type: 'Bodyweight',
       muscle_group: 'Legs',
+      exercise_type: 'Compuesto',
       videoType: 'NONE'
     });
 
@@ -300,6 +294,7 @@ describe('ExerciseEditDialogComponent', () => {
       muscle_group: 'Legs',
       equipment_type: 'Bodyweight',
       difficulty: 'Intermedio',
+      exercise_type: 'Compuesto',
       videoType: 'NONE',
       tips: 'tip ignorado'
     });
@@ -308,6 +303,7 @@ describe('ExerciseEditDialogComponent', () => {
 
     const payload = api.createExercise.calls.mostRecent().args[0] as any;
     expect(payload.name_en).toBe('Sentadilla');
+    expect(payload.exercise_type).toBe('Compuesto');
     expect(payload.tips).toBeUndefined();
     expect(payload.video).toBeNull();
   });
@@ -325,7 +321,6 @@ describe('ExerciseEditDialogComponent', () => {
     const partialExercise = createExercise({
       description_es: 'Descripcion parcial',
       exercise_type: 'Compuesto',
-      training_goal: 'Fuerza',
       tips: ['Tip parcial']
     });
     const { component, api, snackBar, cdr } = createComponent(partialExercise, false);
@@ -335,7 +330,6 @@ describe('ExerciseEditDialogComponent', () => {
 
     expect(component.editForm.get('description_es')?.value).toBe('Descripcion parcial');
     expect(component.editForm.get('exercise_type')?.value).toBe('Compuesto');
-    expect(component.editForm.get('training_goal')?.value).toBe('Fuerza');
     expect(component.editForm.get('tips')?.value).toBe('Tip parcial');
     expect(snackBar.open).toHaveBeenCalled();
     expect(cdr.detectChanges).toHaveBeenCalled();
@@ -353,10 +347,8 @@ describe('ExerciseEditDialogComponent', () => {
     const existingExercise = createExercise({
       description_es: 'Se conserva',
       exercise_type: 'Compuesto',
-      training_goal: 'Fuerza',
       tips: ['Tip guardado'],
-      common_mistakes: ['Error guardado'],
-      secondary_muscles: ['Triceps']
+      common_mistakes: ['Error guardado']
     });
     const { component, api } = createComponent(existingExercise);
 
@@ -366,10 +358,11 @@ describe('ExerciseEditDialogComponent', () => {
       muscle_group: 'Chest',
       equipment_type: 'Bodyweight',
       difficulty: 'Avanzado',
+      exercise_type: 'Aislado',
       videoType: 'NONE',
       description_es: '',
-      training_goal: '',
-      tips: ''
+      tips: '',
+      common_mistakes: ''
     });
 
     component.onQuickSave();
@@ -377,29 +370,23 @@ describe('ExerciseEditDialogComponent', () => {
     const payload = api.updateExercise.calls.mostRecent().args[0] as any;
     expect(payload.name_es).toBe('Lagartija actualizada');
     expect(payload.description_es).toBe('Se conserva');
-    expect(payload.exercise_type).toBe('Compuesto');
-    expect(payload.training_goal).toBe('Fuerza');
+    expect(payload.exercise_type).toBe('Aislado');
     expect(payload.tips).toEqual(['Tip guardado']);
     expect(payload.common_mistakes).toEqual(['Error guardado']);
-    expect(payload.secondary_muscles).toEqual(['Triceps']);
   });
 
   it('refreshes the form with getExerciseById after update', () => {
     const existingExercise = createExercise({
       description_es: 'Descripcion anterior',
       exercise_type: 'Aislado',
-      training_goal: 'Hipertrofia',
       tips: ['Tip viejo'],
-      common_mistakes: ['Error viejo'],
-      secondary_muscles: ['Triceps']
+      common_mistakes: ['Error viejo']
     });
     const refreshedExercise = createExercise({
       description_es: 'Descripcion refrescada',
       exercise_type: 'Compuesto',
-      training_goal: 'Fuerza',
       tips: ['Tip nuevo 1', 'Tip nuevo 2'],
       common_mistakes: ['Error nuevo'],
-      secondary_muscles: ['Triceps', 'Deltoides'],
       video: {
         type: 'YOUTUBE',
         youtubeUrl: 'https://www.youtube.com/watch?v=abc123xyz99'
@@ -417,10 +404,8 @@ describe('ExerciseEditDialogComponent', () => {
     expect(api.getExerciseById).toHaveBeenCalledWith('exercise-1');
     expect(component.editForm.get('description_es')?.value).toBe('Descripcion refrescada');
     expect(component.editForm.get('exercise_type')?.value).toBe('Compuesto');
-    expect(component.editForm.get('training_goal')?.value).toBe('Fuerza');
     expect(component.editForm.get('tips')?.value).toBe('Tip nuevo 1\nTip nuevo 2');
     expect(component.editForm.get('common_mistakes')?.value).toBe('Error nuevo');
-    expect(component.editForm.get('secondary_muscles')?.value).toBe('Triceps, Deltoides');
     expect(component.editForm.get('videoType')?.value).toBe('YOUTUBE');
     expect(component.editForm.get('youtubeUrl')?.value).toBe('https://www.youtube.com/watch?v=abc123xyz99');
     expect(component.exerciseSaved.emit).toHaveBeenCalledWith(jasmine.objectContaining({
@@ -431,7 +416,7 @@ describe('ExerciseEditDialogComponent', () => {
   });
 
   it('patches step-two values when the refreshed exercise comes with exerciseId only', () => {
-    const existingExercise = createExercise();
+    const existingExercise = createExercise({ exercise_type: 'Aislado' });
     const backendExercise = {
       exerciseId: 'exercise-1',
       name_es: 'test 01',
@@ -440,13 +425,10 @@ describe('ExerciseEditDialogComponent', () => {
       muscle_group: 'Bíceps',
       category: 'Complex',
       difficulty: 'Principiante',
-      exercise_type: 'Test tipo',
+      exercise_type: 'Compuesto',
       description_es: 'Test descripcion',
-      training_goal: 'Test objetivo',
       tips: ['Test tips'],
       common_mistakes: ['Test errores'],
-      secondary_muscles: ['Test musculos'],
-      aliases: ['Test variaciones'],
       video: null
     } as any;
 
@@ -457,11 +439,9 @@ describe('ExerciseEditDialogComponent', () => {
     component.onQuickSave();
     component.goToStep(2);
 
-    expect(component.editForm.get('exercise_type')?.value).toBe('Test tipo');
+    expect(component.editForm.get('exercise_type')?.value).toBe('Compuesto');
     expect(component.editForm.get('description_es')?.value).toBe('Test descripcion');
-    expect(component.editForm.get('training_goal')?.value).toBe('Test objetivo');
     expect(component.editForm.get('tips')?.value).toBe('Test tips');
     expect(component.editForm.get('common_mistakes')?.value).toBe('Test errores');
-    expect(component.editForm.get('secondary_muscles')?.value).toBe('Test musculos');
   });
 });

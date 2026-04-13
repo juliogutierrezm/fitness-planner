@@ -34,13 +34,10 @@ const ALLOWED_FIELDS = [
   'category',
   'equipment_type',
   'muscle_group',
-  'secondary_muscles',
   'exercise_type',
-  'training_goal',
   'common_mistakes',
   'tips',
-  'description_es',
-  'aliases'
+  'description_es'
 ];
 
 @Component({
@@ -98,7 +95,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   private pollingSubscription: Subscription | null = null;
   private videoTypeSubscription: Subscription | null = null;
   private readonly POLLING_INTERVAL_MS = 3000;
-  private readonly STEP_ONE_FIELDS = ['name_es', 'category', 'difficulty', 'equipment_type', 'muscle_group'] as const;
+  private readonly STEP_ONE_FIELDS = ['name_es', 'category', 'difficulty', 'equipment_type', 'muscle_group', 'exercise_type'] as const;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: ExerciseEditDialogData,
@@ -705,17 +702,10 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       muscle_group: ['', Validators.required],
       videoType: ['NONE'],
       youtubeUrl: [''],
-      exercise_type: [''],
-      training_goal: [''],
+      exercise_type: ['', Validators.required],
       description_es: [''],
-      description_en: [''],
       tips: [''],
-      common_mistakes: [''],
-      secondary_muscles: [''],
-      aliases: [''],
-      plane_of_motion: [''],
-      movement_pattern: [''],
-      equipment_specific: ['']
+      common_mistakes: ['']
     });
   }
 
@@ -749,16 +739,9 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       videoType,
       youtubeUrl: videoType === 'YOUTUBE' ? (getYoutubeUrl(exercise) || '') : '',
       exercise_type: exercise.exercise_type || '',
-      training_goal: exercise.training_goal || '',
       description_es: exercise.description_es || '',
-      description_en: exercise.description_en || '',
       tips: this.joinMultiline(exercise.tips || []),
-      common_mistakes: this.joinMultiline(exercise.common_mistakes || []),
-      secondary_muscles: this.joinCsv(exercise.secondary_muscles || []),
-      aliases: this.joinCsv(exercise.aliases || []),
-      plane_of_motion: exercise.plane_of_motion || '',
-      movement_pattern: exercise.movement_pattern || '',
-      equipment_specific: exercise.equipment_specific || ''
+      common_mistakes: this.joinMultiline(exercise.common_mistakes || [])
     }, { emitEvent: false });
 
     this.cdr.markForCheck();
@@ -767,14 +750,6 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   private joinMultiline(values?: string[] | string | null): string {
     if (Array.isArray(values)) {
       return values.join('\n');
-    }
-
-    return typeof values === 'string' ? values : '';
-  }
-
-  private joinCsv(values?: string[] | string | null): string {
-    if (Array.isArray(values)) {
-      return values.join(', ');
     }
 
     return typeof values === 'string' ? values : '';
@@ -795,10 +770,6 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
 
   private parseMultilineToOptionalArray(value: string | null | undefined): string[] | undefined {
     return this.cleanArray((value || '').split('\n'));
-  }
-
-  private parseCsvToOptionalArray(value: string | null | undefined): string[] | undefined {
-    return this.cleanArray((value || '').split(','));
   }
 
   private buildYoutubeVideoPayload(youtubeUrl: string | null | undefined): VideoSource | null {
@@ -859,22 +830,15 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       difficulty: this.cleanOptionalString(formValue.difficulty) || '',
       equipment_type: this.cleanOptionalString(formValue.equipment_type) || '',
       muscle_group: this.cleanOptionalString(formValue.muscle_group) || '',
+      exercise_type: this.cleanOptionalString(formValue.exercise_type) || '',
       video: videoOverride !== undefined ? videoOverride : this.buildVideoPayloadFromSelection()
     };
 
     const optionalPayload = saveMode === 'full'
       ? {
           description_es: this.cleanOptionalString(formValue.description_es),
-          description_en: this.cleanOptionalString(formValue.description_en),
-          exercise_type: this.cleanOptionalString(formValue.exercise_type),
-          training_goal: this.cleanOptionalString(formValue.training_goal),
-          plane_of_motion: this.cleanOptionalString(formValue.plane_of_motion),
-          movement_pattern: this.cleanOptionalString(formValue.movement_pattern),
-          equipment_specific: this.cleanOptionalString(formValue.equipment_specific),
-          aliases: this.parseCsvToOptionalArray(formValue.aliases),
           tips: this.parseMultilineToOptionalArray(formValue.tips),
-          common_mistakes: this.parseMultilineToOptionalArray(formValue.common_mistakes),
-          secondary_muscles: this.parseCsvToOptionalArray(formValue.secondary_muscles)
+          common_mistakes: this.parseMultilineToOptionalArray(formValue.common_mistakes)
         }
       : this.buildExistingOptionalPayload();
 
@@ -897,16 +861,8 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
 
     return {
       description_es: this.cleanOptionalString(this.exercise.description_es),
-      description_en: this.cleanOptionalString(this.exercise.description_en),
-      exercise_type: this.cleanOptionalString(this.exercise.exercise_type),
-      training_goal: this.cleanOptionalString(this.exercise.training_goal),
-      plane_of_motion: this.cleanOptionalString(this.exercise.plane_of_motion),
-      movement_pattern: this.cleanOptionalString(this.exercise.movement_pattern),
-      equipment_specific: this.cleanOptionalString(this.exercise.equipment_specific),
-      aliases: this.cleanArray(Array.isArray(this.exercise.aliases) ? this.exercise.aliases : []),
       tips: this.cleanArray(Array.isArray(this.exercise.tips) ? this.exercise.tips : []),
-      common_mistakes: this.cleanArray(Array.isArray(this.exercise.common_mistakes) ? this.exercise.common_mistakes : []),
-      secondary_muscles: this.cleanArray(Array.isArray(this.exercise.secondary_muscles) ? this.exercise.secondary_muscles : [])
+      common_mistakes: this.cleanArray(Array.isArray(this.exercise.common_mistakes) ? this.exercise.common_mistakes : [])
     };
   }
 
@@ -914,16 +870,8 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     const payload: Record<string, any> = { ...exerciseData };
     const optionalKeys = [
       'description_es',
-      'description_en',
-      'exercise_type',
-      'training_goal',
-      'plane_of_motion',
-      'movement_pattern',
-      'equipment_specific',
-      'aliases',
       'tips',
-      'common_mistakes',
-      'secondary_muscles'
+      'common_mistakes'
     ];
 
     optionalKeys.forEach(key => {
@@ -958,7 +906,6 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     delete payload['youtubeUrl'];
     delete payload['youtube_url'];
     delete payload['thumbnail'];
-    delete payload['functional'];
 
     return payload as T;
   }

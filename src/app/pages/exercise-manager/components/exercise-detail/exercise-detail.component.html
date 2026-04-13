@@ -25,10 +25,9 @@
         </div>
 
         <!-- Description -->
-        <div class="field-group" *ngIf="exercise.description_es || exercise.description_en">
+        <div class="field-group" *ngIf="exercise.description_es">
           <h3>Descripción</h3>
           <div class="field" *ngIf="exercise.description_es"><strong>ES:</strong> {{ exercise.description_es }}</div>
-          <div class="field" *ngIf="exercise.description_en"><strong>EN:</strong> {{ exercise.description_en }}</div>
         </div>
 
         <!-- Technical Info -->
@@ -54,7 +53,6 @@
         <!-- Metadata -->
         <div class="field-group">
           <h3>Metadatos</h3>
-          <div class="field"><strong>Funcional:</strong> {{ exercise.functional ? 'Sí' : 'No' }}</div>
           <div class="field"><strong>Proceso Status:</strong> {{ exercise.process_status || 'N/A' }}</div>
           <div class="field"><strong>Creado:</strong> {{ exercise.created_at ? (exercise.created_at | date:'short') : 'N/A' }}</div>
           <div class="field"><strong>Actualizado:</strong> {{ exercise.updated_at ? (exercise.updated_at | date:'short') : 'N/A' }}</div>

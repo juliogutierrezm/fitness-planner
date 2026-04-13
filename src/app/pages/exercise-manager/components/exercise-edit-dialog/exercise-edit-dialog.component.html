@@ -43,7 +43,7 @@
         </div>
 
         <div class="step-one-grid">
-          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('name_es')">
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('name_es')">
             <mat-label>Nombre *</mat-label>
             <input matInput formControlName="name_es">
             <mat-icon matPrefix>fitness_center</mat-icon>
@@ -56,13 +56,6 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('difficulty')">
-            <mat-label>Dificultad *</mat-label>
-            <mat-select formControlName="difficulty">
-              <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
           <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('equipment_type')">
             <mat-label>Tipo de equipo *</mat-label>
             <mat-select formControlName="equipment_type">
@@ -70,10 +63,25 @@
             </mat-select>
           </mat-form-field>
 
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('difficulty')">
+            <mat-label>Dificultad *</mat-label>
+            <mat-select formControlName="difficulty">
+              <mat-option *ngFor="let opt of difficultyOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
           <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('muscle_group')">
             <mat-label>Grupo muscular *</mat-label>
             <mat-select formControlName="muscle_group">
               <mat-option *ngFor="let opt of muscleGroupOptions" [value]="opt">{{ opt }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('exercise_type')">
+            <mat-label>Tipo de grupo *</mat-label>
+            <mat-select formControlName="exercise_type">
+              <mat-option value="Aislado">Aislado</mat-option>
+              <mat-option value="Compuesto">Compuesto</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -186,39 +194,9 @@
             <input matInput formControlName="name_en" placeholder="Si lo dejas vacío, se usará Nombre (ES)">
           </mat-form-field>
 
-          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('exercise_type')">
-            <mat-label>Tipo de ejercicio</mat-label>
-            <input matInput formControlName="exercise_type">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" *ngIf="isCreationMode || isFieldEditable('training_goal')">
-            <mat-label>Meta de entrenamiento</mat-label>
-            <input matInput formControlName="training_goal">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" *ngIf="isCreationMode">
-            <mat-label>Equipo específico</mat-label>
-            <input matInput formControlName="equipment_specific">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" *ngIf="isCreationMode">
-            <mat-label>Plano de movimiento</mat-label>
-            <input matInput formControlName="plane_of_motion">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" *ngIf="isCreationMode">
-            <mat-label>Patrón de movimiento</mat-label>
-            <input matInput formControlName="movement_pattern">
-          </mat-form-field>
-
           <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('description_es')">
             <mat-label>Descripción (ES)</mat-label>
             <textarea matInput formControlName="description_es" rows="4"></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode">
-            <mat-label>Descripción (EN)</mat-label>
-            <textarea matInput formControlName="description_en" rows="4"></textarea>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('tips')">
@@ -229,16 +207,6 @@
           <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('common_mistakes')">
             <mat-label>Errores comunes</mat-label>
             <textarea matInput formControlName="common_mistakes" rows="4" placeholder="Un error por línea"></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('secondary_muscles')">
-            <mat-label>Músculos secundarios</mat-label>
-            <input matInput formControlName="secondary_muscles" placeholder="Separados por comas">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-span" *ngIf="isCreationMode || isFieldEditable('aliases')">
-            <mat-label>Alias / variaciones</mat-label>
-            <input matInput formControlName="aliases" placeholder="Separados por comas">
           </mat-form-field>
         </div>
       </section>

@@ -38,7 +38,6 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
     'muscle_group',
     'equipment_type',
     'category',
-    'functional',
     'exercise_type',
     'difficulty'
   ];
@@ -110,15 +109,10 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle;
       case 'exercise_type':
-        return exercise.exercise_type || exercise.category;
+        return exercise.exercise_type || '';
       default:
         return (exercise as any)[field];
     }
-  }
-
-  getAliasesOptions(exercise: Exercise): string[] {
-    const aliases = this.getFieldValue(exercise, 'aliases') || [];
-    return aliases;
   }
 
   getUiLabel(value: string | null | undefined): string {
@@ -129,11 +123,6 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
 
   canEdit(exercise: any): boolean {
     return exercise?.source === 'CUSTOM';
-  }
-
-  onAliasClick(exercise: Exercise, alias: string, event: Event): void {
-    event.stopPropagation();
-    console.log('Alias clicked for exercise:', exercise.name_es, 'selected alias:', alias);
   }
 
   onEditExercise(ex: Exercise): void {

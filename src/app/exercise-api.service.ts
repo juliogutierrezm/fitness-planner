@@ -16,13 +16,10 @@ const ALLOWED_FIELDS = [
   "category",
   "equipment_type",
   "muscle_group",
-  "secondary_muscles",
   "exercise_type",
-  "training_goal",
   "common_mistakes",
   "tips",
   "description_es",
-  "aliases",
   "video"
 ];
 
@@ -183,14 +180,9 @@ export class ExerciseApiService {
     equipment_type: string;
     muscle_group: string;
     category: string;
-    description_en?: string;
     description_es?: string;
     exercise_type?: string;
     difficulty?: string;
-    movement_pattern?: string;
-    training_goal?: string;
-    aliases?: string[];
-    secondary_muscles?: string[];
     tips?: string[];
     common_mistakes?: string[];
     video?: VideoSource | null;
@@ -215,15 +207,10 @@ export class ExerciseApiService {
       difficulty: exerciseData.difficulty || ''
     };
 
-    if (exerciseData.description_en?.trim()) payload.description_en = exerciseData.description_en.trim();
     if (exerciseData.description_es?.trim()) payload.description_es = exerciseData.description_es.trim();
     if (exerciseData.exercise_type?.trim()) payload.exercise_type = exerciseData.exercise_type.trim();
-    if (exerciseData.movement_pattern?.trim()) payload.movement_pattern = exerciseData.movement_pattern.trim();
-    if (exerciseData.training_goal?.trim()) payload.training_goal = exerciseData.training_goal.trim();
 
     // Handle arrays
-    if (exerciseData.aliases?.length) payload.aliases = exerciseData.aliases;
-    if (exerciseData.secondary_muscles?.length) payload.secondary_muscles = exerciseData.secondary_muscles;
     if (exerciseData.tips?.length) payload.tips = exerciseData.tips;
     if (exerciseData.common_mistakes?.length) payload.common_mistakes = exerciseData.common_mistakes;
 

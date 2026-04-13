@@ -7,23 +7,15 @@ export interface Exercise {
   name_en?: string;
   equipment: string;
   equipment_type?: string;
-  equipment_specific?: string;
   muscle?: string;
   muscle_group?: string;
-  secondary_muscles?: string[];
   category?: string;
   exercise_type?: string;
   difficulty?: string;
   group_type?: string;
-  training_goal?: string;
   description_es?: string;
-  description_en?: string;
   common_mistakes?: string[];
   tips?: string[];
-  functional?: boolean;
-  plane_of_motion?: string;
-  movement_pattern?: string;
-  aliases?: string[];
   preview_url?: string;
   youtube_url?: string;
   thumbnail?: string;
@@ -154,7 +146,6 @@ export interface ExerciseFilters {
   equipmentTypeFilter: string;
   difficultyFilter: string;
   groupTypeFilter: string;
-  functionalOnly?: boolean;
 }
 
 export interface FilterOptions {

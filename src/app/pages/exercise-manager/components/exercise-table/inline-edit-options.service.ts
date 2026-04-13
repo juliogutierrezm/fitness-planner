@@ -39,7 +39,7 @@ export class InlineEditOptionsService {
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle || '';
       case 'exercise_type':
-        return exercise.exercise_type || exercise.category || '';
+        return exercise.exercise_type || '';
       default:
         return String((exercise as any)[field] || '').trim();
     }

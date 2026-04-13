@@ -90,7 +90,7 @@ table.compact-table {
 }
 
 tr.mdc-data-table__row {
-  min-height: 50px; // Increased for two-line alias display
+  min-height: 44px;
   line-height: 1.4;
 
   &:hover {
@@ -229,52 +229,17 @@ button[mat-icon-button] {
   to { opacity: 1; }
 }
 
-/* Exercise name container and alias styling */
+/* Exercise name styling */
 .exercise-name-container {
-  display: flex; // Layout container for name and aliases
-  flex-direction: column; // Stack name above aliases
-  gap: 2px; // Small gap between name and alias list
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 
   .exercise-name {
-    font-weight: 500; // Slightly bolder
+    font-weight: 500;
     color: inherit;
-    word-break: break-word; // Allow long names to wrap
+    word-break: break-word;
     line-height: 1.3;
-  }
-
-  .exercise-aliases-list {
-    display: flex; // Horizontal flex for alias chips
-    flex-wrap: wrap; // Allow wrapping to multiple lines
-    gap: 3px; // Small gap between chips
-    line-height: 1.2; // Compact line height
-
-    .exercise-alias-chip {
-      color: #666; // Muted gray color for secondary content
-      font-size: 0.8em; // Smaller text for aliases
-      font-weight: 400; // Normal weight, not bold
-      cursor: pointer; // Visual feedback for interaction
-      padding: 1px 0; // Minimal padding
-      display: inline-block;
-      white-space: nowrap; // Don't wrap individual chips
-
-      &:hover {
-        color: #333; // Darker on hover
-        text-decoration: none; // Remove underline
-      }
-
-      // Add bullet separator after each chip (except last)
-      &:not(:last-child)::after {
-        content: ' • ';
-        color: #ccc; // Light separator color
-        font-weight: normal;
-        margin-left: 3px;
-      }
-    }
-
-    // Responsive: hide aliases on very small screens
-    @media (max-width: 768px) {
-      display: none;
-    }
   }
 }
 
@@ -311,7 +276,7 @@ button[mat-icon-button] {
   }
 
   tr.mdc-data-table__row {
-    min-height: 60px; // Allow more height for mobile stacking
+    min-height: 52px;
   }
 
   .exercise-name-container {

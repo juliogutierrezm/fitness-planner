@@ -50,7 +50,6 @@ describe('ExerciseApiService', () => {
     const req = httpMock.expectOne(`${environment.apiBase}/exercise`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body.video).toBeNull();
-    expect(req.request.body.functional).toBeUndefined();
     req.flush({ ok: true });
   });
 
@@ -67,10 +66,8 @@ describe('ExerciseApiService', () => {
     const req = httpMock.expectOne(`${environment.apiBase}/exercise`);
     expect(req.request.method).toBe('POST');
     expect(Object.prototype.hasOwnProperty.call(req.request.body, 'video')).toBeFalse();
-    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'description_en')).toBeFalse();
     expect(Object.prototype.hasOwnProperty.call(req.request.body, 'description_es')).toBeFalse();
     expect(Object.prototype.hasOwnProperty.call(req.request.body, 'exercise_type')).toBeFalse();
-    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'training_goal')).toBeFalse();
     req.flush({ ok: true });
   });
 
@@ -93,11 +90,8 @@ describe('ExerciseApiService', () => {
       difficulty: 'Principiante',
       exercise_type: 'Test tipo',
       description_es: 'Test descripcion',
-      training_goal: 'Test objetivo',
       tips: ['Test tips'],
       common_mistakes: ['Test errores'],
-      secondary_muscles: ['Test musculos'],
-      aliases: ['Test variaciones'],
       video: null
     });
 
@@ -107,7 +101,6 @@ describe('ExerciseApiService', () => {
     expect(result.equipment).toBe('Barra');
     expect(result.muscle).toBe('Bíceps');
     expect(result.description_es).toBe('Test descripcion');
-    expect(result.training_goal).toBe('Test objetivo');
     expect(result.tips).toEqual(['Test tips']);
     expect(result.video).toBeNull();
   });

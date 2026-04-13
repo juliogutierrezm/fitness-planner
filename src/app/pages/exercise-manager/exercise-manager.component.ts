@@ -167,7 +167,7 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle;
       case 'exercise_type':
-        return exercise.exercise_type || exercise.category;
+        return exercise.exercise_type || '';
       default:
         return (exercise as any)[field];
     }

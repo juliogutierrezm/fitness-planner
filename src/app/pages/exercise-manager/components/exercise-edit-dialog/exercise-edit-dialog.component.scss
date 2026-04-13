@@ -73,6 +73,20 @@
   background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
 }
 
+.refresh-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .section-header {
   display: flex;
   align-items: flex-start;

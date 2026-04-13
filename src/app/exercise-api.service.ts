@@ -62,6 +62,57 @@ export class ExerciseApiService {
     return userId ? `fp_sessions_${userId}` : 'fp_sessions_anonymous';
   }
 
+  private buildLegacyVideoSource(exercise: Partial<Exercise> & Record<string, any>): VideoSource | null {
+    if (Object.prototype.hasOwnProperty.call(exercise, 'video')) {
+      return exercise.video ?? null;
+    }
+
+    const youtubeUrl = exercise.youtube_url || exercise.video?.youtubeUrl;
+    if (youtubeUrl) {
+      return {
+        type: 'YOUTUBE',
+        youtubeUrl,
+        thumbnailUrl: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl
+      };
+    }
+
+    const previewUrl = exercise.preview_url || exercise.previewUrl || exercise.video?.previewUrl;
+    if (previewUrl) {
+      return {
+        type: 'S3',
+        previewUrl,
+        thumbnailUrl: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl
+      };
+    }
+
+    return null;
+  }
+
+  private normalizeExercise(exercise: Partial<Exercise> & Record<string, any>): Exercise {
+    const id = exercise.id || exercise.exerciseId || '';
+    const nameEs = exercise.name_es || exercise.name || exercise.name_en || '';
+    const nameEn = exercise.name_en || exercise.name || exercise.name_es || '';
+
+    return {
+      ...exercise,
+      id,
+      exerciseId: exercise.exerciseId || id,
+      name: exercise.name || nameEs || nameEn || id,
+      name_es: nameEs,
+      name_en: nameEn,
+      equipment: exercise.equipment || exercise.equipment_type || '',
+      equipment_type: exercise.equipment_type || exercise.equipment || '',
+      muscle: exercise.muscle || exercise.muscle_group || '',
+      muscle_group: exercise.muscle_group || exercise.muscle || '',
+      preview_url: exercise.preview_url || exercise.previewUrl || exercise.video?.previewUrl,
+      previewUrl: exercise.previewUrl || exercise.preview_url || exercise.video?.previewUrl,
+      thumbnail: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl,
+      thumbnailUrl: exercise.thumbnailUrl || exercise.thumbnail || exercise.video?.thumbnailUrl,
+      youtube_url: exercise.youtube_url || exercise.video?.youtubeUrl,
+      video: this.buildLegacyVideoSource(exercise)
+    } as Exercise;
+  }
+
   // =============== EXERCISES CRUD ===============
   private sanitizeExerciseUpdatePayload(exercise: Exercise): any {
     // Filter to only allowed fields and warn about protected fields
@@ -82,6 +133,10 @@ export class ExerciseApiService {
 
   getExerciseLibrary(): Observable<ExerciseLibraryResponse> {
     return this.http.get<ExerciseLibraryResponse>(this.exerciseLibUrl).pipe(
+      map(res => ({
+        ...res,
+        items: (res.items || []).map(item => this.normalizeExercise(item as any))
+      })),
       tap(res => console.log('📋 Biblioteca de ejercicios obtenida:', res.count, 'ejercicios')),
       catchError(err => {
         console.error('❌ Error al obtener biblioteca de ejercicios:', err);
@@ -92,7 +147,7 @@ export class ExerciseApiService {
 
   getAllExercises(): Observable<Exercise[]> {
     return this.http.get<ExerciseLibraryResponse>(this.exerciseUrl).pipe(
-      map(res => res.items),
+      map(res => (res.items || []).map(item => this.normalizeExercise(item as any))),
       tap(exercises => console.log('📋 Ejercicios combinados obtenidos:', exercises.length)),
       catchError(err => {
         console.error('❌ Error al obtener ejercicios combinados:', err);
@@ -217,6 +272,7 @@ export class ExerciseApiService {
   getExerciseById(id: string): Observable<Exercise | null> {
     const url = `${this.exerciseUrl}/${encodeURIComponent(id)}`;
     return this.http.get<Exercise>(url).pipe(
+      map(ex => ex ? this.normalizeExercise(ex as any) : null),
       tap(ex => console.log('📋 Ejercicio obtenido:', ex?.id)),
       catchError(err => {
         console.error('❌ Error al obtener ejercicio por ID:', err);

@@ -23,6 +23,16 @@
         </button>
       </div>
 
+      <div *ngIf="refreshingExercise" class="refresh-state">
+        <mat-spinner diameter="22"></mat-spinner>
+        <span>Sincronizando datos guardados...</span>
+      </div>
+
+      <div *ngIf="loadingExercise" class="refresh-state">
+        <mat-spinner diameter="22"></mat-spinner>
+        <span>Cargando ejercicio completo...</span>
+      </div>
+
       <section *ngIf="currentStep === 1" class="form-section">
         <div class="section-header">
           <mat-icon>flash_on</mat-icon>
@@ -77,7 +87,7 @@
             </div>
 
             <div class="video-section">
-              <mat-radio-group formControlName="videoType" class="video-type-group" aria-label="Tipo de video">
+              <mat-radio-group formControlName="videoType" class="video-type-group" aria-label="Tipo de video" [disabled]="isActionDisabled">
                 <mat-radio-button value="NONE">Sin video</mat-radio-button>
                 <mat-radio-button value="YOUTUBE">YouTube</mat-radio-button>
                 <mat-radio-button value="S3">Archivo S3</mat-radio-button>
@@ -112,14 +122,14 @@
                     accept="video/*"
                     (change)="onFileSelected($event)"
                     style="display: none"
-                    [disabled]="saving">
+                    [disabled]="isActionDisabled">
 
                   <button
                     mat-stroked-button
                     type="button"
                     class="upload-btn"
                     (click)="fileInput.click()"
-                    [disabled]="saving">
+                    [disabled]="isActionDisabled">
                     <mat-icon>cloud_upload</mat-icon>
                     {{ selectedVideoFileName ? 'Cambiar video' : 'Seleccionar video' }}
                   </button>
@@ -243,12 +253,12 @@
       Cancelar
     </button>
 
-    <button mat-flat-button class="btn-quick" (click)="onQuickSave()" [disabled]="saving || !isStepOneValid">
+    <button mat-flat-button class="btn-quick" (click)="onQuickSave()" [disabled]="isActionDisabled || !isStepOneValid">
       <mat-icon>bolt</mat-icon>
       Guardar rápido
     </button>
 
-    <button mat-flat-button class="btn-save" (click)="goToOptionalStep()" [disabled]="saving || !isStepOneValid">
+    <button mat-flat-button class="btn-save" (click)="goToOptionalStep()" [disabled]="isActionDisabled || !isStepOneValid">
       <mat-icon>arrow_forward</mat-icon>
       Continuar
     </button>
@@ -260,10 +270,10 @@
       Volver
     </button>
 
-    <button mat-flat-button class="btn-save" (click)="onSave()" [disabled]="saving || !isStepOneValid">
-      <mat-icon *ngIf="!saving">save</mat-icon>
-      <span *ngIf="!saving">{{ isCreationMode ? 'Crear ejercicio' : 'Guardar cambios' }}</span>
-      <span *ngIf="saving">Guardando...</span>
+    <button mat-flat-button class="btn-save" (click)="onSave()" [disabled]="isActionDisabled || !isStepOneValid">
+      <mat-icon *ngIf="!isActionDisabled">save</mat-icon>
+      <span *ngIf="!isActionDisabled">{{ isCreationMode ? 'Crear ejercicio' : 'Guardar cambios' }}</span>
+      <span *ngIf="isActionDisabled">{{ loadingExercise ? 'Cargando...' : 'Guardando...' }}</span>
     </button>
   </ng-template>
 </mat-dialog-actions>

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Inject } from '@angular/core';
-import { Observable, Subscription, interval } from 'rxjs';
+import { Observable, Subscription, interval, of } from 'rxjs';
 import { finalize, switchMap, takeWhile } from 'rxjs/operators';
 import { MatRadioModule } from '@angular/material/radio';
 import { ExerciseApiService } from '../../../../exercise-api.service';
@@ -63,7 +63,7 @@ const ALLOWED_FIELDS = [
   styleUrl: './exercise-edit-dialog.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExerciseEditDialogComponent implements OnDestroy {
+export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   @Output() exerciseSaved = new EventEmitter<any>();
   @Output() dialogClosed = new EventEmitter<void>();
 
@@ -71,6 +71,8 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   isCreationMode = false;
   uploadError = '';
   saving = false;
+  loadingExercise = false;
+  refreshingExercise = false;
   currentStep: 1 | 2 = 1;
   private exerciseId: string | null = null;
 
@@ -116,11 +118,27 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     this.difficultyOptions = data.filterOptions.difficultyOptions;
 
     this.editForm = this.createForm();
-    this.patchExerciseIntoForm(this.exercise);
-
+    this.editForm.updateValueAndValidity();
+    this.cdr.markForCheck();
     this.videoTypeSubscription = this.editForm.get('videoType')?.valueChanges.subscribe((type: VideoSelectorType) => {
       this.handleVideoTypeChange(type);
     }) || null;
+  }
+
+  ngOnInit(): void {
+    if (this.isCreationMode) {
+      return;
+    }
+
+    const exerciseId = this.getExerciseId(this.exercise);
+    if (exerciseId) {
+      this.loadFullExercise(exerciseId);
+      return;
+    }
+
+    if (this.exercise) {
+      this.resetAndPatchForm(this.exercise);
+    }
   }
 
   get selectedVideoType(): VideoSelectorType {
@@ -143,6 +161,10 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     return this.STEP_ONE_FIELDS.every(field => this.editForm.get(field)?.valid) && this.isVideoValid;
   }
 
+  get isActionDisabled(): boolean {
+    return this.loadingExercise || this.saving || this.refreshingExercise || this.videoState.uploading || this.videoState.processing;
+  }
+
   ngOnDestroy(): void {
     this.stopPolling();
     this.videoTypeSubscription?.unsubscribe();
@@ -150,6 +172,10 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   }
 
   onFileSelected(event: Event): void {
+    if (this.isActionDisabled) {
+      return;
+    }
+
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) {
       return;
@@ -180,7 +206,7 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   }
 
   onQuickSave(): void {
-    if (!this.isStepOneValid || this.saving) {
+    if (!this.isStepOneValid || this.isActionDisabled) {
       this.markStepOneTouched();
       return;
     }
@@ -189,7 +215,7 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   }
 
   onSave(): void {
-    if (!this.isStepOneValid || this.saving) {
+    if (!this.isStepOneValid || this.isActionDisabled) {
       this.markStepOneTouched();
       return;
     }
@@ -237,11 +263,59 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     return ALLOWED_FIELDS.includes(field);
   }
 
+  private getExerciseId(exercise: Partial<Exercise> | null | undefined): string | null {
+    return exercise?.id || (exercise as any)?.exerciseId || null;
+  }
+
+  private loadFullExercise(id: string): void {
+    if (this.loadingExercise) {
+      return;
+    }
+
+    this.loadingExercise = true;
+    this.cdr.markForCheck();
+
+    this.api.getExerciseById(id).pipe(
+      finalize(() => {
+        this.loadingExercise = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: (fullExercise) => {
+        if (fullExercise) {
+          this.exercise = { ...fullExercise };
+          this.exerciseId = this.getExerciseId(fullExercise);
+          this.resetAndPatchForm(this.exercise);
+          return;
+        }
+
+        if (this.exercise) {
+          this.resetAndPatchForm(this.exercise);
+          this.snackBar.open('No se pudo cargar el ejercicio completo. Se usan datos parciales.', 'Cerrar', { duration: 3500 });
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando ejercicio completo:', err);
+        if (this.exercise) {
+          this.resetAndPatchForm(this.exercise);
+        }
+        this.snackBar.open('No se pudo cargar el ejercicio completo. Se usan datos parciales.', 'Cerrar', { duration: 3500 });
+      }
+    });
+  }
+
+  private resetAndPatchForm(exercise: Exercise | null): void {
+    this.editForm.reset({}, { emitEvent: false });
+    this.patchExerciseIntoForm(exercise);
+    this.editForm.updateValueAndValidity({ emitEvent: false });
+    this.cdr.detectChanges();
+  }
+
   private saveExercise(saveMode: SaveMode): void {
     const formValue = this.editForm.getRawValue();
     this.exerciseId = this.isCreationMode
       ? `${sanitizeName((formValue.name_es?.trim() || formValue.name_en?.trim() || ''))}_${Date.now()}`
-      : this.exercise?.id || null;
+      : this.getExerciseId(this.exercise);
 
     if (this.selectedVideoType === 'S3' && this.selectedVideoFile) {
       if (this.isCreationMode) {
@@ -382,7 +456,7 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   }
 
   private uploadVideoAndUpdateExisting(formValue: any, saveMode: SaveMode): void {
-    const exerciseId = this.exercise?.id;
+    const exerciseId = this.getExerciseId(this.exercise);
     const file = this.selectedVideoFile;
     if (!exerciseId || !file) {
       this.persistExistingExercise(formValue, saveMode);
@@ -473,7 +547,7 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   ): void {
     this.saving = true;
     this.cdr.markForCheck();
-    this.exerciseId = this.exercise?.id || this.exerciseId;
+    this.exerciseId = this.getExerciseId(this.exercise) || this.exerciseId;
 
     const updatedExercise = this.buildExercisePayload(formValue, saveMode, this.exerciseId!, videoOverride);
 
@@ -481,31 +555,51 @@ export class ExerciseEditDialogComponent implements OnDestroy {
       (updatedExercise as any).s3_key = uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key;
     }
 
-    this.getUpdateRequest(updatedExercise as Exercise).subscribe({
-      next: (response) => {
+    this.getUpdateRequest(updatedExercise as Exercise).pipe(
+      switchMap((response) => {
+        if (!this.wasSaveSuccessful(response)) {
+          return of(null);
+        }
+
+        this.refreshingExercise = true;
+        this.cdr.markForCheck();
+        return this.api.getExerciseById(updatedExercise.id);
+      })
+    ).subscribe({
+      next: (refreshedExercise) => {
         this.saving = false;
+        this.refreshingExercise = false;
         this.videoState.uploading = false;
         this.videoState.processing = false;
-        if (this.wasSaveSuccessful(response)) {
-          const shouldPollForThumbnail = !!(updatedExercise.video?.type === 'S3' && this.selectedVideoFile && !updatedExercise.video.thumbnailUrl);
-          this.exerciseSaved.emit({
-            response,
-            exerciseId: updatedExercise.id,
-            shouldPollForThumbnail
-          });
-          this.dialogRef.close({
-            saved: true,
-            exerciseId: updatedExercise.id,
-            shouldPollForThumbnail
-          });
-        } else {
+
+        if (!refreshedExercise) {
           this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
+          this.cdr.markForCheck();
+          return;
         }
+
+        this.exercise = { ...refreshedExercise };
+        this.exerciseId = this.getExerciseId(refreshedExercise);
+        this.resetAndPatchForm(this.exercise);
+
+        const shouldPollForThumbnail = !!(
+          refreshedExercise.video?.type === 'S3' &&
+          (uploadedS3Key || this.videoState.s3Key || refreshedExercise.s3_key) &&
+          !getThumbnailSource(refreshedExercise)
+        );
+
+        this.exerciseSaved.emit({
+          response: refreshedExercise,
+          exerciseId: this.exerciseId,
+          shouldPollForThumbnail
+        });
+        this.snackBar.open('Ejercicio actualizado correctamente.', 'Cerrar', { duration: 3000 });
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error actualizando ejercicio:', err);
         this.saving = false;
+        this.refreshingExercise = false;
         this.videoState.uploading = false;
         this.videoState.processing = false;
         this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
@@ -515,23 +609,11 @@ export class ExerciseEditDialogComponent implements OnDestroy {
   }
 
   private getUpdateRequest(updatedExercise: Exercise): Observable<any> {
-    if (this.canSaveAsCustom(this.exercise)) {
-      return this.api.updateExercise(updatedExercise);
-    }
-
-    return this.api.updateExerciseLibraryItem(this.exercise!.id, updatedExercise);
-  }
-
-  private canSaveAsCustom(exercise: Exercise | null): boolean {
-    return (exercise as any)?.source === 'CUSTOM';
+    return this.api.updateExercise(updatedExercise);
   }
 
   private wasSaveSuccessful(response: any): boolean {
-    if (this.canSaveAsCustom(this.exercise)) {
-      return !!response;
-    }
-
-    return !!response?.ok;
+    return !!response;
   }
 
   private resolveInitialVideoType(exercise: Exercise | null): VideoSelectorType {
@@ -643,6 +725,20 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     }
 
     const videoType = this.resolveInitialVideoType(exercise);
+    this.uploadError = '';
+    this.stopPolling();
+    this.videoState.uploading = false;
+    this.videoState.processing = false;
+    this.videoState.ready = false;
+    this.clearS3Selection(false);
+    this.videoState.previewUrl = videoType === 'S3' ? getS3PreviewUrl(exercise) : null;
+    this.videoState.thumbnailUrl = videoType === 'S3'
+      ? getThumbnailSource(exercise)
+      : videoType === 'YOUTUBE'
+        ? buildYoutubeThumbnailUrl(getYoutubeUrl(exercise) || '')
+        : null;
+    this.videoState.s3Key = exercise.s3_key || null;
+
     this.editForm.patchValue({
       name_es: exercise.name_es || exercise.name || '',
       name_en: exercise.name_en || '',
@@ -656,10 +752,10 @@ export class ExerciseEditDialogComponent implements OnDestroy {
       training_goal: exercise.training_goal || '',
       description_es: exercise.description_es || '',
       description_en: exercise.description_en || '',
-      tips: this.joinMultiline(exercise.tips),
-      common_mistakes: this.joinMultiline(exercise.common_mistakes),
-      secondary_muscles: this.joinCsv(exercise.secondary_muscles),
-      aliases: this.joinCsv(exercise.aliases),
+      tips: this.joinMultiline(exercise.tips || []),
+      common_mistakes: this.joinMultiline(exercise.common_mistakes || []),
+      secondary_muscles: this.joinCsv(exercise.secondary_muscles || []),
+      aliases: this.joinCsv(exercise.aliases || []),
       plane_of_motion: exercise.plane_of_motion || '',
       movement_pattern: exercise.movement_pattern || '',
       equipment_specific: exercise.equipment_specific || ''
@@ -780,7 +876,7 @@ export class ExerciseEditDialogComponent implements OnDestroy {
           common_mistakes: this.parseMultilineToOptionalArray(formValue.common_mistakes),
           secondary_muscles: this.parseCsvToOptionalArray(formValue.secondary_muscles)
         }
-      : {};
+      : this.buildExistingOptionalPayload();
 
     const basePayload = this.isCreationMode
       ? requiredPayload
@@ -792,6 +888,26 @@ export class ExerciseEditDialogComponent implements OnDestroy {
     };
 
     return this.buildCleanExercisePayload(payload);
+  }
+
+  private buildExistingOptionalPayload(): Record<string, any> {
+    if (this.isCreationMode || !this.exercise) {
+      return {};
+    }
+
+    return {
+      description_es: this.cleanOptionalString(this.exercise.description_es),
+      description_en: this.cleanOptionalString(this.exercise.description_en),
+      exercise_type: this.cleanOptionalString(this.exercise.exercise_type),
+      training_goal: this.cleanOptionalString(this.exercise.training_goal),
+      plane_of_motion: this.cleanOptionalString(this.exercise.plane_of_motion),
+      movement_pattern: this.cleanOptionalString(this.exercise.movement_pattern),
+      equipment_specific: this.cleanOptionalString(this.exercise.equipment_specific),
+      aliases: this.cleanArray(Array.isArray(this.exercise.aliases) ? this.exercise.aliases : []),
+      tips: this.cleanArray(Array.isArray(this.exercise.tips) ? this.exercise.tips : []),
+      common_mistakes: this.cleanArray(Array.isArray(this.exercise.common_mistakes) ? this.exercise.common_mistakes : []),
+      secondary_muscles: this.cleanArray(Array.isArray(this.exercise.secondary_muscles) ? this.exercise.secondary_muscles : [])
+    };
   }
 
   private buildCleanExercisePayload<T extends Record<string, any>>(exerciseData: T): T {

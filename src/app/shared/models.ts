@@ -1,6 +1,7 @@
 /* ---------- Ejercicio base ---------- */
 export interface Exercise {
   id: string;
+  exerciseId?: string;
   name: string;
   name_es?: string;
   name_en?: string;

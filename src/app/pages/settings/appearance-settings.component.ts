@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -26,6 +27,7 @@ import { ThemeService, ThemeConfig } from '../../services/theme.service';
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatButtonToggleModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
@@ -39,6 +41,7 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   isLoading = false;
   isSaving = false;
+  sessionNaming: 'session' | 'day' = 'session';
   logoFile: File | null = null;
   logoPreviewUrl: string | null = null;
 
@@ -77,6 +80,7 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
       accentColor: ['#22D3EE', [Validators.required]],
       darkMode: [false],
       typography: ['Inter', [Validators.required]],
+      sessionNaming: ['session'],
       appName: ['', [Validators.maxLength(40)]],
       tagline: ['', [Validators.maxLength(80)]]
     });
@@ -84,7 +88,10 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
     // Subscribe to form changes to update preview in real-time
     this.form.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.updatePreview());
+      .subscribe(() => {
+        this.sessionNaming = this.form.get('sessionNaming')?.value ?? 'session';
+        this.updatePreview();
+      });
   }
 
   private loadTheme(): void {
@@ -96,15 +103,18 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
           // Map backend fields to UI fields
           const darkMode = config.backgroundMode === 'dark';
           const typography = config.fontFamily || 'Inter';
+          const sessionNaming = config.sessionNaming ?? 'session';
 
           this.form.patchValue({
             primaryColor: config.primaryColor,
             accentColor: config.accentColor,
             darkMode: darkMode,
             typography: typography,
+            sessionNaming: sessionNaming,
             appName: config.appName || '',
             tagline: config.tagline || ''
           });
+          this.sessionNaming = sessionNaming;
           if (config.logoUrl) {
             this.logoPreviewUrl = config.logoUrl;
           }
@@ -260,7 +270,8 @@ export class AppearanceSettingsComponent implements OnInit, OnDestroy {
         primaryColor: formValue.primaryColor,
         accentColor: formValue.accentColor,
         backgroundMode: formValue.darkMode ? 'dark' : 'light',
-        fontFamily: formValue.typography
+        fontFamily: formValue.typography,
+        sessionNaming: formValue.sessionNaming
       };
 
       // Add optional fields if they have values

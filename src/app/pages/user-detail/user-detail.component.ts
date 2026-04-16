@@ -223,6 +223,10 @@ export class UserDetailComponent implements OnInit {
    */
   selectTemplate(template: any): void {
     const templateId = this.getPlanId(template);
+    console.info('[UserDetail] assigning template', {
+      userId: this.userId,
+      templateId
+    });
     this.templateAssignment.assignTemplateToUser({
       userId: this.userId,
       snackBar: this.snackBar,

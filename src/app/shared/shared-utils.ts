@@ -386,12 +386,9 @@ export function hasRenderablePlanContent(sessions: Session[]): boolean {
  */
 export function getPlanKey(plan: { planId?: string; id?: string; SK?: string } | null | undefined): string {
   if (!plan) return '';
-  if (plan.planId) return plan.planId;
-  if (plan.id) return plan.id;
-  if (plan.SK && typeof plan.SK === 'string' && plan.SK.startsWith('PLAN#')) {
-    return plan.SK.substring(5);
-  }
-  return '';
+  const result = plan.planId || plan.id || (plan.SK && typeof plan.SK === 'string' && plan.SK.startsWith('PLAN#') ? plan.SK.substring(5) : '');
+  console.log('🔑 [getPlanKey]', { planId: plan.planId, id: plan.id, SK: plan.SK, resolved: result });
+  return result;
 }
 
 /**

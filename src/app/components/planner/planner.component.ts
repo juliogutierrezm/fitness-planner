@@ -596,7 +596,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private loadTemplateForPlanner(templateId: string): void {
-    const trimmedId = templateId?.trim();
+    const rawTemplateId = templateId;
+    const trimmedId = rawTemplateId?.trim();
+    console.info('[Planner] load template requested', {
+      rawTemplateId,
+      templateId: trimmedId
+    });
     if (!trimmedId) {
       console.error('[Planner] missing templateId for load');
       this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
@@ -632,11 +637,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.applyTemplateToPlanner(templatePlan);
       },
       error: (error) => {
+        const status = error?.status;
         console.error('[Planner] failed to load template', {
           templateId: trimmedId,
+          status,
           error
         });
-        this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
+        const message = status === 404
+          ? 'No se encontró la plantilla.'
+          : status === 403
+            ? 'No tienes permisos para cargar esta plantilla.'
+            : 'No se pudo cargar la plantilla.';
+        this.snackBar.open(message, 'Cerrar', { duration: 3000 });
         this.initializeNewPlanSessions();
       }
     });
@@ -931,6 +943,17 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
 
     if (this.isEditMode && this.planId) {
+      const currentUser = this.authService.getCurrentUser();
+      console.info('[Planner] init mode', {
+        mode: 'edit',
+        planId: this.planId,
+        planIdType: typeof this.planId,
+        planIdLength: this.planId.length,
+        currentUserId: this.authService.getCurrentUserId(),
+        currentUserRole: currentUser?.role,
+        userProfileLoaded: !!currentUser,
+        token: '(check network tab)'
+      });
       this.planLoaded = false;
       this.updateInitialLoading();
       this.api.getWorkoutPlanById(this.planId).pipe(
@@ -971,7 +994,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
             return;
           }
 
-          console.warn('[Planner] Plan not found for edit', { planId: this.planId });
+          console.warn('[Planner] Plan not found for edit — API returned null (likely permission check blocked the request)', { planId: this.planId });
           this.snackBar.open('No se encontró el plan para editar.', 'Cerrar', { duration: 3000 });
         },
         error: (error) => {
@@ -983,6 +1006,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
         }
       });
     } else if (hasTemplateParam && qpTemplateId) {
+      console.info('[Planner] init mode', {
+        mode: 'assign-template',
+        templateId: qpTemplateId,
+        userId: qpUserId?.trim() || null
+      });
       this.resetTemplateState();
       this.api.clearUserSessions();
       this.planLoaded = false;
@@ -1198,6 +1226,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
 
     this.userApi.getWorkoutPlansByUserId(targetUserId).subscribe(list => {
+      console.log('📦 [loadPreviousPlans] Raw plan list:', list?.map((p: any) => ({ planId: p.planId, id: p.id, SK: p.SK, PK: p.PK, name: p.name })));
       const sorted = sortPlansByCreatedAt(list || []);
       // Parse sessions and filter out invalid plans
       const validPlans = sorted

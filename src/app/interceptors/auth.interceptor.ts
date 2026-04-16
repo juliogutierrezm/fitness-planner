@@ -40,8 +40,10 @@ export class AuthInterceptor implements HttpInterceptor {
           session?.tokens?.accessToken?.toString();
 
         if (!token) {
+          console.warn('🔑 [AuthInterceptor] No token available for request:', req.url);
           return next.handle(req);
         }
+        console.log('🔑 [AuthInterceptor] Token attached to:', req.url, '| Token prefix:', token.substring(0, 20) + '...');
 
         // Validate JWT issuer matches the expected Cognito pool for this environment
         const issuer = this.extractIssuerFromJwt(token);

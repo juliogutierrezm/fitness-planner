@@ -8,18 +8,25 @@ import { UserApiService } from './user-api.service';
 describe('ExerciseApiService', () => {
   let service: ExerciseApiService;
   let httpMock: HttpTestingController;
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
 
   beforeEach(() => {
+    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', [
+      'getCurrentUser',
+      'getCurrentUserId',
+      'canAccessUserData'
+    ]);
+    authServiceSpy.getCurrentUser.and.returnValue({ id: 'trainer-1', companyId: 'INDEPENDENT' } as any);
+    authServiceSpy.getCurrentUserId.and.returnValue('trainer-1');
+    authServiceSpy.canAccessUserData.and.returnValue(true);
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
         ExerciseApiService,
         {
           provide: AuthService,
-          useValue: {
-            getCurrentUser: () => ({ id: 'trainer-1', companyId: 'INDEPENDENT' }),
-            getCurrentUserId: () => 'trainer-1'
-          }
+          useValue: authServiceSpy
         },
         {
           provide: UserApiService,
@@ -103,5 +110,51 @@ describe('ExerciseApiService', () => {
     expect(result.description_es).toBe('Test descripcion');
     expect(result.tips).toEqual(['Test tips']);
     expect(result.video).toBeNull();
+  });
+
+  it('propagates 404 errors when loading a workout plan by id', () => {
+    let receivedError: any;
+
+    service.getWorkoutPlanById('plan-404').subscribe({
+      next: () => fail('expected getWorkoutPlanById to error'),
+      error: (error) => {
+        receivedError = error;
+      }
+    });
+
+    const req = httpMock.expectOne(`${environment.apiBase}/workoutPlans/plan-404`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ message: 'not found' }, { status: 404, statusText: 'Not Found' });
+
+    expect(receivedError?.status).toBe(404);
+  });
+
+  it('propagates 403 errors when loading a workout plan by id', () => {
+    let receivedError: any;
+
+    service.getWorkoutPlanById('plan-403').subscribe({
+      next: () => fail('expected getWorkoutPlanById to error'),
+      error: (error) => {
+        receivedError = error;
+      }
+    });
+
+    const req = httpMock.expectOne(`${environment.apiBase}/workoutPlans/plan-403`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ message: 'forbidden' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(receivedError?.status).toBe(403);
+  });
+
+  it('returns null before the request when there is no authenticated user id', () => {
+    authServiceSpy.getCurrentUserId.and.returnValue(null);
+
+    let result: any = 'pending';
+    service.getWorkoutPlanById('plan-1').subscribe(value => {
+      result = value;
+    });
+
+    expect(result).toBeNull();
+    httpMock.expectNone(`${environment.apiBase}/workoutPlans/plan-1`);
   });
 });

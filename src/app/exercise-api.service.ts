@@ -1,7 +1,7 @@
 // src/app/shared/exercise-api.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, forkJoin } from 'rxjs';
+import { Observable, of, forkJoin, throwError } from 'rxjs';
 import { catchError, map, tap, switchMap } from 'rxjs/operators';
 import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep, VideoSource } from './shared/models';
 import { AuthService } from './services/auth.service';
@@ -403,17 +403,28 @@ export class ExerciseApiService {
 
   getWorkoutPlanById(planId: string): Observable<any> {
     const userId = this.authService.getCurrentUserId();
+    console.log('🧠 [getWorkoutPlanById] Loading planId:', planId);
+    console.log('👤 [getWorkoutPlanById] Current userId:', userId);
+    console.log('🔐 [getWorkoutPlanById] canAccessUserData:', userId ? this.authService.canAccessUserData(userId) : 'N/A (no userId)');
+    console.log('🌐 [getWorkoutPlanById] Full URL:', `${this.planUrl}/${planId}`);
     // Check permissions
     if (!userId || !this.authService.canAccessUserData(userId)) {
-      console.error('❌ No tienes permisos para acceder a estos datos');
+      console.error('❌ [getWorkoutPlanById] BLOCKED — No userId or no permission. userId:', userId, '→ returning null WITHOUT making HTTP request');
       return of(null);
     }
 
+    console.log('✅ [getWorkoutPlanById] Permission OK, making HTTP GET...');
     return this.http.get<any>(`${this.planUrl}/${planId}`).pipe(
-      tap(plan => console.log(`📦 Plan obtenido ${planId}:`, plan)),
+      tap(plan => console.log(`📦 [getWorkoutPlanById] Plan obtenido ${planId}:`, plan)),
       catchError(err => {
-        console.error(`❌ Error al obtener el plan ${planId}:`, err);
-        return of(null);
+        console.error(`❌ [getWorkoutPlanById] HTTP Error for plan ${planId}:`, {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url,
+          error: err.error
+        });
+        return throwError(() => err);
       })
     );
   }

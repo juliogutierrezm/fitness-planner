@@ -30,3 +30,11 @@ export interface BodyMetricSeries {
   unit: string;
   points: BodyMetricPoint[];
 }
+
+export interface ClientBodyMeasurementFile {
+  clientId: string;
+  createdAt: string;
+  fileKey: string;
+  fileName: string;
+  contentType: string;
+}

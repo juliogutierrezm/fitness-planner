@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { Exercise } from '../../shared/models';
 import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
 import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { ExerciseManagerComponent } from './exercise-manager.component';
 
 describe('ExerciseManagerComponent', () => {
@@ -27,9 +28,9 @@ describe('ExerciseManagerComponent', () => {
       'deleteExercise',
       'getExerciseById'
     ]);
-    const authService = jasmine.createSpyObj<AuthService>('AuthService', ['isGymAdmin', 'isSystem']);
+    const authService = jasmine.createSpyObj<AuthService>('AuthService', ['isGymAdmin', 'getCurrentUserId']);
     authService.isGymAdmin.and.returnValue(false);
-    authService.isSystem.and.returnValue(true);
+    authService.getCurrentUserId.and.returnValue('trainer-1');
     const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
     const cdr = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['markForCheck']);
@@ -51,7 +52,7 @@ describe('ExerciseManagerComponent', () => {
       inlineOptionsService
     );
 
-    return { component, api };
+    return { component, api, authService, dialog };
   }
 
   it('uses polling with getAllExercises and updates only the refreshed exercise in memory', fakeAsync(() => {
@@ -114,7 +115,7 @@ describe('ExerciseManagerComponent', () => {
   }));
 
   it('opens the edit dialog with the wider layout config', () => {
-    const { component } = createComponent();
+    const { component, dialog } = createComponent();
     const exerciseSaved = new Subject<any>();
     const afterClosed = new Subject<any>();
     const dialogRef = {
@@ -122,7 +123,6 @@ describe('ExerciseManagerComponent', () => {
       afterClosed: () => afterClosed.asObservable()
     };
 
-    const dialog = (component as any).dialog as jasmine.SpyObj<MatDialog>;
     dialog.open.and.returnValue(dialogRef as any);
 
     component.onCreateNewClicked();
@@ -131,5 +131,96 @@ describe('ExerciseManagerComponent', () => {
       width: '960px',
       maxWidth: '96vw'
     }));
+  });
+
+  it('allows create when current user is authenticated without relying on System', () => {
+    const { component, authService } = createComponent();
+
+    authService.getCurrentUserId.and.returnValue('trainer-1');
+
+    expect(component.canModifyExercises).toBeTrue();
+  });
+
+  it('does not allow create when there is no authenticated user', () => {
+    const { component, authService, dialog } = createComponent();
+
+    authService.getCurrentUserId.and.returnValue(null);
+
+    component.onCreateNewClicked();
+
+    expect(component.canModifyExercises).toBeFalse();
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('blocks editing exercises not owned by the current user', () => {
+    const { component, dialog } = createComponent();
+    const openEditDialogSpy = spyOn<any>(component, 'openEditDialog');
+
+    component.onEditExercise(createExercise('ex-1', {
+      source: 'CUSTOM',
+      trainerId: 'trainer-2'
+    }));
+
+    expect(openEditDialogSpy).not.toHaveBeenCalled();
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('allows editing owned custom exercises', () => {
+    const { component } = createComponent();
+    const openEditDialogSpy = spyOn<any>(component, 'openEditDialog');
+    const exercise = createExercise('ex-1', {
+      source: 'CUSTOM',
+      trainerId: 'trainer-1'
+    });
+
+    component.onEditExercise(exercise);
+
+    expect(openEditDialogSpy).toHaveBeenCalledOnceWith(exercise);
+  });
+
+  it('blocks deleting exercises not owned by the current user', () => {
+    const { component, dialog, api } = createComponent();
+
+    component.onDeleteExercise(createExercise('ex-1', {
+      source: 'CUSTOM',
+      trainerId: 'trainer-2'
+    }));
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(api.deleteExercise).not.toHaveBeenCalled();
+  });
+
+  it('opens the delete confirmation for owned custom exercises', () => {
+    const { component, dialog } = createComponent();
+    const afterClosed = new Subject<boolean>();
+    dialog.open.and.returnValue({
+      afterClosed: () => afterClosed.asObservable()
+    } as any);
+
+    component.onDeleteExercise(createExercise('ex-1', {
+      source: 'CUSTOM',
+      trainerId: 'trainer-1'
+    }));
+
+    expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, jasmine.anything());
+  });
+
+  it('opens edit from video details only for owned custom exercises', () => {
+    const { component, dialog } = createComponent();
+    const viewDetailsClicked = new Subject<Exercise>();
+    const openEditDialogSpy = spyOn<any>(component, 'openEditDialog');
+
+    dialog.open.and.returnValue({
+      componentInstance: { viewDetailsClicked }
+    } as any);
+
+    component.onOpenVideo(createExercise('seed'));
+
+    viewDetailsClicked.next(createExercise('library-1', { source: 'LIBRARY', trainerId: 'trainer-1' }));
+    viewDetailsClicked.next(createExercise('custom-foreign', { source: 'CUSTOM', trainerId: 'trainer-2' }));
+    viewDetailsClicked.next(createExercise('custom-owned', { source: 'CUSTOM', trainerId: 'trainer-1' }));
+
+    expect(openEditDialogSpy).toHaveBeenCalledTimes(1);
+    expect(openEditDialogSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'custom-owned' }));
   });
 });

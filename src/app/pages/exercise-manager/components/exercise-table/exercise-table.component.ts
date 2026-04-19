@@ -47,6 +47,7 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
   @Input() exercises: Exercise[] | null = [];
   @Input() initialPaginatorState: PaginatorState | null = null;
   @Input() inlineCatalogs: InlineEditCatalogs | null = null;
+  @Input() currentUserId: string | null = null;
 
   @Output() editExercise = new EventEmitter<Exercise>();
   @Output() deleteExercise = new EventEmitter<Exercise>();
@@ -121,8 +122,8 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
     return this.uiLabelAliases[normalized] || normalized;
   }
 
-  canEdit(exercise: any): boolean {
-    return exercise?.source === 'CUSTOM';
+  canEdit(exercise: Exercise | null | undefined): boolean {
+    return exercise?.source === 'CUSTOM' && Boolean(exercise.trainerId) && exercise.trainerId === this.currentUserId;
   }
 
   onEditExercise(ex: Exercise): void {

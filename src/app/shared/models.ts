@@ -2,6 +2,7 @@
 export interface Exercise {
   id: string;
   exerciseId?: string;
+  source?: string;
   name: string;
   name_es?: string;
   name_en?: string;
@@ -23,6 +24,7 @@ export interface Exercise {
   process_status?: string;
   created_at?: string;
   updated_at?: string;
+  trainerId?: string | null;
   s3_key?: string;
   previewUrl?: string;
   thumbnailUrl?: string;

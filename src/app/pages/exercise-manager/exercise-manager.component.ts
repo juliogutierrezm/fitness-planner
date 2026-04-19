@@ -85,15 +85,12 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     return this.authService.isGymAdmin();
   }
 
-  /**
-   * Purpose: determine if current user can modify exercises (create/edit/delete).
-   * Only users belonging to the System Cognito group have modification permissions.
-   * Input: none. Output: boolean.
-   * Error handling: returns false when user lacks System group.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
+  get currentUserId(): string | null {
+    return this.authService.getCurrentUserId();
+  }
+
   get canModifyExercises(): boolean {
-    return this.authService.isSystem();
+    return Boolean(this.currentUserId);
   }
 
   ngOnInit(): void {
@@ -225,6 +222,10 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   }
 
   onCreateNewClicked(): void {
+    if (!this.canModifyExercises) {
+      return;
+    }
+
     this.openEditDialog(null);
   }
 
@@ -233,6 +234,10 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   }
 
   onEditExercise(exercise: Exercise): void {
+    if (!this.canEditExercise(exercise)) {
+      return;
+    }
+
     this.openEditDialog(exercise);
   }
 
@@ -243,6 +248,10 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   onDeleteExercise(exercise: Exercise): void {
+    if (!this.canEditExercise(exercise)) {
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Eliminar Ejercicio',
@@ -339,12 +348,14 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
       data: exercise,
       width: '600px'
     }).componentInstance.viewDetailsClicked.subscribe(selectedExercise => {
-      // Only open edit dialog for custom exercises
-      if ((selectedExercise as any)?.source === 'CUSTOM') {
+      if (this.canEditExercise(selectedExercise)) {
         this.openEditDialog(selectedExercise);
       }
-      // System exercises: no action (edit not allowed)
     });
+  }
+
+  private canEditExercise(exercise: Exercise | null | undefined): boolean {
+    return exercise?.source === 'CUSTOM' && Boolean(exercise.trainerId) && exercise.trainerId === this.currentUserId;
   }
 
   private openEditDialog(exercise: Exercise | null): void {

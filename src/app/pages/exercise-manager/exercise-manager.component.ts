@@ -173,6 +173,7 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   loadExercises(onLoaded?: (exercises: Exercise[]) => void): void {
     const startTime = Date.now();
     this.loading = true;
+    this.cdr.markForCheck();
 
     this.exercises$ = this.api.getAllExercises().pipe(
       tap((exercises) => {
@@ -408,7 +409,7 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     let attempts = 0;
     this.mediaRefreshIntervalId = setInterval(() => {
       attempts += 1;
-      this.api.getExerciseById(exerciseId).pipe(take(1)).subscribe({
+      this.api.getExerciseById(exerciseId, true).pipe(take(1)).subscribe({
         next: (refreshedExercise) => {
           if (refreshedExercise) {
             this.replaceExerciseInMemory(refreshedExercise);
@@ -439,7 +440,7 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     }
 
     const nextExercises = [...this.exercisesSnapshot];
-    nextExercises[exerciseIndex] = updatedExercise;
+    nextExercises[exerciseIndex] = { ...this.exercisesSnapshot[exerciseIndex], ...updatedExercise };
 
     this.exercisesSnapshot = nextExercises;
     this.exercises$ = of(nextExercises).pipe(shareReplay(1));

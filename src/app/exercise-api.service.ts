@@ -292,10 +292,12 @@ export class ExerciseApiService {
   }
 
   // Get a single exercise by ID — returns from cache when available
-  getExerciseById(id: string): Observable<Exercise | null> {
-    const cached = this.exerciseByIdCache.get(id);
-    if (cached) {
-      return of(cached);
+  getExerciseById(id: string, forceRefresh = false): Observable<Exercise | null> {
+    if (!forceRefresh) {
+      const cached = this.exerciseByIdCache.get(id);
+      if (cached) {
+        return of(cached);
+      }
     }
 
     const url = `${this.exerciseUrl}/${encodeURIComponent(id)}`;
@@ -339,11 +341,8 @@ export class ExerciseApiService {
     return this.http.put(updateUrl, payload).pipe(
       tap(() => {
         console.log('✏️ Ejercicio actualizado:', payload);
-        // Update ID cache entry and invalidate list cache
-        const cached = this.exerciseByIdCache.get(ex.id);
-        if (cached) {
-          this.exerciseByIdCache.set(ex.id, { ...cached, ...payload });
-        }
+        // Invalidate both caches so next fetch gets fresh data
+        this.exerciseByIdCache.delete(ex.id);
         this.exerciseCache$ = null;
       }),
       catchError(err => {

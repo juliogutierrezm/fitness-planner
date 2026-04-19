@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,8 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Exercise, InlineEditCatalogs, PaginatorState } from '../../../../shared/models';
 import { getThumbnailSource, getVideoSource } from '../../../../shared/video-utils';
+import { ExerciseApiService } from '../../../../exercise-api.service';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-exercise-table',
@@ -18,13 +21,14 @@ import { getThumbnailSource, getVideoSource } from '../../../../shared/video-uti
     MatIconModule,
     MatPaginatorModule,
     MatTooltipModule,
-    MatSortModule
+    MatSortModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './exercise-table.component.html',
   styleUrl: './exercise-table.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExerciseTableComponent implements AfterViewInit, OnChanges {
+export class ExerciseTableComponent implements AfterViewInit, OnChanges, OnDestroy {
   private readonly uiLabelAliases: Record<string, string> = {
     Rings: 'Suspensión',
     Anillas: 'Suspensión',
@@ -57,8 +61,19 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
   hoveredExercise: Exercise | null = null;
   previewPosition = { x: 0, y: 0 };
 
+  private readonly PROCESSING_POLL_INTERVAL_MS = 3000;
+  private readonly PROCESSING_POLL_TIMEOUT_MS = 60000;
+  private processingExercises = new Map<string, { intervalId: ReturnType<typeof setInterval>; startedAt: number }>();
+  processingIds = new Set<string>();
+  timedOutIds = new Set<string>();
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  constructor(
+    private api: ExerciseApiService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
@@ -70,7 +85,13 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
     if (changes['exercises']) {
       this.dataSource.data = this.exercises ?? [];
       this.resetPaginatorIfNeeded();
+      this.detectProcessingExercises();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.processingExercises.forEach(entry => clearInterval(entry.intervalId));
+    this.processingExercises.clear();
   }
 
   private restorePaginatorState(): void {
@@ -158,7 +179,93 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges {
     return Boolean(getVideoSource(exercise));
   }
 
+  isProcessing(exercise: Exercise): boolean {
+    return this.processingIds.has(exercise.id);
+  }
+
+  isTimedOut(exercise: Exercise): boolean {
+    return this.timedOutIds.has(exercise.id);
+  }
+
   getPreviewUrl(exercise: Exercise): string | null {
     return getThumbnailSource(exercise);
+  }
+
+  private detectProcessingExercises(): void {
+    const exercises = this.exercises ?? [];
+    const currentProcessing = new Set<string>();
+
+    for (const ex of exercises) {
+      if (this.isS3WithoutThumbnail(ex)) {
+        currentProcessing.add(ex.id);
+        if (!this.processingExercises.has(ex.id) && !this.timedOutIds.has(ex.id)) {
+          this.startProcessingPoll(ex.id);
+        }
+      }
+    }
+
+    for (const [id, entry] of this.processingExercises) {
+      if (!currentProcessing.has(id)) {
+        clearInterval(entry.intervalId);
+        this.processingExercises.delete(id);
+        this.processingIds.delete(id);
+      }
+    }
+  }
+
+  private isS3WithoutThumbnail(exercise: Exercise): boolean {
+    const hasS3Video = exercise.video?.type === 'S3'
+      || Boolean(exercise.s3_key)
+      || Boolean(exercise.preview_url)
+      || Boolean(exercise.previewUrl);
+    if (!hasS3Video) return false;
+    return !getThumbnailSource(exercise);
+  }
+
+  private startProcessingPoll(exerciseId: string): void {
+    this.processingIds.add(exerciseId);
+    const startedAt = Date.now();
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - startedAt > this.PROCESSING_POLL_TIMEOUT_MS) {
+        this.stopProcessingPoll(exerciseId);
+        this.timedOutIds.add(exerciseId);
+        this.processingIds.delete(exerciseId);
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.api.getExerciseById(exerciseId, true).pipe(take(1)).subscribe({
+        next: (refreshed) => {
+          if (!refreshed) return;
+
+          if (getThumbnailSource(refreshed)) {
+            this.stopProcessingPoll(exerciseId);
+            this.processingIds.delete(exerciseId);
+            this.updateExerciseInDataSource(refreshed);
+          }
+        }
+      });
+    }, this.PROCESSING_POLL_INTERVAL_MS);
+
+    this.processingExercises.set(exerciseId, { intervalId, startedAt });
+  }
+
+  private stopProcessingPoll(exerciseId: string): void {
+    const entry = this.processingExercises.get(exerciseId);
+    if (entry) {
+      clearInterval(entry.intervalId);
+      this.processingExercises.delete(exerciseId);
+    }
+  }
+
+  private updateExerciseInDataSource(updated: Exercise): void {
+    const index = this.dataSource.data.findIndex(ex => ex.id === updated.id);
+    if (index === -1) return;
+
+    const nextData = [...this.dataSource.data];
+    nextData[index] = { ...nextData[index], ...updated };
+    this.dataSource.data = nextData;
+    this.cdr.markForCheck();
   }
 }

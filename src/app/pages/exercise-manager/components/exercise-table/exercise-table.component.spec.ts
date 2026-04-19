@@ -1,7 +1,15 @@
 import { Exercise } from '../../../../shared/models';
 import { ExerciseTableComponent } from './exercise-table.component';
+import { ExerciseApiService } from '../../../../exercise-api.service';
+import { ChangeDetectorRef } from '@angular/core';
 
 describe('ExerciseTableComponent', () => {
+  function createComponent(): ExerciseTableComponent {
+    const mockApi = {} as ExerciseApiService;
+    const mockCdr = { markForCheck: () => {} } as unknown as ChangeDetectorRef;
+    return new ExerciseTableComponent(mockApi, mockCdr);
+  }
+
   function createExercise(overrides: Partial<Exercise> = {}): Exercise {
     return {
       id: 'ex-1',
@@ -13,7 +21,7 @@ describe('ExerciseTableComponent', () => {
   }
 
   it('allows actions for owned custom exercises', () => {
-    const component = new ExerciseTableComponent();
+    const component = createComponent();
     component.currentUserId = 'trainer-1';
 
     expect(component.canEdit(createExercise({
@@ -23,7 +31,7 @@ describe('ExerciseTableComponent', () => {
   });
 
   it('hides actions for custom exercises owned by another user', () => {
-    const component = new ExerciseTableComponent();
+    const component = createComponent();
     component.currentUserId = 'trainer-1';
 
     expect(component.canEdit(createExercise({
@@ -33,7 +41,7 @@ describe('ExerciseTableComponent', () => {
   });
 
   it('hides actions for library exercises even when trainerId matches', () => {
-    const component = new ExerciseTableComponent();
+    const component = createComponent();
     component.currentUserId = 'trainer-1';
 
     expect(component.canEdit(createExercise({
@@ -43,7 +51,7 @@ describe('ExerciseTableComponent', () => {
   });
 
   it('treats missing current user or trainerId as not editable', () => {
-    const component = new ExerciseTableComponent();
+    const component = createComponent();
 
     expect(component.canEdit(createExercise({
       source: 'CUSTOM',

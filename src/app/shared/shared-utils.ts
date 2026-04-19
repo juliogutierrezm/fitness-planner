@@ -205,6 +205,7 @@ function mergeExerciseWithSession(base: Exercise, item: PlanItem): PlanItem {
       return;
     }
     if (!isMeaningfulValue(value)) return;
+    if (Array.isArray(value) && value.length === 0 && Array.isArray(merged[key]) && (merged[key] as unknown[]).length > 0) return;
     merged[key] = value;
   });
 
@@ -295,19 +296,12 @@ function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exer
   }
 
   const exerciseId = (item as PlanItem & { exerciseId?: string })?.exerciseId || item?.id;
-  const shouldEnrich = Boolean((item as PlanItem & { exerciseId?: string })?.exerciseId)
-    || isPlanItemMissingMinimumInfo(item);
-  if (exerciseId && shouldEnrich) {
-    const base = exerciseMap.get(exerciseId);
-    if (!base) {
-      console.warn('[PlanEnrichment] exercise not found:', exerciseId);
-      return item;
-    }
+  if (!exerciseId) return item;
 
-    return mergeExerciseWithSession(base, item);
-  }
+  const base = exerciseMap.get(exerciseId);
+  if (!base) return item;
 
-  return item;
+  return mergeExerciseWithSession(base, item);
 }
 
 /**
@@ -317,14 +311,7 @@ function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exer
  * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
 function hasEnrichmentCandidateInItems(items: PlanItem[]): boolean {
-  if (!Array.isArray(items)) return false;
-  for (const item of items) {
-    if (!item) continue;
-    if ((item as PlanItem & { exerciseId?: string })?.exerciseId) return true;
-    if (item?.isGroup && hasEnrichmentCandidateInItems(item.children || [])) return true;
-    if (isPlanItemMissingMinimumInfo(item)) return true;
-  }
-  return false;
+  return Array.isArray(items) && items.length > 0;
 }
 
 /**

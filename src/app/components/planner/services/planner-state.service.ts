@@ -29,6 +29,7 @@ export class PlannerStateService {
       ...defaults,
       ...overrides,
       id: exercise.id,
+      exerciseId: exercise.id,
       name: exercise.name_es || exercise.name || 'Ejercicio sin nombre',
       name_es: exercise.name_es,
       equipment_type: exercise.equipment_type || ''

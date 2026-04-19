@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Inject } from '@angular/core';
-import { Observable, Subscription, interval, of } from 'rxjs';
+import { Observable, Subscription, interval } from 'rxjs';
 import { finalize, switchMap, takeWhile } from 'rxjs/operators';
 import { MatRadioModule } from '@angular/material/radio';
 import { ExerciseApiService } from '../../../../exercise-api.service';
@@ -552,51 +552,38 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       (updatedExercise as any).s3_key = uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key;
     }
 
-    this.getUpdateRequest(updatedExercise as Exercise).pipe(
-      switchMap((response) => {
-        if (!this.wasSaveSuccessful(response)) {
-          return of(null);
-        }
-
-        this.refreshingExercise = true;
-        this.cdr.markForCheck();
-        return this.api.getExerciseById(updatedExercise.id);
-      })
-    ).subscribe({
-      next: (refreshedExercise) => {
+    this.getUpdateRequest(updatedExercise as Exercise).subscribe({
+      next: (response) => {
         this.saving = false;
-        this.refreshingExercise = false;
         this.videoState.uploading = false;
         this.videoState.processing = false;
 
-        if (!refreshedExercise) {
+        if (!this.wasSaveSuccessful(response)) {
           this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });
           this.cdr.markForCheck();
           return;
         }
 
-        this.exercise = { ...refreshedExercise };
-        this.exerciseId = this.getExerciseId(refreshedExercise);
-        this.resetAndPatchForm(this.exercise);
-
         const shouldPollForThumbnail = !!(
-          refreshedExercise.video?.type === 'S3' &&
-          (uploadedS3Key || this.videoState.s3Key || refreshedExercise.s3_key) &&
-          !getThumbnailSource(refreshedExercise)
+          updatedExercise.video?.type === 'S3' &&
+          (uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key) &&
+          !getThumbnailSource(updatedExercise as Exercise)
         );
 
         this.exerciseSaved.emit({
-          response: refreshedExercise,
+          response,
           exerciseId: this.exerciseId,
           shouldPollForThumbnail
         });
-        this.snackBar.open('Ejercicio actualizado correctamente.', 'Cerrar', { duration: 3000 });
-        this.cdr.markForCheck();
+        this.dialogRef.close({
+          saved: true,
+          exerciseId: this.exerciseId,
+          shouldPollForThumbnail
+        });
       },
       error: (err) => {
         console.error('Error actualizando ejercicio:', err);
         this.saving = false;
-        this.refreshingExercise = false;
         this.videoState.uploading = false;
         this.videoState.processing = false;
         this.snackBar.open('Error al guardar el ejercicio. Intente nuevamente.', 'Cerrar', { duration: 4000 });

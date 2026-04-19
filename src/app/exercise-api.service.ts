@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin, throwError } from 'rxjs';
-import { catchError, map, tap, switchMap } from 'rxjs/operators';
+import { catchError, map, tap, switchMap, shareReplay } from 'rxjs/operators';
 import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep, VideoSource } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
@@ -47,6 +47,10 @@ export class ExerciseApiService {
   private exerciseUrl = `${this.apiBase}/exercise`;
   private exerciseLibUrl = `${this.apiBase}/exercise/library`;
   private planUrl     = `${this.apiBase}/workoutPlans`;
+
+  // ─── Exercise cache ───
+  private exerciseCache$: Observable<Exercise[]> | null = null;
+  private exerciseByIdCache = new Map<string, Exercise>();
 
   constructor(
     private http: HttpClient,
@@ -143,14 +147,32 @@ export class ExerciseApiService {
   }
 
   getAllExercises(): Observable<Exercise[]> {
-    return this.http.get<ExerciseLibraryResponse>(this.exerciseUrl).pipe(
-      map(res => (res.items || []).map(item => this.normalizeExercise(item as any))),
-      tap(exercises => console.log('📋 Ejercicios combinados obtenidos:', exercises.length)),
-      catchError(err => {
-        console.error('❌ Error al obtener ejercicios combinados:', err);
-        return of([]);
-      })
-    );
+    if (!this.exerciseCache$) {
+      this.exerciseCache$ = this.http.get<ExerciseLibraryResponse>(this.exerciseUrl).pipe(
+        map(res => (res.items || []).map(item => this.normalizeExercise(item as any))),
+        tap(exercises => {
+          console.log('📋 Ejercicios combinados obtenidos:', exercises.length);
+          this.exerciseByIdCache.clear();
+          exercises.forEach(ex => this.exerciseByIdCache.set(ex.id, ex));
+        }),
+        catchError(err => {
+          console.error('❌ Error al obtener ejercicios combinados:', err);
+          this.exerciseCache$ = null;
+          return of([]);
+        }),
+        shareReplay(1)
+      );
+    }
+    return this.exerciseCache$;
+  }
+
+  /**
+   * Invalidate the exercise cache so the next getAllExercises() call
+   * fetches fresh data from the backend. Use as a fallback only.
+   */
+  invalidateExerciseCache(): void {
+    this.exerciseCache$ = null;
+    this.exerciseByIdCache.clear();
   }
 
   updateExerciseLibraryItem(id: string, exercise: Exercise): Observable<{ok: boolean, updated: Partial<Exercise>}> {
@@ -160,7 +182,17 @@ export class ExerciseApiService {
     console.log('🌐 REQUEST URL:', url);
     console.log('🌐 UPDATE URL:', url);
     return this.http.put<{ok: boolean, updated: Partial<Exercise>}>(url, payload).pipe(
-      tap(res => console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated)),
+      tap(res => {
+        console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated);
+        if (res.ok) {
+          // Update ID cache entry and invalidate list cache
+          const cached = this.exerciseByIdCache.get(id);
+          if (cached) {
+            this.exerciseByIdCache.set(id, { ...cached, ...res.updated });
+          }
+          this.exerciseCache$ = null;
+        }
+      }),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio de libreria:', err);
         return of({ ok: false, updated: {} });
@@ -230,7 +262,11 @@ export class ExerciseApiService {
     console.log('🌐 REQUEST URL:', this.exerciseUrl);
 
     return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
-      tap(() => console.log('✅ Ejercicio creado:', id)),
+      tap(() => {
+        console.log('✅ Ejercicio creado:', id);
+        // Invalidate list cache so next getAll fetches fresh data
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
         console.error('❌ Error al crear ejercicio:', err);
         return of(null);
@@ -255,12 +291,22 @@ export class ExerciseApiService {
     );
   }
 
-  // Get a single exercise by ID
+  // Get a single exercise by ID — returns from cache when available
   getExerciseById(id: string): Observable<Exercise | null> {
+    const cached = this.exerciseByIdCache.get(id);
+    if (cached) {
+      return of(cached);
+    }
+
     const url = `${this.exerciseUrl}/${encodeURIComponent(id)}`;
     return this.http.get<Exercise>(url).pipe(
       map(ex => ex ? this.normalizeExercise(ex as any) : null),
-      tap(ex => console.log('📋 Ejercicio obtenido:', ex?.id)),
+      tap(ex => {
+        console.log('📋 Ejercicio obtenido:', ex?.id);
+        if (ex) {
+          this.exerciseByIdCache.set(ex.id, ex);
+        }
+      }),
       catchError(err => {
         console.error('❌ Error al obtener ejercicio por ID:', err);
         return of(null);
@@ -291,7 +337,15 @@ export class ExerciseApiService {
     console.log('🌐 CLEAN UPDATE PAYLOAD:', JSON.stringify(payload, null, 2));
 
     return this.http.put(updateUrl, payload).pipe(
-      tap(() => console.log('✏️ Ejercicio actualizado:', payload)),
+      tap(() => {
+        console.log('✏️ Ejercicio actualizado:', payload);
+        // Update ID cache entry and invalidate list cache
+        const cached = this.exerciseByIdCache.get(ex.id);
+        if (cached) {
+          this.exerciseByIdCache.set(ex.id, { ...cached, ...payload });
+        }
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio:', err);
         return of(null);
@@ -301,7 +355,12 @@ export class ExerciseApiService {
 
   deleteExercise(id: string): Observable<any> {
     return this.http.delete(`${this.apiBase}/exercise/${encodeURIComponent(id)}`).pipe(
-      tap(() => console.log(`🗑️ Ejercicio eliminado ${id}`)),
+      tap(() => {
+        console.log(`🗑️ Ejercicio eliminado ${id}`);
+        // Remove from ID cache and invalidate list cache
+        this.exerciseByIdCache.delete(id);
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
         console.error('❌ Error al eliminar ejercicio:', err);
         return of(null);

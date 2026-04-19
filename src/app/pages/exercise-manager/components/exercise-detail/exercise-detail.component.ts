@@ -43,14 +43,13 @@ export class ExerciseDetailComponent implements OnInit {
   private loadExercise(id: string): void {
     const startTime = Date.now();
 
-    this.api.getAllExercises().pipe(
+    this.api.getExerciseById(id).pipe(
       finalize(() => {
         this.loading = false;
         this.cdr.markForCheck(); // Ensure UI updates with OnPush strategy
       })
     ).subscribe({
-      next: (exercises) => {
-        const exercise = exercises.find(ex => ex.id === id);
+      next: (exercise) => {
         if (exercise) {
           this.exercise = exercise;
           this.mediaCacheToken = Date.now();

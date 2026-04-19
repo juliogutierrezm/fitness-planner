@@ -55,6 +55,10 @@ export class ExerciseFiltersComponent {
     this.refreshClicked.emit();
   }
 
+  trackByOption(_index: number, option: string): string {
+    return option;
+  }
+
   getUiLabel(value: string | null | undefined): string {
     const normalized = value?.trim() || '';
     if (!normalized) return '';

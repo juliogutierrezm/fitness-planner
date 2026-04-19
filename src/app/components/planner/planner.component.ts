@@ -92,6 +92,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
+  visibleExercises: Exercise[] = [];
+  private visibleCount = 50;
   private activeDragCount = 0;
   /**
    * Purpose: cache ExerciseLibrary data for AI plan enrichment.
@@ -1117,6 +1119,24 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.functionalCategoryLabel,
       this.STORAGE_KEY
     );
+    this.visibleCount = 50;
+    this.updateVisibleExercises();
+  }
+
+  private updateVisibleExercises(): void {
+    this.visibleExercises = this.filteredExercises.slice(0, this.visibleCount);
+  }
+
+  onExerciseListScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (!el) return;
+    const threshold = 100;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (nearBottom && this.visibleCount < this.filteredExercises.length) {
+      this.visibleCount = Math.min(this.visibleCount + 50, this.filteredExercises.length);
+      this.updateVisibleExercises();
+      this.cdr.markForCheck();
+    }
   }
 
   private createDefaultProgressions(showProgressions: boolean): PlanProgressions {

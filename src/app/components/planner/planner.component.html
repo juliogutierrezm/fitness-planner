@@ -331,8 +331,8 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <div class="vs exercise-scroll-container">
-          <div *ngFor="let ex of filteredExercises; trackBy: trackByExercise"
+          <div class="vs exercise-scroll-container" (scroll)="onExerciseListScroll($event)">
+          <div *ngFor="let ex of visibleExercises; trackBy: trackByExercise"
                  cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
@@ -361,6 +361,9 @@
                   {{ ex.name_es || 'Nombre no disponible' }}
                 </div>
               </ng-container>
+            </div>
+            <div *ngIf="visibleExercises.length < filteredExercises.length" class="load-more-hint">
+              Mostrando {{ visibleExercises.length }} de {{ filteredExercises.length }} — desplaza para ver más
             </div>
           </div>
         </div>

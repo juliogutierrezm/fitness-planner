@@ -445,6 +445,18 @@
   }
 }
 
+.btn-resend {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    color: #fff;
+    margin-top: 10px;
+  }
+}
+
 // Activate button (success/green)
 .btn-activate {
   background: linear-gradient(135deg, #22c55e, #16a34a) !important;
@@ -459,6 +471,15 @@
   mat-icon {
     color: #fff;
   }
+}
+
+.button-spinner {
+  display: block;
+  margin: 0 auto;
+}
+
+.button-spinner ::ng-deep circle {
+  stroke: #fff;
 }
 
 // ============================================

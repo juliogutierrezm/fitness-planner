@@ -173,6 +173,21 @@
                   <button mat-mini-fab (click)="startEdit(u)" aria-label="Editar" matTooltip="Editar usuario">
                     <mat-icon>edit</mat-icon>
                   </button>
+                  <button
+                    matTooltip="Reenviar código"
+                    mat-mini-fab
+                    class="btn-resend"
+                    (click)="resendVerificationCode(u)"
+                    [disabled]="resendingCodeUserId === u.id"
+                    aria-label="Reenviar código"
+                  >
+                    <ng-container *ngIf="resendingCodeUserId === u.id; else resendIconTpl">
+                      <mat-spinner diameter="18" class="button-spinner"></mat-spinner>
+                    </ng-container>
+                    <ng-template #resendIconTpl>
+                      <mat-icon>mail_outline</mat-icon>
+                    </ng-template>
+                  </button>
                   <!-- Deactivate button (Admin only, Active tab) -->
                   <button *ngIf="isAdmin"
                     matTooltip="Desactivar usuario"

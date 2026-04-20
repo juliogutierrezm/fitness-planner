@@ -52,6 +52,8 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges, OnDestr
   @Input() initialPaginatorState: PaginatorState | null = null;
   @Input() inlineCatalogs: InlineEditCatalogs | null = null;
   @Input() currentUserId: string | null = null;
+  @Input() isAdmin = false;
+  @Input() currentCompanyId: string | null = null;
 
   @Output() editExercise = new EventEmitter<Exercise>();
   @Output() deleteExercise = new EventEmitter<Exercise>();
@@ -144,7 +146,12 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges, OnDestr
   }
 
   canEdit(exercise: Exercise | null | undefined): boolean {
-    return Boolean(this.currentUserId) && Boolean(exercise?.trainerId) && exercise!.trainerId === this.currentUserId;
+    if (!exercise) return false;
+    // Owner can always edit their own exercises
+    if (Boolean(this.currentUserId) && exercise.trainerId === this.currentUserId) return true;
+    // Admin can edit any exercise from the same company
+    if (this.isAdmin && Boolean(this.currentCompanyId) && exercise.companyId === this.currentCompanyId) return true;
+    return false;
   }
 
   onEditExercise(ex: Exercise): void {

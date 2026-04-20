@@ -89,6 +89,10 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
     return this.authService.getCurrentUserId();
   }
 
+  get currentCompanyId(): string | null {
+    return this.authService.getCurrentCompanyId();
+  }
+
   get canModifyExercises(): boolean {
     return Boolean(this.currentUserId);
   }
@@ -356,7 +360,10 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   }
 
   private canEditExercise(exercise: Exercise | null | undefined): boolean {
-    return Boolean(this.currentUserId) && Boolean(exercise?.trainerId) && exercise!.trainerId === this.currentUserId;
+    if (!exercise) return false;
+    if (Boolean(this.currentUserId) && exercise.trainerId === this.currentUserId) return true;
+    if (this.isGymAdmin && Boolean(this.currentCompanyId) && exercise.companyId === this.currentCompanyId) return true;
+    return false;
   }
 
   private openEditDialog(exercise: Exercise | null): void {

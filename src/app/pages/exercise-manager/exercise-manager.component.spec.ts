@@ -28,9 +28,10 @@ describe('ExerciseManagerComponent', () => {
       'deleteExercise',
       'getExerciseById'
     ]);
-    const authService = jasmine.createSpyObj<AuthService>('AuthService', ['isGymAdmin', 'getCurrentUserId']);
+    const authService = jasmine.createSpyObj<AuthService>('AuthService', ['isGymAdmin', 'getCurrentUserId', 'getCurrentCompanyId']);
     authService.isGymAdmin.and.returnValue(false);
     authService.getCurrentUserId.and.returnValue('trainer-1');
+    authService.getCurrentCompanyId.and.returnValue('company-1');
     const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
     const cdr = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['markForCheck']);

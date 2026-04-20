@@ -72,4 +72,28 @@ describe('ExerciseTableComponent', () => {
       trainerId: 'trainer-1'
     }))).toBeFalse();
   });
+
+  it('admin can edit exercises from the same company', () => {
+    const component = createComponent();
+    component.isAdmin = true;
+    component.currentUserId = 'admin-1';
+    component.currentCompanyId = 'company-A';
+
+    expect(component.canEdit(createExercise({
+      trainerId: 'trainer-2',
+      companyId: 'company-A'
+    }))).toBeTrue();
+  });
+
+  it('admin cannot edit exercises from a different company', () => {
+    const component = createComponent();
+    component.isAdmin = true;
+    component.currentUserId = 'admin-1';
+    component.currentCompanyId = 'company-A';
+
+    expect(component.canEdit(createExercise({
+      trainerId: 'trainer-2',
+      companyId: 'company-B'
+    }))).toBeFalse();
+  });
 });

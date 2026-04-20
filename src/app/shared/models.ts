@@ -25,6 +25,7 @@ export interface Exercise {
   created_at?: string;
   updated_at?: string;
   trainerId?: string | null;
+  companyId?: string;
   s3_key?: string;
   previewUrl?: string;
   thumbnailUrl?: string;

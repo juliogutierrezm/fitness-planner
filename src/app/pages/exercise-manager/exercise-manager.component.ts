@@ -356,7 +356,7 @@ export class ExerciseManagerComponent implements OnInit, OnDestroy {
   }
 
   private canEditExercise(exercise: Exercise | null | undefined): boolean {
-    return exercise?.source === 'CUSTOM' && Boolean(exercise.trainerId) && exercise.trainerId === this.currentUserId;
+    return Boolean(this.currentUserId) && Boolean(exercise?.trainerId) && exercise!.trainerId === this.currentUserId;
   }
 
   private openEditDialog(exercise: Exercise | null): void {

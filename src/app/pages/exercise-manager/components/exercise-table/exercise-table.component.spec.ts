@@ -30,7 +30,16 @@ describe('ExerciseTableComponent', () => {
     }))).toBeTrue();
   });
 
-  it('hides actions for custom exercises owned by another user', () => {
+  it('allows actions for owned exercises without source field', () => {
+    const component = createComponent();
+    component.currentUserId = 'trainer-1';
+
+    expect(component.canEdit(createExercise({
+      trainerId: 'trainer-1'
+    }))).toBeTrue();
+  });
+
+  it('hides actions for exercises owned by another user', () => {
     const component = createComponent();
     component.currentUserId = 'trainer-1';
 
@@ -40,23 +49,22 @@ describe('ExerciseTableComponent', () => {
     }))).toBeFalse();
   });
 
-  it('hides actions for library exercises even when trainerId matches', () => {
+  it('hides actions for exercises without trainerId', () => {
     const component = createComponent();
     component.currentUserId = 'trainer-1';
 
     expect(component.canEdit(createExercise({
       source: 'LIBRARY',
-      trainerId: 'trainer-1'
+      trainerId: null
+    }))).toBeFalse();
+
+    expect(component.canEdit(createExercise({
+      source: 'LIBRARY'
     }))).toBeFalse();
   });
 
-  it('treats missing current user or trainerId as not editable', () => {
+  it('treats missing current user as not editable', () => {
     const component = createComponent();
-
-    expect(component.canEdit(createExercise({
-      source: 'CUSTOM',
-      trainerId: null
-    }))).toBeFalse();
 
     component.currentUserId = null;
     expect(component.canEdit(createExercise({

@@ -144,7 +144,7 @@ export class ExerciseTableComponent implements AfterViewInit, OnChanges, OnDestr
   }
 
   canEdit(exercise: Exercise | null | undefined): boolean {
-    return exercise?.source === 'CUSTOM' && Boolean(exercise.trainerId) && exercise.trainerId === this.currentUserId;
+    return Boolean(this.currentUserId) && Boolean(exercise?.trainerId) && exercise!.trainerId === this.currentUserId;
   }
 
   onEditExercise(ex: Exercise): void {

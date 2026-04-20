@@ -246,11 +246,10 @@ export class ExerciseApiService {
     if (exerciseData.tips?.length) payload.tips = exerciseData.tips;
     if (exerciseData.common_mistakes?.length) payload.common_mistakes = exerciseData.common_mistakes;
 
-    // Owner resolution - NEVER send both, NEVER send none
+    // Owner resolution
+    payload.trainerId = user.id;
     if (user.companyId && user.companyId !== 'INDEPENDENT') {
       payload.companyId = user.companyId;
-    } else {
-      payload.trainerId = user.id;
     }
 
     // Video - only if provided

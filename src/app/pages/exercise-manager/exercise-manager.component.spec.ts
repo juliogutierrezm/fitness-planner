@@ -205,7 +205,7 @@ describe('ExerciseManagerComponent', () => {
     expect(dialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, jasmine.anything());
   });
 
-  it('opens edit from video details only for owned custom exercises', () => {
+  it('opens edit from video details only for own exercises', () => {
     const { component, dialog } = createComponent();
     const viewDetailsClicked = new Subject<Exercise>();
     const openEditDialogSpy = spyOn<any>(component, 'openEditDialog');
@@ -216,11 +216,11 @@ describe('ExerciseManagerComponent', () => {
 
     component.onOpenVideo(createExercise('seed'));
 
-    viewDetailsClicked.next(createExercise('library-1', { source: 'LIBRARY', trainerId: 'trainer-1' }));
-    viewDetailsClicked.next(createExercise('custom-foreign', { source: 'CUSTOM', trainerId: 'trainer-2' }));
-    viewDetailsClicked.next(createExercise('custom-owned', { source: 'CUSTOM', trainerId: 'trainer-1' }));
+    viewDetailsClicked.next(createExercise('foreign', { source: 'CUSTOM', trainerId: 'trainer-2' }));
+    viewDetailsClicked.next(createExercise('no-trainer', { source: 'LIBRARY', trainerId: null }));
+    viewDetailsClicked.next(createExercise('owned', { source: 'CUSTOM', trainerId: 'trainer-1' }));
 
     expect(openEditDialogSpy).toHaveBeenCalledTimes(1);
-    expect(openEditDialogSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'custom-owned' }));
+    expect(openEditDialogSpy).toHaveBeenCalledWith(jasmine.objectContaining({ id: 'owned' }));
   });
 });

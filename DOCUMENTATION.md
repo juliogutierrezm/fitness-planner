@@ -1,6 +1,6 @@
 # Fitness Planner - Documentacion Tecnica del Repositorio
 
-Ultima actualizacion: 2026-02-11
+Ultima actualizacion: 2026-04-08
 
 ## 1) Contexto del proyecto
 Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
@@ -8,22 +8,25 @@ Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisic
 - Autorizacion por grupos Cognito (`Admin`, `Trainer`, `Client`, `System`).
 - Arquitectura multi-tenant por `companyId` (modo gimnasio vs independiente).
 - Gestion de usuarios, planes, plantillas, ejercicios, planes IA y metricas corporales.
-- Soporte SSR con Angular + Express.
+- Generacion de planes de entrenamiento con IA (wizard parametrico de 3 pasos + prompt libre).
+- Soporte bilingue (es/en) para nombres de ejercicios y generacion de PDF.
+- SPA Angular 19 para despliegue estatico en AWS S3 + CloudFront.
 
 Este documento describe el estado actual observable en codigo fuente.
 
 ## 2) Stack y runtime
-- Frontend: Angular 19 standalone + Angular Material + RxJS.
-- Auth: AWS Amplify Auth (`aws-amplify` v6).
-- SSR: `@angular/ssr` + `express`.
-- PDF: `jspdf`.
+- Frontend: Angular 19 standalone + Angular Material `^19.0.5` + RxJS `~7.8.0`.
+- Auth: AWS Amplify Auth (`aws-amplify` v6, `^6.15.5`).
+- Hosting: salida estatica (sin runtime Node/Express).
+- PDF: `jspdf` `^4.1.0`.
+- AWS SDK: `@aws-sdk/client-dynamodb` `^3.958.0`.
+- TypeScript: `~5.6.2`.
 - Requisito de Node: `>=20 <21` (definido en `package.json`).
 
 Archivos de referencia:
 - `package.json`
 - `angular.json`
 - `src/main.ts`
-- `src/server.ts`
 
 ## 3) Arquitectura de alto nivel
 ### 3.1 Capas
@@ -31,21 +34,17 @@ Archivos de referencia:
 - Dominio frontend: servicios de negocio (`src/app/services`).
 - Integracion HTTP: wrappers API (`src/app/exercise-api.service.ts`, `src/app/user-api.service.ts`, `src/app/services/ai-plans.service.ts`).
 - Seguridad y navegacion: guards (`src/app/guards`) + interceptor (`src/app/interceptors/auth.interceptor.ts`).
-- Utilidades/modelos: `src/app/shared`.
+- Utilidades/modelos: `src/app/shared` (modelos, pipes, configs, utilidades de localizacion y feedback).
 
-### 3.2 SSR y bootstrap
+### 3.2 Bootstrap y navegacion inicial
 - `APP_INITIALIZER` bloquea navegacion inicial hasta resolver auth en cliente.
-- Durante SSR el estado de auth se mantiene en `unknown`.
 - En cliente, `AuthService.checkAuthState()` tiene timeout determinista de 8s para cerrar en estado final.
 - `AppComponent` muestra splash mientras auth sigue en `unknown` (nunca indefinido en browser).
-- Express incluye healthcheck en `/health`.
 
 Archivos clave:
 - `src/app/app.config.ts`
 - `src/app/app.component.ts`
 - `src/app/app.component.html`
-- `src/app/app.config.server.ts`
-- `src/app/app.routes.server.ts`
 
 ## 4) Autenticacion, roles y tenant
 ### 4.1 Roles
@@ -120,7 +119,7 @@ Publicas de autenticacion:
 - `/force-new-password` (alias legacy -> redirige a `/force-change-password`)
 - `/unauthorized`
 
-Privadas principales:
+Privadas principales (dentro de `LayoutComponent`):
 - `/onboarding`
 - `/dashboard`
 - `/planner`
@@ -139,6 +138,11 @@ Privadas principales:
 - `/users/:id`
 - `/clients/:id/body-metrics`
 - `/settings/appearance`
+- `/user-plans-dialog`
+
+Fallbacks:
+- `/` (empty path) redirige a `/dashboard`
+- `**` (catch-all) redirige a `/login`
 
 ## 7) Modulos funcionales
 ### 7.1 Dashboard
@@ -155,11 +159,38 @@ Archivo:
 - Superseries (agrupacion y desagrupacion).
 - Carga de planes previos.
 - Guardado de plantillas.
-- Integracion IA (dialogo parametrico + polling por `executionId`).
+- Integracion IA (wizard parametrico de 3 pasos + prompt libre + polling por `executionId`).
 - Enriquecimiento de sesiones con Exercise Library antes de render/guardar.
 - Previsualizacion del plan en dialogo usando `WorkoutPlanViewComponent` con layout de tabla y scroll horizontal para sesiones extensas.
 
-Archivo:
+Flujo actual del dialogo parametrico de IA:
+- Paso 1 `Perfil`: muestra resumen del usuario disponible (nombre, edad, genero, lesiones) y captura nivel de experiencia.
+- Paso 2 `Configuracion`: captura objetivo, duracion, ejercicios esperados, equipo disponible y notas opcionales.
+- Paso 3 `Sesiones`: define blueprint por sesion con tabs, selector de sesion activa, grupos musculares, patrones de movimiento y opcion de superseries.
+- Navegacion progresiva: cada paso valida sus propios campos antes de permitir avanzar o saltar entre pasos.
+- UX reactiva: usa `signal`/`computed` de Angular para step actual, sesion activa y estado de navegacion, con animaciones laterales entre pasos.
+
+Subestructura del planner:
+- `ai/` — Dialogos de IA:
+  - `ai-generation-dialog.component.ts`: inicia generacion IA.
+  - `ai-parametric-dialog.component.ts`: wizard parametrico de 3 pasos con validacion por paso, transiciones animadas y blueprint por sesion con tabs.
+  - `ai-prompt-dialog.component.ts`: generacion por prompt libre de texto.
+- `dialogs/` — Dialogos auxiliares:
+  - `exercise-preview-dialog.component.ts`: preview de ejercicio.
+  - `plan-preview-dialog.component.ts`: preview de plan completo.
+  - `previous-plans-dialog.component.ts`: seleccion de planes previos.
+- `models/` — Modelos del planner:
+  - `planner-column.model.ts`: estructura de columnas.
+  - `planner-exercise.model.ts`: modelos de ejercicio en planner.
+  - `planner-plan.model.ts`: tipos de progresion (`ProgressionWeek`, `PlanProgressions`).
+  - `planner-session.model.ts`: modelos de sesion.
+- `services/` — Servicios del planner:
+  - `planner-state.service.ts`: gestion centralizada de estado.
+  - `planner-form.service.ts`: gestion de formularios.
+  - `planner-exercise-filter.service.ts`: filtrado de ejercicios.
+  - `planner-drag-drop.service.ts`: funcionalidad drag & drop.
+
+Archivo principal:
 - `src/app/components/planner/planner.component.ts`
 - `src/app/components/planner/dialogs/plan-preview-dialog.component.ts`
 - `src/app/components/workout-plan-view/workout-plan-view.component.ts`
@@ -169,12 +200,14 @@ Archivo:
 - `ClientsComponent`: contenedor standalone usado por rutas `/clients` y `/users`, reutiliza `UsersComponent`.
 - `TrainersManagementComponent`: entrenadores (gestion admin + metricas + limites trial).
 - `UserDetailComponent`: historial de planes por cliente, asignacion de plantillas y descarga PDF.
+- `UserPlansDialogComponent`: dialogo para visualizar planes de un usuario con numeracion ordinal.
 
 Archivos:
 - `src/app/pages/clients/clients.component.ts`
 - `src/app/pages/users/users.component.ts`
 - `src/app/pages/trainers/trainers-management.component.ts`
 - `src/app/pages/user-detail/user-detail.component.ts`
+- `src/app/pages/user-plans-dialog/user-plans-dialog.component.ts`
 
 ### 7.4 Plantillas
 - Lista de plantillas por tenant.
@@ -201,9 +234,16 @@ Archivos:
 - Catalogo desde `GET /exercise/library`.
 - Filtros avanzados, paginacion y edicion inline/dialogo.
 - Modificaciones (create/update/delete) condicionadas en UI al grupo `System`.
+- Subcomponentes modulares: `exercise-detail`, `exercise-edit-dialog`, `exercise-filters`, `exercise-table`, `exercise-video-dialog`.
+- Manejo de video con soporte dual S3 y YouTube via `video-utils`.
+- Cache-busting para URLs de video con `mediaCacheToken`.
+- Componente `ExerciseManagerComponent` usa observables (`exercises$`, `filteredExercises$`) con ChangeDetectionStrategy.OnPush.
+- `ExerciseTableComponent` gestiona ejercicios directamente con estado de paginacion persistente.
+- `ExerciseVideoDialogComponent` soporta ambas fuentes de video (S3 nativo y YouTube embed) con URLs cache-busted.
 
 Archivo:
 - `src/app/pages/exercise-manager/exercise-manager.component.ts`
+- `src/app/pages/exercise-manager/components/` (subcomponentes)
 
 ### 7.7 Metricas corporales
 - Historial por cliente.
@@ -229,6 +269,7 @@ Archivos:
 - Generacion PDF con branding de tenant (nombre, tagline, colores, logo).
 - Soporta sesiones, superseries y progresiones.
 - Enlaces de video clicables.
+- Soporte bilingue (es/en) via `getPdfLabels()` de `locale.utils.ts`.
 
 Archivo:
 - `src/app/services/pdf-generator.service.ts`
@@ -281,13 +322,93 @@ Base URL: `environment.apiBase`.
 - `GET /tenant/theme`
 - `PUT /tenant/theme`
 - `POST /tenant/logo-upload-url`
+- PUT directo a S3 (via `fetch()`, bypass del interceptor)
 
 ### 8.7 Metricas
 - `GET /clients/metrics/:clientId`
 - `POST /clients/metrics/:clientId`
 - `DELETE /clients/metrics/:clientId?measurementDate=<iso>`
 
-## 9) Configuracion de entorno
+## 9) Shared: utilidades, configs y pipes
+### 9.1 Utilidades (`src/app/shared/shared-utils.ts`)
+- `isPlanItemMissingMinimumInfo()` — valida completitud de ejercicio.
+- `findIncompletePlanItems()` — recopila items incompletos de sesiones.
+- `isGymMode()` / `isIndependentTenant()` — deteccion de tipo de tenant.
+- `sanitizeName()` — generacion de ID de ejercicio.
+- `calculateAge()` — calculo de edad a partir de fecha de nacimiento.
+- `getPlanItemEquipmentLabel()` — label de equipo para display.
+- `getPlanItemDisplayName()` — nombre de display de ejercicio.
+- `normalizePlanItemsForRender()` / `normalizePlanSessionsForRender()` — normalizacion de items para render.
+- `enrichPlanSessionsFromLibrary()` — enriquecimiento de sesiones con datos de Exercise Library.
+- `parsePlanSessions()` — parsing de sesiones raw.
+- `hasRenderablePlanContent()` — validacion de contenido renderizable.
+- `getPlanKey()` / `getTemplateDisplayName()` — helpers de identificacion de planes/plantillas.
+- `getPlanCreatedAtTime()` / `sortPlansByCreatedAt()` / `buildPlanOrdinalMap()` — ordenamiento y numeracion ordinal de planes.
+
+### 9.2 Configuraciones
+- `training-goal.config.ts`: enum `TrainingGoal` (HYPERTROPHY, WEIGHT_LOSS, ENDURANCE, POWER, CARDIO), interfaz `TrainingGoalProfile` con rangos de reps, periodos de descanso, volumen/intensidad, tipos de ejercicio preferidos.
+- `training-methods.config.ts`: tipo `TrainingMethod` (13 metodos: standard, pyramid, reverse_pyramid, superset, giant_set, drop_set, circuit, emom, amrap, cluster, contrast, interval, steady_state), definiciones con descripcion.
+- `ai-plan-limits.ts`: `MAX_AI_PLANS_PER_TRAINER = 20`, interfaz `AiPlanQuota`.
+
+### 9.3 Modelos e interfaces (`src/app/shared/models.ts`)
+Interfaces principales del dominio:
+- `Exercise`: ejercicio base con campos de video (`video`, `previewUrl`, `youtube_url`, etc.).
+- `VideoSource`: tipo de fuente de video (`type: 'S3' | 'YOUTUBE'`) con URLs asociadas.
+- `PlanItem`: item de plan con soporte para agrupacion (`isGroupHeader`, `isChild`, `groupId`).
+- `Session`: sesion de entrenamiento con items.
+- `WorkoutPlan`: plan completo con sesiones y metadata.
+- `AiPlanRequest`: payload para generacion de plan IA.
+- `AiStep`, `AiGenerationStatus`, `PollingResponse`: tipos para polling de generacion IA.
+- `ExerciseFilters`: filtros del gestor de ejercicios.
+- `FilterOptions`: opciones de filtros disponibles.
+- `PaginatorState`: estado de paginacion (pageIndex, pageSize).
+- `InlineEditCatalogs`: catalogos para edicion inline en tabla de ejercicios.
+
+Constantes:
+- `EXERCISE_DIFFICULTY_OPTIONS`: opciones de dificultad (Principiante, Intermedio, Avanzado).
+- `EXERCISE_MUSCLE_TYPE_OPTIONS`: tipos de musculo (Aislado, Compuesto).
+
+### 9.4 Feedback y logging (`src/app/shared/feedback-utils.ts`)
+- `FeedbackTheme` enum: SUCCESS, ERROR, INFO.
+- `OperationType` enum: CREATE, UPDATE.
+- `FeedbackConfig`: duraciones y configs de MatSnackBar.
+- `ExerciseMessages`: mensajes predefinidos de feedback para ejercicios.
+- `ErrorMapper`: mapeo de errores HTTP (400, 401, 403, 413, 422, 429, 500, 502, 503, 504) a mensajes amigables.
+- `DevLogger`: logging estructurado para desarrollo.
+
+### 9.5 Localizacion (`src/app/shared/locale.utils.ts`)
+- `detectUserLocale()`: deteccion de locale del navegador (es/en).
+- `getLocalizedExerciseName()`: nombre de ejercicio con cadena de fallback (name_es -> name_en -> name).
+- `getLocalizedEquipmentLabel()`: label de equipo localizado.
+- `getPdfLabels()`: diccionario de labels para PDF (bilingue, 20+ pares).
+
+### 9.6 Validadores de auth (`src/app/shared/auth-validators.ts`)
+- `matchFieldsValidator()`: comparacion de campos (passwords).
+- `passwordPolicyValidator()`: validacion de fortaleza de contrasena.
+
+Errores de auth (`src/app/shared/auth-error-utils.ts`):
+- `getAuthErrorName()`: extrae identificador de error Cognito.
+- `mapCognitoError()`: mensajes amigables para 15+ tipos de error Cognito.
+
+### 9.7 Video (`src/app/shared/video-utils.ts`)
+Funciones utilitarias para manejo de videos de ejercicios (S3 y YouTube):
+- `extractYoutubeId()`: extrae el ID de video de una URL de YouTube.
+- `buildYoutubeEmbedUrl()`: construye URL de embed de YouTube a partir de una URL.
+- `getS3PreviewUrl()`: obtiene URL de preview de S3 desde objeto Exercise o PlanItem.
+- `getYoutubeUrl()`: obtiene URL de YouTube desde objeto Exercise o PlanItem.
+- `getVideoSource()`: resuelve la fuente de video activa (retorna `{ type: 'S3' | 'YOUTUBE', url }` o null).
+- `getThumbnailSource()`: obtiene URL de thumbnail (detecta automaticamente thumbnails de YouTube si no hay explicito).
+
+Interfaz exportada:
+- `ResolvedVideoSource`: tipo de fuente de video resuelta con `type` y `url`.
+
+### 9.8 Pipes
+- `UserDisplayNamePipe` (`userDisplayName`): formatea nombre de display de usuario (givenName + familyName con fallback a email).
+
+### 9.9 Componentes compartidos
+- `AiGenerationTimelineComponent`: timeline visual de progreso de generacion IA (6 pasos secuenciales: analisis de perfil, estrategia, estructura, seleccion de ejercicios, optimizacion, validacion final).
+
+## 10) Configuracion de entorno
 Archivos:
 - `src/environments/environment.ts` (dev)
 - `src/environments/environment.prod.ts` (prod)
@@ -296,53 +417,80 @@ Archivos:
 
 Tambien hay reemplazo de `src/aws-exports.ts` en build de produccion (ver `angular.json`).
 
-## 10) Persistencia local en frontend
+## 11) Persistencia local en frontend
 Llaves principales en navegador:
 - `auth_flow_state` (sessionStorage, pasos de auth flow persistibles).
 - `fp_sessions_<userId>` (localStorage, sesiones del planner por usuario).
 - `planner-filters` (localStorage, filtros planner).
 - `exercise-manager-filters` y `exercise-manager-filters-paginator` (localStorage).
 
-## 11) Scripts y comandos
+## 12) Scripts y comandos
 Comandos npm (`package.json`):
 - `npm run ng` -> passthrough del CLI Angular.
-- `npm run build` -> build app (incluye SSR output).
-- `npm run build:ssr` -> alias de build SSR (actualmente equivalente a `npm run build`).
+- `npm run build` -> build app SPA.
 - `npm run watch` -> build en modo desarrollo watch.
 - `npm test` -> tests con Karma.
-- `npm run start` -> ejecuta servidor SSR desde `dist`.
-- `npm run serve:ssr:fitness-planner` -> alias de arranque SSR.
+- `npm run start` -> levanta servidor de desarrollo Angular (`ng serve`).
 
 Comando util adicional:
 - `node scripts/smoke-api.mjs`
   - Env vars: `API_BASE`, `ID_TOKEN`, `TEST_USER_ID`, `WRITE_TESTS=true`.
 
-## 12) Estructura resumida del repo
+## 13) Estructura resumida del repo
 ```text
 fitness-planner/
 |-- src/
 |   |-- app/
 |   |   |-- components/
+|   |   |   |-- planner/
+|   |   |   |   |-- ai/            # Dialogos IA (parametrico, prompt)
+|   |   |   |   |-- dialogs/       # Dialogos auxiliares (preview, planes previos)
+|   |   |   |   |-- models/        # Modelos del planner
+|   |   |   |   `-- services/      # State, form, filter, drag-drop
+|   |   |   |-- workout-plan-view/
+|   |   |   |-- confirm-dialog/
+|   |   |   |-- login/
+|   |   |   |-- signup/
+|   |   |   `-- ...                # Auth components
 |   |   |-- guards/
 |   |   |-- interceptors/
 |   |   |-- layout/
+|   |   |-- models/
 |   |   |-- pages/
+|   |   |   |-- ai-plan-detail/
+|   |   |   |-- ai-plans-dashboard/
+|   |   |   |-- ai-plans-user/
+|   |   |   |-- client-body-metrics/
+|   |   |   |-- clients/
+|   |   |   |-- dashboard/
+|   |   |   |-- diagnostics/
+|   |   |   |-- exercise-manager/
+|   |   |   |   `-- components/    # Subcomponentes: detail, edit-dialog, filters, table, video-dialog
+|   |   |   |-- onboarding/
+|   |   |   |-- plan-view/
+|   |   |   |-- settings/
+|   |   |   |-- templates/
+|   |   |   |-- trainers/
+|   |   |   |-- user-detail/
+|   |   |   |-- user-plans-dialog/
+|   |   |   `-- users/
 |   |   |-- services/
-|   |   `-- shared/
+|   |   `-- shared/                # Utils, configs, pipes, feedback, locale, video-utils, models
+|   |-- aws/
 |   |-- environments/
-|   |-- main.ts
-|   |-- main.server.ts
-|   `-- server.ts
+|   `-- main.ts
 |-- scripts/
 |   `-- smoke-api.mjs
 |-- angular.json
 |-- package.json
 |-- README.md
-`-- DOCUMENTATION.md
+|-- DOCUMENTATION.md
+|-- DEVELOPER..md
+`-- AGENT_RULES.md
 ```
 
-## 13) Estado de pruebas (unitarias)
-Specs presentes actualmente:
+## 14) Estado de pruebas (unitarias)
+Specs presentes actualmente (18 archivos):
 - `src/app/app.component.spec.ts`
 - `src/app/services/client-body-metrics.service.spec.ts`
 - `src/app/services/auth.service.spec.ts`
@@ -355,27 +503,36 @@ Specs presentes actualmente:
 - `src/app/pages/dashboard/dashboard.component.spec.ts`
 - `src/app/components/workout-plan-view/workout-plan-view.component.spec.ts`
 - `src/app/components/planner/planner.component.spec.ts`
+- `src/app/components/planner/ai/ai-parametric-dialog.component.spec.ts`
 - `src/app/components/planner/services/planner-state.service.spec.ts`
 - `src/app/components/planner/services/planner-form.service.spec.ts`
 - `src/app/components/planner/services/planner-exercise-filter.service.spec.ts`
 - `src/app/components/planner/services/planner-drag-drop.service.spec.ts`
+- `src/app/shared/ai-generation-progress.component.spec.ts`
 
 Cobertura funcional existe en modulos clave, pero no cubre toda la superficie del producto.
 
-## 14) Notas operativas importantes
+## 15) Notas operativas importantes
 - El repo puede estar en cambios activos; valida `git status` antes de asumir baseline limpio.
 - Varias rutas y componentes dependen de grupos Cognito reales; para probar flujos completos necesitas usuarios de prueba con grupos correctos.
 - `System` habilita features tecnicas (diagnostics y modificacion de ejercicios).
 - `Admin` sin `Trainer` se trata como `Gym Admin` (acceso mas restringido en ciertas vistas de operacion).
 
-## 15) Referencias primarias de codigo
+## 16) Referencias primarias de codigo
 - Rutas: `src/app/app.routes.ts`
 - Config app: `src/app/app.config.ts`
 - Auth: `src/app/services/auth.service.ts`
 - Interceptor: `src/app/interceptors/auth.interceptor.ts`
 - Planner: `src/app/components/planner/planner.component.ts`
+- Planner IA: `src/app/components/planner/ai/ai-parametric-dialog.component.ts`
 - Usuarios: `src/app/user-api.service.ts`
 - Planes/ejercicios: `src/app/exercise-api.service.ts`
 - IA: `src/app/services/ai-plans.service.ts`
 - Theme: `src/app/services/theme.service.ts`
-- SSR server: `src/server.ts`
+- PDF: `src/app/services/pdf-generator.service.ts`
+- Localizacion: `src/app/shared/locale.utils.ts`
+- Video: `src/app/shared/video-utils.ts`
+- Modelos: `src/app/shared/models.ts`
+- Configs de entrenamiento: `src/app/shared/training-goal.config.ts`, `src/app/shared/training-methods.config.ts`
+- Feedback/UX: `src/app/shared/feedback-utils.ts`
+- Utilidades compartidas: `src/app/shared/shared-utils.ts`

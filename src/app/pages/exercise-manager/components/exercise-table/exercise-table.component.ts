@@ -1,29 +1,16 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
-import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableDataSource } from '@angular/material/table';
-import { FormsModule } from '@angular/forms';
 import { Exercise, InlineEditCatalogs, PaginatorState } from '../../../../shared/models';
+import { getThumbnailSource, getVideoSource } from '../../../../shared/video-utils';
 import { ExerciseApiService } from '../../../../exercise-api.service';
-
-type EditableField = 'name_es' | 'muscle_group' | 'equipment_type' | 'category' | 'functional' | 'exercise_type' | 'difficulty';
-
-interface RowEditState {
-  draft: Partial<Exercise>;
-  dirtyFields: Set<EditableField>;
-  saving: boolean;
-  error?: string;
-  savedAt?: number;
-}
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-exercise-table',
@@ -32,56 +19,55 @@ interface RowEditState {
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
     MatPaginatorModule,
     MatTooltipModule,
     MatSortModule,
-    MatProgressSpinnerModule,
-    FormsModule
+    MatProgressSpinnerModule
   ],
   templateUrl: './exercise-table.component.html',
   styleUrl: './exercise-table.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExerciseTableComponent implements AfterViewInit {
+export class ExerciseTableComponent implements AfterViewInit, OnChanges, OnDestroy {
   private readonly uiLabelAliases: Record<string, string> = {
     Rings: 'Suspensión',
     Anillas: 'Suspensión',
     Bend: 'Hip'
   };
 
-  // Fixed columns for the simplified table
   displayedColumns: string[] = [
     'actions',
-    'preview_url',
+    'preview',
     'name_es',
     'muscle_group',
     'equipment_type',
     'category',
-    'functional',
     'exercise_type',
     'difficulty'
   ];
 
-  @Input() dataSource!: MatTableDataSource<Exercise>;
+  dataSource = new MatTableDataSource<Exercise>([]);
+
+  @Input() exercises: Exercise[] | null = [];
   @Input() initialPaginatorState: PaginatorState | null = null;
   @Input() inlineCatalogs: InlineEditCatalogs | null = null;
-  @Input() canModify = true;
+  @Input() currentUserId: string | null = null;
+  @Input() isAdmin = false;
+  @Input() currentCompanyId: string | null = null;
 
   @Output() editExercise = new EventEmitter<Exercise>();
-  @Output() viewDetails = new EventEmitter<Exercise>();
+  @Output() deleteExercise = new EventEmitter<Exercise>();
   @Output() openVideoPreview = new EventEmitter<Exercise>();
   @Output() paginatorChanged = new EventEmitter<PaginatorState>();
 
-  // Hover preview state
   hoveredExercise: Exercise | null = null;
   previewPosition = { x: 0, y: 0 };
 
-  editingCell: { id: string; field: EditableField } | null = null;
-  rowStates = new Map<string, RowEditState>();
-  private readonly saveSuccessDurationMs = 1800;
+  private readonly PROCESSING_POLL_INTERVAL_MS = 3000;
+  private readonly PROCESSING_POLL_TIMEOUT_MS = 60000;
+  private processingExercises = new Map<string, { intervalId: ReturnType<typeof setInterval>; startedAt: number }>();
+  processingIds = new Set<string>();
+  timedOutIds = new Set<string>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -91,16 +77,42 @@ export class ExerciseTableComponent implements AfterViewInit {
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
     this.restorePaginatorState();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['exercises']) {
+      this.dataSource.data = this.exercises ?? [];
+      this.resetPaginatorIfNeeded();
+      this.detectProcessingExercises();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.processingExercises.forEach(entry => clearInterval(entry.intervalId));
+    this.processingExercises.clear();
   }
 
   private restorePaginatorState(): void {
     if (this.initialPaginatorState && this.paginator) {
       this.paginator.pageIndex = this.initialPaginatorState.pageIndex;
       this.paginator.pageSize = this.initialPaginatorState.pageSize || 25;
+    }
+  }
+
+  private resetPaginatorIfNeeded(): void {
+    if (!this.paginator) {
+      return;
+    }
+
+    const pageSize = this.paginator.pageSize || 25;
+    const maxPageIndex = Math.max(Math.ceil(this.dataSource.data.length / pageSize) - 1, 0);
+    if (this.paginator.pageIndex > maxPageIndex) {
+      this.paginator.firstPage();
+      this.onPageChange();
     }
   }
 
@@ -113,7 +125,6 @@ export class ExerciseTableComponent implements AfterViewInit {
   }
 
   getFieldValue(exercise: Exercise, field: string): any {
-    // Handle field fallbacks for legacy data
     switch (field) {
       case 'name_es':
         return exercise.name_es || exercise.name;
@@ -122,160 +133,10 @@ export class ExerciseTableComponent implements AfterViewInit {
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle;
       case 'exercise_type':
-        return exercise.exercise_type || exercise.category;
+        return exercise.exercise_type || '';
       default:
         return (exercise as any)[field];
     }
-  }
-
-  getAliasesDisplay(exercise: Exercise): string {
-    const aliases = this.getFieldValue(exercise, 'aliases') || [];
-    if (aliases.length === 0) return '';
-    if (aliases.length === 1) return aliases[0];
-    return `Alias (${aliases.length})`;
-  }
-
-  getInlineAliasDisplay(exercise: Exercise): string {
-    const aliases = this.getFieldValue(exercise, 'aliases') || [];
-    if (aliases.length === 0) return '';
-
-    const firstAlias = aliases.length > 0 ? aliases[0] : '';
-    if (aliases.length === 1) {
-      return ` — ${firstAlias}`;
-    } else {
-      return ` — ${firstAlias} +${aliases.length - 1}`;
-    }
-  }
-
-  getAliasesOptions(exercise: Exercise): string[] {
-    const aliases = this.getFieldValue(exercise, 'aliases') || [];
-    return aliases;
-  }
-
-  getAliasesTooltip(exercise: Exercise): string {
-    const aliases = this.getFieldValue(exercise, 'aliases') || [];
-    return aliases.length > 0 ? aliases.join(', ') : 'Sin alias';
-  }
-
-  startEdit(exercise: Exercise, field: EditableField, event?: Event): void {
-    event?.stopPropagation();
-    // Prevent inline editing when user cannot modify exercises
-    if (!this.canModify) {
-      return;
-    }
-    this.editingCell = { id: exercise.id, field };
-    this.ensureRowState(exercise);
-    this.cdr.markForCheck();
-  }
-
-  isEditingCell(exercise: Exercise, field: EditableField): boolean {
-    return this.editingCell?.id === exercise.id && this.editingCell.field === field;
-  }
-
-  updateDraft(exercise: Exercise, field: EditableField, value: any): void {
-    const state = this.ensureRowState(exercise);
-    state.draft[field] = value;
-    state.dirtyFields.add(field);
-    state.error = undefined;
-    state.savedAt = undefined;
-    this.cdr.markForCheck();
-  }
-
-  commitEdit(exercise: Exercise, field: EditableField): void {
-    const state = this.ensureRowState(exercise);
-    if (!state.dirtyFields.has(field)) {
-      this.editingCell = null;
-      this.cdr.markForCheck();
-      return;
-    }
-    this.saveRow(exercise, [field]);
-  }
-
-  saveRow(exercise: Exercise, fields?: EditableField[]): void {
-    const state = this.ensureRowState(exercise);
-    const dirtyFields = fields?.length ? fields : Array.from(state.dirtyFields);
-    if (!dirtyFields.length) {
-      return;
-    }
-
-    const payload = dirtyFields.reduce((acc, field) => {
-      let value = state.draft[field];
-      if (field === 'functional') {
-        value = Boolean(value);
-      }
-      return { ...acc, [field]: value };
-    }, {} as Partial<Exercise>);
-
-    state.saving = true;
-    state.error = undefined;
-    this.cdr.markForCheck();
-
-    this.api.updateExerciseLibraryItem(exercise.id, payload as Exercise).subscribe({
-      next: (response) => {
-        state.saving = false;
-        if (response.ok) {
-          dirtyFields.forEach(field => state.dirtyFields.delete(field));
-          state.savedAt = Date.now();
-          state.error = undefined;
-          this.applyRowUpdate(exercise, response.updated);
-          this.editingCell = null;
-          setTimeout(() => this.cdr.markForCheck(), this.saveSuccessDurationMs);
-        } else {
-          state.error = 'No se pudo guardar';
-        }
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        state.saving = false;
-        state.error = 'No se pudo guardar';
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  retrySave(exercise: Exercise, event?: Event): void {
-    event?.stopPropagation();
-    this.saveRow(exercise);
-  }
-
-  hasRowError(exercise: Exercise): boolean {
-    return Boolean(this.ensureRowState(exercise).error);
-  }
-
-  isRowSaving(exercise: Exercise): boolean {
-    return this.ensureRowState(exercise).saving;
-  }
-
-  showRowSaved(exercise: Exercise): boolean {
-    const savedAt = this.ensureRowState(exercise).savedAt;
-    return !!savedAt && Date.now() - savedAt < this.saveSuccessDurationMs;
-  }
-
-  getFunctionalLabel(exercise: Exercise): string {
-    const raw = this.getFunctionalValue(exercise);
-    return raw ? 'Sí' : 'No';
-  }
-
-  getFunctionalValue(exercise: Exercise): boolean {
-    const state = this.rowStates.get(exercise.id);
-    if (state?.draft?.functional !== undefined) {
-      return Boolean(state.draft.functional);
-    }
-    const value = (exercise as any).functional;
-    if (value === true) return true;
-    if (typeof value === 'string') return value.trim().length > 0;
-    return false;
-  }
-
-  getInlineValue(exercise: Exercise, field: EditableField): any {
-    const state = this.rowStates.get(exercise.id);
-    if (state?.draft?.[field] !== undefined) {
-      return state.draft[field];
-    }
-    if (field === 'functional') {
-      return this.getFunctionalValue(exercise);
-    }
-    return this.getFieldValue(exercise, field);
   }
 
   getUiLabel(value: string | null | undefined): string {
@@ -284,17 +145,21 @@ export class ExerciseTableComponent implements AfterViewInit {
     return this.uiLabelAliases[normalized] || normalized;
   }
 
-  onAliasClick(exercise: Exercise, alias: string, event: Event): void {
-    event.stopPropagation();
-    console.log('Alias clicked for exercise:', exercise.name_es, 'selected alias:', alias);
+  canEdit(exercise: Exercise | null | undefined): boolean {
+    if (!exercise) return false;
+    // Owner can always edit their own exercises
+    if (Boolean(this.currentUserId) && exercise.trainerId === this.currentUserId) return true;
+    // Admin can edit any exercise from the same company
+    if (this.isAdmin && Boolean(this.currentCompanyId) && exercise.companyId === this.currentCompanyId) return true;
+    return false;
   }
 
   onEditExercise(ex: Exercise): void {
     this.editExercise.emit(ex);
   }
 
-  onViewDetails(ex: Exercise): void {
-    this.viewDetails.emit(ex);
+  onDeleteExercise(ex: Exercise): void {
+    this.deleteExercise.emit(ex);
   }
 
   onOpenVideo(ex: Exercise): void {
@@ -307,7 +172,7 @@ export class ExerciseTableComponent implements AfterViewInit {
 
     this.hoveredExercise = ex;
     this.previewPosition = {
-      x: rect.right + 10, // Position to the right of the button
+      x: rect.right + 10,
       y: rect.top
     };
   }
@@ -317,35 +182,97 @@ export class ExerciseTableComponent implements AfterViewInit {
     this.previewPosition = { x: 0, y: 0 };
   }
 
+  hasPreview(exercise: Exercise): boolean {
+    return Boolean(getVideoSource(exercise));
+  }
+
+  isProcessing(exercise: Exercise): boolean {
+    return this.processingIds.has(exercise.id);
+  }
+
+  isTimedOut(exercise: Exercise): boolean {
+    return this.timedOutIds.has(exercise.id);
+  }
+
   getPreviewUrl(exercise: Exercise): string | null {
-    return exercise.thumbnail || exercise.preview_url || null;
+    return getThumbnailSource(exercise);
   }
 
-  private ensureRowState(exercise: Exercise): RowEditState {
-    const existing = this.rowStates.get(exercise.id);
-    if (existing) {
-      return existing;
+  private detectProcessingExercises(): void {
+    const exercises = this.exercises ?? [];
+    const currentProcessing = new Set<string>();
+
+    for (const ex of exercises) {
+      if (this.isS3WithoutThumbnail(ex)) {
+        currentProcessing.add(ex.id);
+        if (!this.processingExercises.has(ex.id) && !this.timedOutIds.has(ex.id)) {
+          this.startProcessingPoll(ex.id);
+        }
+      }
     }
-    const draft: Partial<Exercise> = {
-      name_es: this.getFieldValue(exercise, 'name_es') || '',
-      muscle_group: this.getFieldValue(exercise, 'muscle_group') || '',
-      equipment_type: this.getFieldValue(exercise, 'equipment_type') || '',
-      category: this.getFieldValue(exercise, 'category') || '',
-      functional: this.getFunctionalValue(exercise),
-      exercise_type: this.getFieldValue(exercise, 'exercise_type') || '',
-      difficulty: this.getFieldValue(exercise, 'difficulty') || ''
-    };
-    const state: RowEditState = {
-      draft,
-      dirtyFields: new Set<EditableField>(),
-      saving: false
-    };
-    this.rowStates.set(exercise.id, state);
-    return state;
+
+    for (const [id, entry] of this.processingExercises) {
+      if (!currentProcessing.has(id)) {
+        clearInterval(entry.intervalId);
+        this.processingExercises.delete(id);
+        this.processingIds.delete(id);
+      }
+    }
   }
 
-  private applyRowUpdate(exercise: Exercise, updated: Partial<Exercise>): void {
-    Object.assign(exercise, updated);
-    this.dataSource.data = this.dataSource.data.slice();
+  private isS3WithoutThumbnail(exercise: Exercise): boolean {
+    const hasS3Video = exercise.video?.type === 'S3'
+      || Boolean(exercise.s3_key)
+      || Boolean(exercise.preview_url)
+      || Boolean(exercise.previewUrl);
+    if (!hasS3Video) return false;
+    return !getThumbnailSource(exercise);
+  }
+
+  private startProcessingPoll(exerciseId: string): void {
+    this.processingIds.add(exerciseId);
+    const startedAt = Date.now();
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - startedAt > this.PROCESSING_POLL_TIMEOUT_MS) {
+        this.stopProcessingPoll(exerciseId);
+        this.timedOutIds.add(exerciseId);
+        this.processingIds.delete(exerciseId);
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.api.getExerciseById(exerciseId, true).pipe(take(1)).subscribe({
+        next: (refreshed) => {
+          if (!refreshed) return;
+
+          if (getThumbnailSource(refreshed)) {
+            this.stopProcessingPoll(exerciseId);
+            this.processingIds.delete(exerciseId);
+            this.updateExerciseInDataSource(refreshed);
+          }
+        }
+      });
+    }, this.PROCESSING_POLL_INTERVAL_MS);
+
+    this.processingExercises.set(exerciseId, { intervalId, startedAt });
+  }
+
+  private stopProcessingPoll(exerciseId: string): void {
+    const entry = this.processingExercises.get(exerciseId);
+    if (entry) {
+      clearInterval(entry.intervalId);
+      this.processingExercises.delete(exerciseId);
+    }
+  }
+
+  private updateExerciseInDataSource(updated: Exercise): void {
+    const index = this.dataSource.data.findIndex(ex => ex.id === updated.id);
+    if (index === -1) return;
+
+    const nextData = [...this.dataSource.data];
+    nextData[index] = { ...nextData[index], ...updated };
+    this.dataSource.data = nextData;
+    this.cdr.markForCheck();
   }
 }

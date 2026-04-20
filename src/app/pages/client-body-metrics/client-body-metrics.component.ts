@@ -17,7 +17,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { ClientBodyMetricsService } from '../../services/client-body-metrics.service';
-import { ClientBodyMetric, ClientBodyMetricNumericKey, BodyMetricSeries } from '../../models/body-metrics.model';
+import { ClientBodyMeasurementFileService } from '../../services/client-body-measurement-file.service';
+import { ClientBodyMetric, ClientBodyMetricNumericKey, BodyMetricSeries, ClientBodyMeasurementFile } from '../../models/body-metrics.model';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
@@ -64,6 +65,11 @@ export class ClientBodyMetricsComponent implements OnInit, OnDestroy {
   savingMetric = false;
   deletingMeasurementDate: string | null = null;
   computedBmi: number | null = null;
+  files: ClientBodyMeasurementFile[] = [];
+  loadingFiles = false;
+  uploadingFile = false;
+  deletingFileKey: string | null = null;
+  previewingFileKey: string | null = null;
   readonly metricFieldConfig: Array<{ key: ClientBodyMetricNumericKey; label: string; unit: string }> = [
     { key: 'weightKg', label: 'Peso', unit: 'kg' },
     { key: 'heightCm', label: 'Altura', unit: 'cm' },
@@ -99,7 +105,8 @@ export class ClientBodyMetricsComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
-    private userApi: UserApiService
+    private userApi: UserApiService,
+    private fileService: ClientBodyMeasurementFileService
   ) {
     this.metricForm = this.fb.group({
       weightKg: [null],
@@ -123,6 +130,7 @@ export class ClientBodyMetricsComponent implements OnInit, OnDestroy {
 
     this.hydrateClient();
     this.loadMetrics();
+    this.loadFiles();
     this.metricForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.updateComputedBmi();
       this.cdr.markForCheck();
@@ -200,6 +208,90 @@ export class ClientBodyMetricsComponent implements OnInit, OnDestroy {
    * Error handling: no action when date missing.
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      this.snackBar.open('Solo se permiten archivos PDF.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      this.snackBar.open('El archivo no debe superar 15 MB.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+
+    this.uploadFile(file);
+  }
+
+  async uploadFile(file: File): Promise<void> {
+    if (!this.clientId) return;
+    this.uploadingFile = true;
+    this.cdr.markForCheck();
+
+    try {
+      const res = await this.fileService.getUploadUrl(this.clientId, file.name, file.type).toPromise();
+      if (!res?.uploadUrl || !res?.fileKey) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      await this.fileService.uploadFileToS3(res.uploadUrl, file);
+
+      await this.fileService.createFileRecord({
+        clientId: this.clientId,
+        fileKey: res.fileKey,
+        fileName: file.name,
+        contentType: file.type
+      }).toPromise();
+
+      this.snackBar.open('Archivo subido correctamente.', 'Cerrar', { duration: 2500 });
+      this.loadFiles();
+    } catch (error) {
+      console.error('[ClientBodyMetrics] uploadFile failed', { error });
+    } finally {
+      this.uploadingFile = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  confirmDeleteFile(file: ClientBodyMeasurementFile): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Eliminar archivo',
+        message: `¿Eliminar "${file.fileName}"? Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        icon: 'delete_outline'
+      }
+    });
+
+    ref.afterClosed().pipe(takeUntil(this.destroy$)).subscribe(confirmed => {
+      if (confirmed) {
+        this.deleteFile(file);
+      }
+    });
+  }
+
+  previewFile(file: ClientBodyMeasurementFile): void {
+    this.previewingFileKey = file.fileKey;
+    this.cdr.markForCheck();
+
+    this.fileService.getDownloadUrl(file.fileKey).pipe(
+      finalize(() => {
+        this.previewingFileKey = null;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: res => {
+        if (res?.downloadUrl) {
+          window.open(res.downloadUrl, '_blank', 'noopener');
+        }
+      }
+    });
+  }
+
   confirmDeleteMetric(metric: ClientBodyMetric): void {
     if (!metric.measurementDate) return;
     const ref = this.dialog.open(ConfirmDialogComponent, {
@@ -215,6 +307,46 @@ export class ClientBodyMetricsComponent implements OnInit, OnDestroy {
     ref.afterClosed().pipe(takeUntil(this.destroy$)).subscribe(confirmed => {
       if (confirmed) {
         this.deleteMetric(metric.measurementDate!);
+      }
+    });
+  }
+
+  private loadFiles(): void {
+    if (!this.clientId) return;
+    this.loadingFiles = true;
+    this.cdr.markForCheck();
+
+    this.fileService.getFilesByClient(this.clientId).pipe(
+      finalize(() => {
+        this.loadingFiles = false;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: files => {
+        this.files = files.slice().sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      },
+      error: () => {
+        this.files = [];
+      }
+    });
+  }
+
+  private deleteFile(file: ClientBodyMeasurementFile): void {
+    if (!this.clientId) return;
+    this.deletingFileKey = file.fileKey;
+    this.cdr.markForCheck();
+
+    this.fileService.deleteFile(file).pipe(
+      finalize(() => {
+        this.deletingFileKey = null;
+        this.cdr.markForCheck();
+      })
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('Archivo eliminado.', 'Cerrar', { duration: 2500 });
+        this.loadFiles();
       }
     });
   }

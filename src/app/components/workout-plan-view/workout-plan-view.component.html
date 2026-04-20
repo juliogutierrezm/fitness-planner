@@ -7,7 +7,7 @@
     </mat-card-subtitle>
 
     <ng-container *ngIf="hasRenderableSessions; else noSessions">
-      <div *ngFor="let session of sessions" class="session-block">
+      <div *ngFor="let session of sessions; trackBy: trackBySession" class="session-block">
         <h3>{{ session.name }}</h3>
 
         <div class="session-table-scroll">
@@ -23,7 +23,7 @@
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let item of session.items">
+              <ng-container *ngFor="let item of session.items; trackBy: trackByItem">
                 <ng-container *ngIf="!item.isGroup; else supersetBlock">
                   <tr class="session-row">
                     <td class="name-cell">
@@ -44,7 +44,7 @@
                       <div class="superset-header">Superserie</div>
                     </td>
                   </tr>
-                  <tr *ngFor="let child of item.children" class="session-row superset-row">
+                  <tr *ngFor="let child of item.children; trackBy: trackByItem" class="session-row superset-row">
                     <td class="name-cell">
                       <span class="exercise-name" [matTooltip]="getDisplayName(child)">{{ getDisplayName(child) }}</span>
                       <div *ngIf="child.notes" class="notes">Notas: {{ child.notes }}</div>
@@ -73,7 +73,7 @@
         Progresiones ({{ progressions!.totalWeeks }} semanas)
       </h4>
       <div class="progressions-list">
-        <div *ngFor="let week of progressions!.weeks" class="progression-week">
+        <div *ngFor="let week of progressions!.weeks; trackBy: trackByWeek" class="progression-week">
           <div class="week-header">
             <strong>Semana {{ week.week }}</strong>
             <span *ngIf="week.title" class="week-title">- {{ week.title }}</span>

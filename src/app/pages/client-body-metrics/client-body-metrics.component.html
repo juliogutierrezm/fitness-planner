@@ -204,4 +204,90 @@
       </mat-card-content>
     </mat-card>
   </section>
+
+  <section class="files-section">
+    <mat-card>
+      <mat-card-header>
+        <div>
+          <div class="form-row">
+            <mat-icon>picture_as_pdf</mat-icon>
+            <p class="eyebrow">Mediciones InBody (PDF)</p>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="file-upload-row">
+          <input
+            #fileInput
+            type="file"
+            accept="application/pdf"
+            hidden
+            (change)="onFileSelected($event)"
+          />
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            [disabled]="uploadingFile"
+            (click)="fileInput.click()"
+            class="upload-btn"
+          >
+            <mat-progress-spinner *ngIf="uploadingFile" mode="indeterminate" diameter="20"></mat-progress-spinner>
+            <mat-icon *ngIf="!uploadingFile">upload_file</mat-icon>
+            <span *ngIf="!uploadingFile">Subir PDF</span>
+          </button>
+        </div>
+
+        <div *ngIf="loadingFiles" class="loading-row" role="status" aria-live="polite">
+          <mat-spinner diameter="28"></mat-spinner>
+          <span>Cargando archivos...</span>
+        </div>
+
+        <div *ngIf="!loadingFiles" class="file-list">
+          <div class="file-row" *ngFor="let file of files">
+            <div class="file-info">
+              <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+              <div>
+                <span class="file-name">{{ file.fileName }}</span>
+                <span class="file-date">{{ file.createdAt | date: 'dd/MM/yy HH:mm' }}</span>
+              </div>
+            </div>
+            <div class="file-actions">
+              <button
+                mat-icon-button
+                color="primary"
+                matTooltip="Ver PDF"
+                (click)="previewFile(file)"
+                [disabled]="previewingFileKey === file.fileKey"
+                aria-label="Ver PDF"
+              >
+                <mat-progress-spinner
+                  *ngIf="previewingFileKey === file.fileKey"
+                  mode="indeterminate"
+                  diameter="20"
+                ></mat-progress-spinner>
+                <mat-icon *ngIf="previewingFileKey !== file.fileKey">visibility</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                matTooltip="Eliminar archivo"
+                (click)="confirmDeleteFile(file)"
+                [disabled]="deletingFileKey === file.fileKey"
+                aria-label="Eliminar archivo"
+              >
+              <mat-progress-spinner
+                *ngIf="deletingFileKey === file.fileKey"
+                mode="indeterminate"
+                diameter="20"
+              ></mat-progress-spinner>
+              <mat-icon *ngIf="deletingFileKey !== file.fileKey">delete</mat-icon>
+            </button>
+            </div>
+          </div>
+          <p class="empty-state" *ngIf="files.length === 0">Sin archivos registrados.</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </section>
 </div>

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Exercise, PlanItem, Session } from '../../../shared/models';
 
@@ -15,6 +15,11 @@ export interface PlannerDropResult {
  */
 @Injectable({ providedIn: 'root' })
 export class PlannerDragDropService {
+  private autoScrollFrame: number | null = null;
+  private pendingScrollDelta = 0;
+
+  constructor(private ngZone: NgZone) {}
+
   reorderSessions(event: CdkDragDrop<Session[]>, sessions: Session[]): boolean {
     if (event.previousContainer !== event.container) return false;
 
@@ -87,11 +92,35 @@ export class PlannerDragDropService {
   handleDragMoved(event: { pointerPosition?: { y?: number } }): void {
     const y = event.pointerPosition?.y ?? 0;
     const threshold = 80;
+    let scrollDelta = 0;
+
     if (y < threshold) {
-      window.scrollBy({ top: -20, behavior: 'smooth' });
+      scrollDelta = -Math.max(12, Math.min(28, threshold - y));
     } else if (y > (window.innerHeight - threshold)) {
-      window.scrollBy({ top: 20, behavior: 'smooth' });
+      scrollDelta = Math.max(12, Math.min(28, y - (window.innerHeight - threshold)));
     }
+
+    this.pendingScrollDelta = scrollDelta;
+    if (this.autoScrollFrame !== null) return;
+
+    this.ngZone.runOutsideAngular(() => {
+      this.autoScrollFrame = window.requestAnimationFrame(() => {
+        this.autoScrollFrame = null;
+
+        if (this.pendingScrollDelta !== 0) {
+          window.scrollBy({ top: this.pendingScrollDelta, behavior: 'auto' });
+        }
+      });
+    });
+  }
+
+  stopAutoScroll(): void {
+    this.pendingScrollDelta = 0;
+
+    if (this.autoScrollFrame === null) return;
+
+    window.cancelAnimationFrame(this.autoScrollFrame);
+    this.autoScrollFrame = null;
   }
 
   private isChildItem(item: any, session: Session): boolean {

@@ -1,4 +1,5 @@
 import { Exercise, PlanItem, Session } from './models';
+import { getThumbnailSource, getVideoSource } from './video-utils';
 
 const EQUIPMENT_UNDEFINED_LABEL = 'Equipo no definido';
 const NAME_UNDEFINED_LABEL = 'Nombre no disponible';
@@ -24,6 +25,10 @@ function hasExerciseName(item: PlanItem): boolean {
 }
 
 function hasExerciseMedia(item: PlanItem): boolean {
+  if (getVideoSource(item) || getThumbnailSource(item)) {
+    return true;
+  }
+
   return MEDIA_FIELDS.some(field => {
     const value = (item as PlanItem & Record<string, unknown>)[field];
     if (typeof value === 'string') {
@@ -200,10 +205,27 @@ function mergeExerciseWithSession(base: Exercise, item: PlanItem): PlanItem {
       return;
     }
     if (!isMeaningfulValue(value)) return;
+    if (Array.isArray(value) && value.length === 0 && Array.isArray(merged[key]) && (merged[key] as unknown[]).length > 0) return;
     merged[key] = value;
   });
 
   merged.id = base.id;
+
+  const videoSource = getVideoSource(base);
+  const thumbnailSource = getThumbnailSource(base);
+  if (videoSource?.type === 'S3') {
+    merged.preview_url = videoSource.url;
+  }
+  if (videoSource?.type === 'YOUTUBE') {
+    merged.youtube_url = videoSource.url;
+  }
+  if (thumbnailSource) {
+    merged.thumbnail = thumbnailSource;
+  }
+  if ((base as any).video) {
+    merged.video = (base as any).video;
+  }
+
   return merged;
 }
 
@@ -274,19 +296,12 @@ function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exer
   }
 
   const exerciseId = (item as PlanItem & { exerciseId?: string })?.exerciseId || item?.id;
-  const shouldEnrich = Boolean((item as PlanItem & { exerciseId?: string })?.exerciseId)
-    || isPlanItemMissingMinimumInfo(item);
-  if (exerciseId && shouldEnrich) {
-    const base = exerciseMap.get(exerciseId);
-    if (!base) {
-      console.warn('[PlanEnrichment] exercise not found:', exerciseId);
-      return item;
-    }
+  if (!exerciseId) return item;
 
-    return mergeExerciseWithSession(base, item);
-  }
+  const base = exerciseMap.get(exerciseId);
+  if (!base) return item;
 
-  return item;
+  return mergeExerciseWithSession(base, item);
 }
 
 /**
@@ -296,14 +311,7 @@ function enrichPlanItemFromLibrary(item: PlanItem, exerciseMap: Map<string, Exer
  * Standards Check: SRP OK | DRY OK | Tests Pending.
  */
 function hasEnrichmentCandidateInItems(items: PlanItem[]): boolean {
-  if (!Array.isArray(items)) return false;
-  for (const item of items) {
-    if (!item) continue;
-    if ((item as PlanItem & { exerciseId?: string })?.exerciseId) return true;
-    if (item?.isGroup && hasEnrichmentCandidateInItems(item.children || [])) return true;
-    if (isPlanItemMissingMinimumInfo(item)) return true;
-  }
-  return false;
+  return Array.isArray(items) && items.length > 0;
 }
 
 /**
@@ -365,12 +373,9 @@ export function hasRenderablePlanContent(sessions: Session[]): boolean {
  */
 export function getPlanKey(plan: { planId?: string; id?: string; SK?: string } | null | undefined): string {
   if (!plan) return '';
-  if (plan.planId) return plan.planId;
-  if (plan.id) return plan.id;
-  if (plan.SK && typeof plan.SK === 'string' && plan.SK.startsWith('PLAN#')) {
-    return plan.SK.substring(5);
-  }
-  return '';
+  const result = plan.planId || plan.id || (plan.SK && typeof plan.SK === 'string' && plan.SK.startsWith('PLAN#') ? plan.SK.substring(5) : '');
+  console.log('🔑 [getPlanKey]', { planId: plan.planId, id: plan.id, SK: plan.SK, resolved: result });
+  return result;
 }
 
 /**

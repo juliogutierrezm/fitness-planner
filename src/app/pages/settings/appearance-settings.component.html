@@ -144,6 +144,20 @@
                 Aa Bb Cc 123
               </div>
             </mat-card>
+
+            <mat-card class="panel-card naming-panel">
+              <div class="panel-title">Etiquetas de entrenamiento</div>
+              <mat-divider></mat-divider>
+              <div class="naming-copy">¿Cómo deseas ver tus entrenamientos?</div>
+              <mat-button-toggle-group
+                class="session-naming-toggle"
+                formControlName="sessionNaming"
+                aria-label="Como deseas ver tus entrenamientos"
+              >
+                <mat-button-toggle value="session">Sesiones</mat-button-toggle>
+                <mat-button-toggle value="day">Días</mat-button-toggle>
+              </mat-button-toggle-group>
+            </mat-card>
           </div>
 
           <mat-card class="preview-card">

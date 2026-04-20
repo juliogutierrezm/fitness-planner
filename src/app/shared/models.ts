@@ -1,28 +1,22 @@
 /* ---------- Ejercicio base ---------- */
 export interface Exercise {
   id: string;
+  exerciseId?: string;
+  source?: string;
   name: string;
   name_es?: string;
   name_en?: string;
   equipment: string;
   equipment_type?: string;
-  equipment_specific?: string;
   muscle?: string;
   muscle_group?: string;
-  secondary_muscles?: string[];
   category?: string;
   exercise_type?: string;
   difficulty?: string;
   group_type?: string;
-  training_goal?: string;
   description_es?: string;
-  description_en?: string;
   common_mistakes?: string[];
   tips?: string[];
-  functional?: boolean;
-  plane_of_motion?: string;
-  movement_pattern?: string;
-  aliases?: string[];
   preview_url?: string;
   youtube_url?: string;
   thumbnail?: string;
@@ -30,7 +24,20 @@ export interface Exercise {
   process_status?: string;
   created_at?: string;
   updated_at?: string;
+  trainerId?: string | null;
+  companyId?: string;
   s3_key?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  video?: VideoSource | null;
+}
+
+export interface VideoSource {
+  type: 'S3' | 'YOUTUBE';
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  youtubeUrl?: string;
+  url?: string;
 }
 
 export interface PlanItem extends Partial<Exercise> {
@@ -54,7 +61,11 @@ export interface PlanItem extends Partial<Exercise> {
   groupId?: string;        // identifier shared by header and its children
   // Video fields for consistency with Exercise
   preview_url?: string;
+  youtube_url?: string;
   thumbnail?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  video?: VideoSource | null;
 }
 
 
@@ -117,9 +128,12 @@ export type AiStep =
   | 'VALIDATING_INPUT'
   | 'FILTERING_EXERCISES'
   | 'STRUCTURING_PLAN'
+  | 'BUILDING_SESSION_STRUCTURE'
   | 'MATCHING_EXERCISES'
   | 'OPTIMIZING_LOAD'
   | 'FINAL_VALIDATION';
+
+export type AiGenerationStatus = 'IN_PROGRESS' | 'COMPLETED' | 'PENDING';
 
 export type PollingResponse =
   | { status: 'IN_PROGRESS'; currentStep: AiStep; updatedAt: string }
@@ -135,7 +149,6 @@ export interface ExerciseFilters {
   equipmentTypeFilter: string;
   difficultyFilter: string;
   groupTypeFilter: string;
-  functionalOnly?: boolean;
 }
 
 export interface FilterOptions {

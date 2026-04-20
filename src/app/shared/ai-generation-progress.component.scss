@@ -1,0 +1,344 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+
+  --ai-primary: var(--primary-600, #2563eb);
+  --ai-primary-strong: var(--primary-900, #1e40af);
+  --ai-accent: var(--accent-500, #06b6d4);
+  --ai-success: var(--success-800, #65a30d);
+  --ai-success-soft: rgba(101, 163, 13, 0.18);
+  --ai-ink: rgba(17, 24, 39, 0.94);
+  --ai-muted: rgba(17, 24, 39, 0.62);
+  --ai-border: rgba(148, 163, 184, 0.18);
+  --ai-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+}
+
+.ai-progress-shell {
+  align-items: stretch;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  justify-content: space-between;
+  min-height: 0;
+  overflow: hidden;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(6, 182, 212, 0.16), transparent 30%),
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.92));
+}
+
+.ai-progress-shell--completed {
+  background:
+    radial-gradient(circle at top right, rgba(101, 163, 13, 0.14), transparent 30%),
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(240, 253, 244, 0.92));
+}
+
+.ai-progress-header {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.ai-progress-header__title {
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: clamp(0.98rem, 1vw + 0.7rem, 1.18rem);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.status-chip {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.76rem;
+  font-weight: 600;
+  gap: 6px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.status-chip {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  color: var(--ai-primary-strong);
+  flex-shrink: 0;
+}
+
+.status-chip mat-icon {
+  animation: icon-spin 1.9s linear infinite;
+  font-size: 15px;
+  height: 15px;
+  width: 15px;
+}
+
+.status-chip--completed {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(101, 163, 13, 0.18);
+  color: var(--ai-success);
+}
+
+.status-chip--completed mat-icon {
+  animation: none;
+}
+
+.ai-loader-stage {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  min-height: 0;
+}
+
+.ai-loader {
+  align-items: center;
+  display: grid;
+  height: clamp(96px, 18vw, 132px);
+  justify-items: center;
+  position: relative;
+  width: clamp(96px, 18vw, 132px);
+}
+
+.ai-loader__ring,
+.ai-loader__halo,
+.ai-loader__core {
+  border-radius: 50%;
+  position: absolute;
+}
+
+.ai-loader__ring {
+  animation: ai-loader-spin 2.9s linear infinite;
+  background: conic-gradient(
+    from 180deg,
+    rgba(37, 99, 235, 0.04),
+    rgba(37, 99, 235, 0.92),
+    rgba(6, 182, 212, 0.88),
+    rgba(37, 99, 235, 0.06)
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 16px 30px rgba(37, 99, 235, 0.18);
+  inset: 0;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+}
+
+.ai-loader__halo {
+  animation: ai-loader-breathe 3.6s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.18), rgba(37, 99, 235, 0.03) 68%, transparent 72%);
+  inset: -20%;
+  opacity: 0.9;
+}
+
+.ai-loader__core {
+  align-items: center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.86) 46%, rgba(226, 232, 240, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--ai-shadow);
+  display: flex;
+  inset: 16%;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ai-loader__core::after {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.12));
+  content: '';
+  inset: 0;
+  position: absolute;
+}
+
+.ai-loader__core-label {
+  color: var(--ai-primary-strong);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  margin-left: 0.22em;
+  position: relative;
+  z-index: 1;
+}
+
+.ai-loader--completed .ai-loader__ring {
+  animation: none;
+  background: conic-gradient(
+    from 180deg,
+    rgba(101, 163, 13, 0.14),
+    rgba(101, 163, 13, 0.92),
+    rgba(16, 185, 129, 0.76),
+    rgba(101, 163, 13, 0.14)
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 16px 30px rgba(101, 163, 13, 0.18);
+}
+
+.ai-loader--completed .ai-loader__halo {
+  animation: none;
+  background: radial-gradient(circle, rgba(101, 163, 13, 0.16), rgba(101, 163, 13, 0.04) 68%, transparent 72%);
+}
+
+.ai-loader--completed .ai-loader__core-label {
+  color: var(--ai-success);
+}
+
+.ai-progress-value {
+  color: var(--ai-ink);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 750;
+  letter-spacing: -0.06em;
+  margin: 0;
+}
+
+.ai-progress-message {
+  align-items: center;
+  color: var(--ai-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: clamp(0.95rem, 1vw + 0.6rem, 1.08rem);
+  font-weight: 500;
+  gap: 0.08em;
+  justify-content: center;
+  line-height: 1.35;
+  margin: 0 auto;
+  max-width: 28ch;
+  min-height: 2.7em;
+  text-align: center;
+}
+
+.ai-progress-message--completed {
+  color: var(--ai-ink);
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-progress-message__text {
+  animation: ai-message-fade 240ms ease;
+}
+
+.ai-progress-message__dots {
+  display: inline-flex;
+  min-width: 1.1em;
+}
+
+.ai-progress-message__dots span {
+  animation: ai-dot-fade 1.3s ease-in-out infinite;
+  opacity: 0.18;
+}
+
+.ai-progress-message__dots span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.ai-progress-message__dots span:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes ai-loader-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ai-loader-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes ai-dot-fade {
+  0%,
+  80%,
+  100% {
+    opacity: 0.18;
+  }
+
+  40% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes ai-message-fade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .ai-progress-shell {
+    gap: 14px;
+    padding: 16px 14px;
+  }
+
+  .ai-progress-header {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .status-chip {
+    padding: 5px 9px;
+  }
+
+  .ai-loader-stage {
+    gap: 14px;
+  }
+
+  .ai-progress-message {
+    max-width: 24ch;
+    min-height: 3.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-chip mat-icon,
+  .ai-loader__ring,
+  .ai-loader__halo,
+  .ai-progress-message__text,
+  .ai-progress-message__dots span {
+    animation: none;
+  }
+
+  .ai-progress-message__dots span {
+    opacity: 0.5;
+  }
+}

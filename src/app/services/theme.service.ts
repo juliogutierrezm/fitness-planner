@@ -17,6 +17,7 @@ export interface ThemeConfig {
   logoUrl?: string;  // Used only for display
   appName?: string;  // Max 40 chars
   tagline?: string;  // Max 80 chars
+  sessionNaming?: 'session' | 'day';
 }
 
 @Injectable({
@@ -34,7 +35,8 @@ export class ThemeService {
     fontFamily: 'Inter',
     appName: 'SpeedUp Coach',
     tagline: 'Entrena mejor. Progresa mas rapido.',
-    logoUrl: '/assets/faviconSC.png'
+    logoUrl: '/assets/faviconSC.png',
+    sessionNaming: 'session'
   };
 
   constructor(private http: HttpClient) {}

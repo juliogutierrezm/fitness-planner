@@ -203,6 +203,23 @@ export class UserApiService {
     return this.setUserStatus(userId, 'ACTIVE');
   }
 
+  /**
+   * Purpose: resend a verification or recovery code for a user.
+   * Input: userId string.
+   * Output: Observable with API result or null.
+   * Error handling: logs error and returns null on failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  resendVerificationCode(userId: string): Observable<any> {
+    if (!userId) return of(null);
+    return this.http.post(`${this.base}/${encodeURIComponent(userId)}/resend-code`, {}).pipe(
+      catchError(err => {
+        console.error('resendVerificationCode error', err);
+        return of(null);
+      })
+    );
+  }
+
 getUserById(userId: string): Observable<AppUser | null> {
   if (!userId) return of(null);
 

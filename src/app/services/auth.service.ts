@@ -16,10 +16,42 @@ import {
   confirmResetPassword
 } from 'aws-amplify/auth';
 import { awsExports } from '../../aws-exports';
+import { environment } from '../../environments/environment';
 import { isIndependentTenant } from '../shared/shared-utils';
 
+function resolveRedirectUri(): string {
+  const configured = environment.cognito.redirectUri?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/callback`;
+  }
+
+  return '/callback';
+}
+
+const redirectUri = resolveRedirectUri();
+const amplifyConfig = {
+  ...awsExports,
+  Auth: {
+    Cognito: {
+      loginWith: {
+        oauth: {
+          domain: environment.cognito.domain,
+          scopes: ['openid', 'email', 'profile'],
+          redirectSignIn: [redirectUri],
+          redirectSignOut: [redirectUri],
+          responseType: 'code'
+        }
+      }
+    }
+  }
+};
+
 // Configure Amplify
-Amplify.configure(awsExports);
+Amplify.configure(amplifyConfig);
 
 export type UserType = 'GYM_OWNER' | 'INDEPENDENT_TRAINER';
 export interface UserProfile {

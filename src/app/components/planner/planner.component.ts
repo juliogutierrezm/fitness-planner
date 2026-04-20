@@ -18,28 +18,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TextFieldModule } from '@angular/cdk/text-field';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError, tap, finalize } from 'rxjs/operators';
-
-
 import { ExerciseApiService } from '../../exercise-api.service';
 import { UserApiService, AppUser } from '../../user-api.service';
 import { PreviousPlansDialogComponent } from './dialogs/previous-plans-dialog.component';
 import { PlanPreviewDialogComponent } from './dialogs/plan-preview-dialog.component';
-import { AiPromptDialogComponent } from './ai/ai-prompt-dialog.component';
 import { AiParametricDialogComponent } from './ai/ai-parametric-dialog.component';
-import { AiGenerationDialogComponent } from './ai/ai-generation-dialog.component';
+import { AiGenerationDialogComponent, AiGenerationDialogData } from './ai/ai-generation-dialog.component';
 import { ExercisePreviewDialogComponent } from './dialogs/exercise-preview-dialog.component';
-import { AiGenerationTimelineComponent } from '../../shared/ai-generation-timeline.component';
 import { AuthService } from '../../services/auth.service';
 import { PlanAssignmentService } from '../../services/plan-assignment.service';
 import { AiPlansService } from '../../services/ai-plans.service';
 import { AiPlanQuota } from '../../shared/ai-plan-limits';
-import { Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep, PollingResponse } from '../../shared/models';
+import { AiGenerationStatus, Exercise, Session, PlanItem, ExerciseFilters, FilterOptions, AiStep } from '../../shared/models';
 import { PlanProgressions, ProgressionWeek } from './models/planner-plan.model';
 import { PlannerFormService } from './services/planner-form.service';
 import { PlannerExerciseFilterService } from './services/planner-exercise-filter.service';
@@ -59,6 +55,7 @@ import {
   parsePlanSessions,
   sortPlansByCreatedAt
 } from '../../shared/shared-utils';
+import { getThumbnailSource } from '../../shared/video-utils';
 
 @Component({
   selector: 'app-planner',
@@ -95,6 +92,9 @@ export class PlannerComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   exercises: Exercise[] = [];
   filteredExercises: Exercise[] = [];
+  visibleExercises: Exercise[] = [];
+  private visibleCount = 50;
+  private activeDragCount = 0;
   /**
    * Purpose: cache ExerciseLibrary data for AI plan enrichment.
    * Input/Output: filled after library load; consumed during plan hydration.
@@ -179,12 +179,13 @@ export class PlannerComponent implements OnInit, OnDestroy {
 
   // AI generation state
   isGenerating: boolean = false;
-  currentAiStep?: AiStep;
+  currentAiStep: AiStep | null = null;
+  currentAiStatus: AiGenerationStatus = 'PENDING';
   private pollingSub?: Subscription;
   private planAssignmentSub?: Subscription;
   private currentUserId: string | null = null;
   currentExecutionId!: string;
-  private aiGenDialogRef: any = null;
+  private aiGenDialogRef: MatDialogRef<AiGenerationDialogComponent> | null = null;
   /**
    * Purpose: track AI dialog flow timing + last visible signal for debugging.
    * Input: set on user interaction; Output: consumed by recordAiFlowSignal and template.
@@ -316,7 +317,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
     console.log('[AI] Dialog opened with userId', userId);
 
     const dialogRef = this.dialog.open(AiParametricDialogComponent, {
-      width: '900px',
+      panelClass: 'ai-parametric-dialog',
+      backdropClass: 'ai-parametric-backdrop',
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      maxHeight: '90vh',
       disableClose: true,
       data: { userId, userProfile: this.userProfile, userAge: this.userAge }
     });
@@ -592,7 +598,12 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   private loadTemplateForPlanner(templateId: string): void {
-    const trimmedId = templateId?.trim();
+    const rawTemplateId = templateId;
+    const trimmedId = rawTemplateId?.trim();
+    console.info('[Planner] load template requested', {
+      rawTemplateId,
+      templateId: trimmedId
+    });
     if (!trimmedId) {
       console.error('[Planner] missing templateId for load');
       this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
@@ -628,11 +639,18 @@ export class PlannerComponent implements OnInit, OnDestroy {
         this.applyTemplateToPlanner(templatePlan);
       },
       error: (error) => {
+        const status = error?.status;
         console.error('[Planner] failed to load template', {
           templateId: trimmedId,
+          status,
           error
         });
-        this.snackBar.open('No se pudo cargar la plantilla.', 'Cerrar', { duration: 3000 });
+        const message = status === 404
+          ? 'No se encontró la plantilla.'
+          : status === 403
+            ? 'No tienes permisos para cargar esta plantilla.'
+            : 'No se pudo cargar la plantilla.';
+        this.snackBar.open(message, 'Cerrar', { duration: 3000 });
         this.initializeNewPlanSessions();
       }
     });
@@ -674,11 +692,22 @@ export class PlannerComponent implements OnInit, OnDestroy {
   private resetAiGenerationState(): void {
     this.stopPolling();
     this.isGenerating = false;
-    this.currentAiStep = undefined;
+    this.currentAiStep = null;
+    this.currentAiStatus = 'PENDING';
     this.aiGenerationStartedAt = null;
   }
 
+  private updateAiGenerationProgress(status: AiGenerationStatus, currentStep: AiStep | null): void {
+    this.currentAiStatus = status;
+    this.currentAiStep = currentStep;
+    this.aiGenDialogRef?.componentInstance.updateProgress({
+      currentStep,
+      status
+    });
+  }
+
   ngOnDestroy(): void {
+    this.finishDragInteraction();
     this.stopPolling();
     this.planAssignmentService.clearPlanData();
     if (this.planAssignmentSub) {
@@ -700,6 +729,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     );
 
     this.isGenerating = true;
+    this.updateAiGenerationProgress('PENDING', null);
 
     // Open the blocking modal dialog
     this.aiGenDialogRef = this.dialog.open(AiGenerationDialogComponent, {
@@ -707,9 +737,14 @@ export class PlannerComponent implements OnInit, OnDestroy {
       autoFocus: false,
       panelClass: 'ai-generation-dialog',
       backdropClass: 'ai-generation-backdrop',
-      width: '760px',
-      maxWidth: '92vw',
-      data: { currentAiStep: this.currentAiStep }
+      width: '95vw',
+      maxWidth: '95vw',
+      height: '90vh',
+      maxHeight: '90vh',
+      data: {
+        currentStep: this.currentAiStep,
+        status: this.currentAiStatus
+      } satisfies AiGenerationDialogData
     });
 
     this.pollingSub = interval(2500).pipe(
@@ -737,11 +772,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     // 🔁 Estado intermedio: continuar polling
     if (res.status === 'IN_PROGRESS') {
       console.log('[AI] Generation in progress:', res.currentStep);
-      this.currentAiStep = res.currentStep;
-      // Update dialog data with current step
-      if (this.aiGenDialogRef) {
-        this.aiGenDialogRef.componentInstance.data = { currentAiStep: this.currentAiStep };
-      }
+      this.updateAiGenerationProgress('IN_PROGRESS', res.currentStep);
       this.cdr.markForCheck();
       return; // ⚠️ NO detener polling
     }
@@ -749,6 +780,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     // ✅ Estado final: aplicar plan y detener polling
     if (res.status === 'COMPLETED') {
       console.log('[AI] Generation completed, applying plan');
+      this.updateAiGenerationProgress('COMPLETED', 'FINAL_VALIDATION');
 
       this.applyPlanToPlanner(res.plan);
       this.stopPolling();
@@ -764,7 +796,10 @@ export class PlannerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 🟡 Cualquier otro estado se ignora
+    if (res.status === 'PENDING') {
+      this.updateAiGenerationProgress('PENDING', null);
+      this.cdr.markForCheck();
+    }
   });
   }
 
@@ -856,17 +891,15 @@ export class PlannerComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.api.getExerciseLibrary().pipe(
+    this.api.getAllExercises().pipe(
       finalize(() => {
         this.exercisesLoaded = true;
         this.updateInitialLoading();
         this.cdr.markForCheck();
       })
     ).subscribe({
-      next: (libraryResponse) => {
-        // Handle DynamoDB format if needed and flatten data
-        const rawItems = libraryResponse.items;
-        this.exercises = this.transformExercises(rawItems);
+      next: (exercises) => {
+        this.exercises = exercises;
         this.exerciseLibraryMap = new Map(this.exercises.map(ex => [ex.id, ex]));
         const enrichedSessions = enrichPlanSessionsFromLibrary(this.sessions, this.exerciseLibraryMap);
         if (enrichedSessions !== this.sessions) {
@@ -912,6 +945,17 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
 
     if (this.isEditMode && this.planId) {
+      const currentUser = this.authService.getCurrentUser();
+      console.info('[Planner] init mode', {
+        mode: 'edit',
+        planId: this.planId,
+        planIdType: typeof this.planId,
+        planIdLength: this.planId.length,
+        currentUserId: this.authService.getCurrentUserId(),
+        currentUserRole: currentUser?.role,
+        userProfileLoaded: !!currentUser,
+        token: '(check network tab)'
+      });
       this.planLoaded = false;
       this.updateInitialLoading();
       this.api.getWorkoutPlanById(this.planId).pipe(
@@ -952,7 +996,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
             return;
           }
 
-          console.warn('[Planner] Plan not found for edit', { planId: this.planId });
+          console.warn('[Planner] Plan not found for edit — API returned null (likely permission check blocked the request)', { planId: this.planId });
           this.snackBar.open('No se encontró el plan para editar.', 'Cerrar', { duration: 3000 });
         },
         error: (error) => {
@@ -964,6 +1008,11 @@ export class PlannerComponent implements OnInit, OnDestroy {
         }
       });
     } else if (hasTemplateParam && qpTemplateId) {
+      console.info('[Planner] init mode', {
+        mode: 'assign-template',
+        templateId: qpTemplateId,
+        userId: qpUserId?.trim() || null
+      });
       this.resetTemplateState();
       this.api.clearUserSessions();
       this.planLoaded = false;
@@ -1013,6 +1062,32 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.syncProgressionWeeks(totalWeeks);
   }
 
+  decrementTotalWeeks(): void {
+    this.onTotalWeeksChange((this.progressions?.totalWeeks || 1) - 1);
+    this.cdr.markForCheck();
+  }
+
+  incrementTotalWeeks(): void {
+    this.onTotalWeeksChange((this.progressions?.totalWeeks || 1) + 1);
+    this.cdr.markForCheck();
+  }
+
+  decrementSessionCount(): void {
+    const control = this.form?.get('sessionCount');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.max(1, Math.floor(current)) : 1;
+    control.setValue(Math.max(1, normalized - 1));
+  }
+
+  incrementSessionCount(): void {
+    const control = this.form?.get('sessionCount');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.max(1, Math.floor(current)) : 1;
+    control.setValue(normalized + 1);
+  }
+
   getProgressionNotePlaceholder(week: number): string {
     const guide = this.progressionGuide.find(item => item.week === week);
     return guide?.note || 'Describe la guia para esta semana';
@@ -1044,6 +1119,24 @@ export class PlannerComponent implements OnInit, OnDestroy {
       this.functionalCategoryLabel,
       this.STORAGE_KEY
     );
+    this.visibleCount = 50;
+    this.updateVisibleExercises();
+  }
+
+  private updateVisibleExercises(): void {
+    this.visibleExercises = this.filteredExercises.slice(0, this.visibleCount);
+  }
+
+  onExerciseListScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (!el) return;
+    const threshold = 100;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (nearBottom && this.visibleCount < this.filteredExercises.length) {
+      this.visibleCount = Math.min(this.visibleCount + 50, this.filteredExercises.length);
+      this.updateVisibleExercises();
+      this.cdr.markForCheck();
+    }
   }
 
   private createDefaultProgressions(showProgressions: boolean): PlanProgressions {
@@ -1131,49 +1224,6 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.stateService.persistUiState(this.sessions, this.getUiKey());
   }
 
-  private transformExercises(rawItems: any[]): Exercise[] {
-    return rawItems.map(item => this.flattenDynamoItem(item));
-  }
-
-  private flattenDynamoItem(raw: any): Exercise {
-    // Flatten DynamoDB format (e.g., {name_es: {S: "value"}} => {name_es: "value"})
-    const flattened: any = {};
-
-    for (const [key, value] of Object.entries(raw)) {
-      if (value && typeof value === 'object') {
-        if ('S' in value) {
-          // String value
-          flattened[key] = (value as any).S || '';
-        } else if ('N' in value) {
-          // Number value
-          flattened[key] = Number((value as any).N) || 0;
-        } else if ('BOOL' in value) {
-          // Boolean value
-          flattened[key] = (value as any).BOOL;
-        } else if ('L' in value) {
-          // List/Array value
-          const list = (value as any).L || [];
-          flattened[key] = list.map((item: any) => {
-            if (item.S !== undefined) return item.S;
-            if (item.N !== undefined) return Number(item.N);
-            if (item.BOOL !== undefined) return item.BOOL;
-            return item;
-          });
-        } else if ('SS' in value) {
-          // String Set
-          flattened[key] = (value as any).SS || [];
-        } else {
-          // Other types, keep as is
-          flattened[key] = value;
-        }
-      } else {
-        flattened[key] = value;
-      }
-    }
-
-    return flattened as Exercise;
-  }
-
   private getUiKey() {
     return `fp_planner_ui_${this.authService.getCurrentUserId() || 'anon'}`;
   }
@@ -1196,6 +1246,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     }
 
     this.userApi.getWorkoutPlansByUserId(targetUserId).subscribe(list => {
+      console.log('📦 [loadPreviousPlans] Raw plan list:', list?.map((p: any) => ({ planId: p.planId, id: p.id, SK: p.SK, PK: p.PK, name: p.name })));
       const sorted = sortPlansByCreatedAt(list || []);
       // Parse sessions and filter out invalid plans
       const validPlans = sorted
@@ -1324,8 +1375,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
    * Standards Check: SRP OK | DRY OK | Tests Pending.
    */
   getPreviewUrl(exercise: Exercise | PlanItem): string | null {
-    const ex = exercise as any;
-    return ex.thumbnail || ex.preview_url || null;
+    return getThumbnailSource(exercise);
   }
 
   /**
@@ -1354,6 +1404,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
     const connections = this.dragDropService.buildDropListConnections(this.sessions);
     this.exerciseListConnectedTo = connections.exerciseListConnectedTo;
     this.sessionsConnectedTo = connections.sessionsConnectedTo;
+    this.cdr.markForCheck();
   }
 
   private buildPlanItemFromExercise(ex: Exercise, overrides: Partial<PlanItem> = {}): PlanItem {
@@ -1361,6 +1412,7 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   dropSession(event: CdkDragDrop<Session[]>) {
+    this.finishDragInteraction();
     const reordered = this.dragDropService.reorderSessions(event, this.sessions);
     if (!reordered) return;
     this.rebuildDropLists();
@@ -1369,6 +1421,8 @@ export class PlannerComponent implements OnInit, OnDestroy {
   }
 
   drop(event: CdkDragDrop<any, any>, session?: Session) {
+    this.finishDragInteraction();
+    if (!session) return;
     const result = this.dragDropService.handleDrop(
       event,
       session!,
@@ -1516,9 +1570,31 @@ export class PlannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  onDragStarted(): void {
+    this.activeDragCount += 1;
+
+    if (this.activeDragCount === 1) {
+      this.cdr.detach();
+    }
+  }
+
+  onDragEnded(): void {
+    this.finishDragInteraction();
+  }
+
   // Drag auto-scroll near viewport edges
   onDragMoved(event: any) {
     this.dragDropService.handleDragMoved(event);
+  }
+
+  private finishDragInteraction(): void {
+    this.dragDropService.stopAutoScroll();
+
+    if (this.activeDragCount === 0) return;
+
+    this.activeDragCount = 0;
+    this.cdr.reattach();
+    this.cdr.detectChanges();
   }
 
 

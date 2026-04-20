@@ -1,211 +1,333 @@
 <div class="parametric-dialog-container">
+  <!-- Header -->
   <div class="parametric-dialog-header">
     <div class="parametric-dialog-title">
-      <mat-icon class="ai-icon">auto_awesome</mat-icon>
-      <h2>Generar Plan Personalizado con IA</h2>
-    </div>
-    <div class="parametric-dialog-divider"></div>
+      <span class="ai-icon-badge">
+        <mat-icon class="ai-icon">auto_awesome</mat-icon>
+      </span>
+      <h2>Generar Plan de Entrenamiento con Inteligencia Artificial</h2>
+      <!-- Step Indicator -->
+    </div> 
+    <nav class="wizard-steps" aria-label="Progreso del formulario">
+      <button
+        *ngFor="let label of stepLabels; let i = index"
+        type="button"
+        class="wizard-step"
+        [class.active]="currentStep() === i"
+        [class.completed]="isStepValid(i) && currentStep() > i"
+        [class.clickable]="i <= getMaxReachableStep()"
+        [attr.aria-current]="currentStep() === i ? 'step' : null"
+        (click)="goToStep(i)">
+        <span class="wizard-step-number">
+          <mat-icon *ngIf="isStepValid(i) && currentStep() > i" class="wizard-check-icon">check</mat-icon>
+          <span *ngIf="!(isStepValid(i) && currentStep() > i)">{{ i + 1 }}</span>
+        </span>
+        <span class="wizard-step-label">{{ label }}</span>
+      </button>
+    </nav>
   </div>
 
+  <!-- Step Content -->
   <div class="parametric-dialog-content">
     <form [formGroup]="form" class="parametric-form">
+      <div class="wizard-step-viewport" [@stepTransition]="currentStep()">
 
-      <!-- User Profile Section (if available) -->
-      <div class="form-section" *ngIf="userProfile">
-        <h3 class="section-title">
-          <mat-icon>person</mat-icon>
-          Perfil del Usuario
-        </h3>
-        <div class="user-profile-info">
-          <div class="profile-row">
-            <span class="profile-label">Nombre:</span>
-            <span class="profile-value">{{ userProfile.givenName || '' }} {{ userProfile.familyName || '' }}</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-label">Edad:</span>
-            <span class="profile-value">{{ userAge !== null ? (userAge + ' años') : 'No especificada' }}</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-label">Género:</span>
-            <span class="profile-value">{{ userProfile.gender || 'No especificado' }}</span>
-          </div>
-          <div class="profile-row">
-            <span class="profile-label">Estado de lesiones:</span>
-            <span class="profile-value">{{ userProfile.injuries ? 'Con lesiones' : 'Sin lesiones' }}</span>
-          </div>
-          <div class="profile-row" *ngIf="userProfile.injuries">
-            <span class="profile-label">Detalle:</span>
-            <span class="profile-value">{{ userProfile.injuries }}</span>
-          </div>
-          <div class="profile-row" *ngIf="userProfile.notes">
-            <span class="profile-label">Notas:</span>
-            <span class="profile-value">{{ userProfile.notes }}</span>
-          </div>
-        </div>
-        <p class="profile-hint">Esta información se utilizará automáticamente para generar un plan personalizado y seguro.</p>
-      </div>
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- STEP 1 — Perfil y Nivel                    -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="wizard-step-panel" *ngIf="currentStep() === 0">
 
-      <!-- General Data Section -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>person</mat-icon>
-          Datos Generales
-        </h3>
-
-        <div class="experience-field">
-          <div class="experience-header">
-            <div class="experience-title">
-              <mat-icon>military_tech</mat-icon>
-              <span>Nivel de Experiencia</span>
-            </div>
-            <p class="experience-subtitle">Define el nivel de exigencia y los ejercicios disponibles para la IA.</p>
-          </div>
-
-          <div class="experience-help">
-            <mat-icon class="help-icon">info</mat-icon>
-            <span>El nivel determina que ejercicios puede usar la IA. Si hay duda entre dos niveles, elige siempre el mas bajo.</span>
-          </div>
-
-          <mat-radio-group formControlName="difficulty" class="level-selector" aria-label="Nivel de experiencia">
-            <mat-radio-button
-              *ngFor="let option of difficultyOptions"
-              [value]="option.value"
-              class="level-card">
-              <div class="level-card-content">
-                <div class="level-card-header">
-                  <span class="level-card-assignment"> {{ option.value }}</span>
+          <!-- User Profile (if available) -->
+          <div class="user-profile-card" *ngIf="userProfile">
+            <div class="profile-grid">
+              <div class="profile-item">
+                <mat-icon class="profile-item-icon">person</mat-icon>
+                <div class="profile-item-content">
+                  <span class="profile-item-label">Nombre</span>
+                  <span class="profile-item-value">{{ userProfile.givenName || '' }} {{ userProfile.familyName || '' }}</span>
                 </div>
-                <p class="level-card-purpose">{{ option.purpose }}</p>
-                <ul class="level-card-criteria">
-                  <li *ngFor="let criterion of option.criteria">{{ criterion }}</li>
-                </ul>
-                <p class="level-card-action">{{ option.nextAction }}</p>
               </div>
-            </mat-radio-button>
-          </mat-radio-group>
-        </div>
-      </div>
+              <div class="profile-item">
+                <mat-icon class="profile-item-icon">cake</mat-icon>
+                <div class="profile-item-content">
+                  <span class="profile-item-label">Edad</span>
+                  <span class="profile-item-value">{{ userAge !== null ? (userAge + ' años') : 'No especificada' }}</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <mat-icon class="profile-item-icon">wc</mat-icon>
+                <div class="profile-item-content">
+                  <span class="profile-item-label">Género</span>
+                  <span class="profile-item-value">{{ userProfile.gender || 'No especificado' }}</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <mat-icon class="profile-item-icon">healing</mat-icon>
+                <div class="profile-item-content">
+                  <span class="profile-item-label">Lesiones</span>
+                  <span class="profile-item-value">{{ userProfile.injuries || 'Sin lesiones' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <!-- Session Configuration Section -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>tune</mat-icon>
-          Configuracion del plan de entrenamiento
-        </h3>
-        <div class="form-row session-config-row">
-          <mat-form-field appearance="outline" class="form-field">
-            <mat-label>Objetivo Principal</mat-label>
-            <mat-select formControlName="trainingGoal">
-              <mat-option *ngFor="let option of trainingGoalOptions" [value]="option.value">
-                {{ option.desc }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Que quieres lograr con tu entrenamiento?</mat-hint>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="form-field compact-field">
-            <mat-label>Duracion por sesion (minutos)</mat-label>
-            <input matInput type="number" formControlName="sessionDuration" min="30" max="180" step="5">
-            <mat-hint>Tiempo disponible por sesion (30-180 min)</mat-hint>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="form-field compact-field">
-            <mat-label>Ejercicios esperados por sesion</mat-label>
-            <input matInput type="number" formControlName="expectedExercisesPerSession" min="4" max="15">
-            <mat-hint>4-15 ejercicios por sesion</mat-hint>
-          </mat-form-field>
+          <!-- Experience Level -->
+          <div class="experience-field">
+            <div class="experience-header">
+              <div class="experience-title">
+                <mat-icon>military_tech</mat-icon>
+                <span>Nivel de Experiencia</span>
+              </div>
+              <p class="experience-subtitle">Define el nivel de exigencia y los ejercicios disponibles para la IA.</p>
+            </div>
+
+            <mat-radio-group formControlName="difficulty" class="level-selector" aria-label="Nivel de experiencia">
+              <mat-radio-button
+                *ngFor="let option of difficultyOptions"
+                [value]="option.value"
+                class="level-card">
+                <div class="level-card-content">
+                  <div class="level-card-header">
+                    <span class="level-card-assignment">{{ option.value }}</span>
+                  </div>
+                  <p class="level-card-purpose">{{ option.purpose }}</p>
+                  <ul class="level-card-criteria">
+                    <li *ngFor="let criterion of option.criteria">{{ criterion }}</li>
+                  </ul>
+                </div>
+              </mat-radio-button>
+            </mat-radio-group>
+          </div>
         </div>
-      </div>
-      <!-- Session Blueprint Section -->
-      <div class="form-section">
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="form-field equipment-field compact-field">
-            <mat-label>Equipo disponible</mat-label>
-            <mat-select formControlName="availableEquipment" multiple>
-              <mat-option *ngFor="let equipment of equipmentOptions" [value]="equipment.value">
-                {{ equipment.label }}
-              </mat-option>
-            </mat-select>
-            <mat-hint>Selecciona el equipo disponible</mat-hint>
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="form-field compact-field">
-            <mat-label>Total de sesiones</mat-label>
-            <input matInput type="number" formControlName="totalSessions" min="1" max="7" step="1">
-            <mat-hint>Número de sesiones en el plan (1-7)</mat-hint>
-          </mat-form-field>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- STEP 2 — Configuración del Plan            -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="wizard-step-panel" *ngIf="currentStep() === 1">
+
+          <div class="config-grid">
+            <mat-form-field appearance="outline" class="form-field config-field-third">
+              <mat-label>Objetivo Principal</mat-label>
+              <mat-select formControlName="trainingGoal">
+                <mat-option *ngFor="let option of trainingGoalOptions" [value]="option.value">
+                  {{ option.desc }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>¿Qué quieres lograr?</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field config-field-third">
+              <mat-label>Duración por sesión (min)</mat-label>
+              <input matInput type="number" formControlName="sessionDuration" min="30" max="180" step="5">
+              <mat-hint>30–180 minutos</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field config-field-third">
+              <mat-label>Ejercicios por sesión</mat-label>
+              <input matInput type="number" formControlName="expectedExercisesPerSession" min="4" max="15">
+              <mat-hint>4–15 ejercicios</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field config-field-full">
+              <mat-label>Equipo disponible</mat-label>
+              <mat-select formControlName="availableEquipment" multiple>
+                <mat-option *ngFor="let equipment of equipmentOptions" [value]="equipment.value">
+                  {{ equipment.label }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Selecciona al menos un equipo</mat-hint>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field config-field-full">
+              <mat-label>Notas adicionales (opcional)</mat-label>
+              <textarea
+                matInput
+                formControlName="customNotes"
+                rows="2"
+                maxlength="150"
+                placeholder="Ej: Evitar alto impacto, preferencia funcional..."></textarea>
+              <mat-hint>{{ (form.get('customNotes')?.value || '').length }}/150 caracteres</mat-hint>
+            </mat-form-field>
+          </div>
         </div>
-        <div class="custom-structure-section">
-          <div class="custom-days-container">
-            <div *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index" class="custom-day-item">
-              <div class="session-controls">
-                <mat-form-field appearance="outline" class="session-name-field">
-                  <mat-label>Sesion {{ i + 1 }}</mat-label>
-                  <input matInput [formControl]="getSessionNameControl(i)" readonly>
-                  <mat-hint>Nombre generado automaticamente</mat-hint>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="day-field">
-                  <mat-label>Grupo muscular o tipo de ejercicio</mat-label>
-                  <mat-select [formControl]="getSessionTargetsControl(i)" multiple>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- STEP 3 — Estructura del Plan               -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="wizard-step-panel step-sessions" *ngIf="currentStep() === 2">
+
+          <!-- Top bar: title + stepper -->
+          <div class="session-structure-header">
+            <div class="session-blueprint-copy">
+              <h4 class="session-blueprint-title">Estructura por Sesión</h4>
+              <p class="session-blueprint-hint">Configura el foco de cada sesión.</p>
+            </div>
+            <div class="session-blueprint-toolbar">
+              <label class="compact-stepper__label" for="aiTotalSessionsInput">Sesiones</label>
+              <div class="compact-stepper" role="group" aria-label="Control de total de sesiones">
+                <button
+                  type="button"
+                  class="compact-stepper__btn"
+                  (click)="decrementTotalSessions()"
+                  matTooltip="Reducir sesiones"
+                  aria-label="Reducir sesiones">
+                  −
+                </button>
+                <input
+                  id="aiTotalSessionsInput"
+                  class="compact-stepper__input"
+                  type="number"
+                  formControlName="totalSessions"
+                  min="1"
+                  max="7"
+                  step="1">
+                <button
+                  type="button"
+                  class="compact-stepper__btn"
+                  (click)="incrementTotalSessions()"
+                  matTooltip="Aumentar sesiones"
+                  aria-label="Aumentar sesiones">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Session tabs -->
+          <nav class="session-tabs" aria-label="Selector de sesión">
+            <button
+              *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index"
+              type="button"
+              class="session-tab"
+              [class.active]="activeSessionIndex() === i"
+              [class.has-selections]="hasSessionSelections(i)"
+              (click)="setActiveSession(i)">
+              <span class="session-tab-num">{{ i + 1 }}</span>
+              <span class="session-tab-label">Sesión {{ i + 1 }}</span>
+              <mat-icon class="session-tab-check" *ngIf="hasSessionSelections(i)">check_circle</mat-icon>
+            </button>
+          </nav>
+
+          <!-- Active session card -->
+          <article
+            *ngFor="let sessionControl of getSessionBlueprintControls(); let i = index"
+            class="session-plan-card"
+            [class.visible]="activeSessionIndex() === i"
+            [style.display]="activeSessionIndex() === i ? 'flex' : 'none'">
+
+            <div class="session-plan-header">
+              <span class="session-plan-index">Sesión {{ i + 1 }}</span>
+              <mat-checkbox [formControl]="getSessionSupersetsControl(i)" class="supersets-checkbox">
+                Incluir superseries
+              </mat-checkbox>
+            </div>
+
+            <div class="session-plan-body">
+              <!-- Target type selector -->
+              <div class="target-type-selector">
+                <span class="target-type-label">Objetivo de la sesión</span>
+                <mat-radio-group
+                  [formControl]="getSessionTargetTypeControl(i)"
+                  class="target-type-radio-group"
+                  (change)="onTargetTypeChange(i)">
+                  <mat-radio-button value="muscle">Grupos musculares</mat-radio-button>
+                  <mat-radio-button value="movement">Tipos de ejercicio</mat-radio-button>
+                </mat-radio-group>
+              </div>
+
+              <!-- Muscle groups (conditional) -->
+              <div class="session-target-block" *ngIf="getSessionTargetTypeControl(i).value === 'muscle'">
+                <mat-form-field appearance="outline" class="session-target-field">
+                  <mat-label>Grupos musculares</mat-label>
+                  <mat-select [formControl]="getSessionMuscleGroupsControl(i)" multiple>
                     <mat-option *ngFor="let muscle of muscleGroupOptions" [value]="muscle.value">
                       {{ muscle.label }}
                     </mat-option>
                   </mat-select>
                 </mat-form-field>
+                <div class="session-plan-chips-compact" [class.empty]="!(getSessionMuscleGroupsControl(i).value?.length)">
+                  <mat-chip-set class="muscle-chips">
+                    <mat-chip *ngFor="let muscleValue of getSessionMuscleGroupsControl(i).value"
+                              (removed)="removeSelection(i, 'selectedMuscleGroups', muscleValue)">
+                      {{ getTargetLabel(muscleValue) }}
+                      <button matChipRemove><mat-icon>cancel</mat-icon></button>
+                    </mat-chip>
+                  </mat-chip-set>
+                  <p class="session-plan-empty" *ngIf="!(getSessionMuscleGroupsControl(i).value?.length)">
+                    Selecciona grupos musculares
+                  </p>
+                </div>
               </div>
-              <div class="session-chips">
-                <mat-chip-set class="muscle-chips">
-                  <mat-chip *ngFor="let muscleValue of getSessionTargetsControl(i).value"
-                            (removed)="removeTarget(i, muscleValue)">
-                    {{ getMuscleLabel(muscleValue) }}
-                    <button matChipRemove>
-                      <mat-icon>cancel</mat-icon>
-                    </button>
-                  </mat-chip>
-                </mat-chip-set>
-                <mat-checkbox [formControl]="getSessionSupersetsControl(i)" class="supersets-checkbox">
-                  Incluir superseries
-                </mat-checkbox>
+
+              <!-- Movement patterns (conditional) -->
+              <div class="session-target-block" *ngIf="getSessionTargetTypeControl(i).value === 'movement'">
+                <mat-form-field appearance="outline" class="session-target-field">
+                  <mat-label>Tipo de ejercicio</mat-label>
+                  <mat-select [formControl]="getSessionMovementPatternsControl(i)" multiple>
+                    <mat-option *ngFor="let pattern of movementPatternOptions" [value]="pattern.value">
+                      {{ pattern.label }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <div class="session-plan-chips-compact" [class.empty]="!(getSessionMovementPatternsControl(i).value?.length)">
+                  <mat-chip-set class="muscle-chips">
+                    <mat-chip *ngFor="let patternValue of getSessionMovementPatternsControl(i).value"
+                              (removed)="removeSelection(i, 'selectedMovementPatterns', patternValue)">
+                      {{ getTargetLabel(patternValue) }}
+                      <button matChipRemove><mat-icon>cancel</mat-icon></button>
+                    </mat-chip>
+                  </mat-chip-set>
+                  <p class="session-plan-empty" *ngIf="!(getSessionMovementPatternsControl(i).value?.length)">
+                    Selecciona tipos de ejercicio
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </article>
         </div>
-      </div>
 
-      <!-- Custom Notes Section -->
-       
-      <div class="form-section">
-        <h3 class="section-title">
-          <mat-icon>notes</mat-icon>
-          Notas Adicionales
-        </h3>
-       <div class="form-row">
-        <mat-form-field appearance="outline" class="notes-field">
-          <mat-label>Preferencias específicas (opcional)</mat-label>
-          <textarea
-            matInput
-            formControlName="customNotes"
-            rows="2"
-            maxlength="150"
-            placeholder="Ej: Enfoque en fuerza máxima, evitar ejercicios de alto impacto, preferencia por ejercicios funcionales..."></textarea>
-          <mat-hint>{{ (form.get('customNotes')?.value || '').length }}/150 caracteres</mat-hint>
-        </mat-form-field>
-      </div>
       </div>
     </form>
   </div>
 
+  <!-- Footer Navigation -->
   <div class="parametric-dialog-actions">
     <button mat-fab extended (click)="close()" class="cancel-btn">
       <mat-icon>close</mat-icon>
       Cancelar
     </button>
-    <button
-      mat-fab extended
-      color="primary"
-      [disabled]="!isFormValid()"
-      (click)="confirm()"
-      class="generate-btn">
-      <mat-icon *ngIf="!isGenerating">auto_awesome</mat-icon>
-      <mat-spinner *ngIf="isGenerating" diameter="20" class="spinner"></mat-spinner>
-      {{ isGenerating ? 'Generando Plan...' : 'Generar Plan' }}
-    </button>
+
+    <div class="wizard-nav-actions">
+      <button
+        mat-fab extended
+        *ngIf="!isFirstStep()"
+        (click)="prevStep()"
+        class="nav-btn prev-btn">
+        <mat-icon>arrow_back</mat-icon>
+        Anterior
+      </button>
+
+      <button
+        mat-fab extended
+        color="primary"
+        *ngIf="!isLastStep()"
+        [disabled]="!isCurrentStepValid()"
+        (click)="nextStep()"
+        class="nav-btn next-btn">
+        Siguiente
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+
+      <button
+        mat-fab extended
+        color="primary"
+        *ngIf="isLastStep()"
+        [disabled]="!isFormValid()"
+        (click)="confirm()"
+        class="generate-btn">
+        <mat-icon>auto_awesome</mat-icon>
+        {{ isGenerating ? 'Generando...' : 'Generar Plan' }}
+      </button>
+    </div>
   </div>
 </div>

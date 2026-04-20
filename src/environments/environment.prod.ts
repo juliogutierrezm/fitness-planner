@@ -6,7 +6,8 @@ export const environment: Environment = {
   cognito: {
     domain: 'speedupcoach-auth.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_uUU5kQqKQ',
-    clientId: '6kuo4fgmr4s6qtfniuv4bu59f0'
+    clientId: '6kuo4fgmr4s6qtfniuv4bu59f0',
+    redirectUri: 'https://d14h9hze0yrphv.cloudfront.net/callback'
   }
 };
 

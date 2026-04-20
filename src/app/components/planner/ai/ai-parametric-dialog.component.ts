@@ -1,6 +1,6 @@
-import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, Inject, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray, FormControl, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,9 +15,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { trigger, transition, style, animate, query, group } from '@angular/animations';
 import { AiPlanRequest } from '../../../shared/models';
+import { TrainingGoal, TrainingGoalProfile, getGoalProfile } from '../../../shared/training-goal.config';
 import { ExerciseApiService } from '../../../exercise-api.service';
 import { AuthService } from '../../../services/auth.service';
+import { AiPlansService } from '../../../services/ai-plans.service';
 import { finalize, switchMap, catchError, filter, take, scan } from 'rxjs/operators';
 import { timer, of, Subscription, EMPTY } from 'rxjs';
 
@@ -43,11 +46,60 @@ import { timer, of, Subscription, EMPTY } from 'rxjs';
   ],
   templateUrl: './ai-parametric-dialog.component.html',
   styleUrls: ['./ai-parametric-dialog.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    trigger('stepTransition', [
+      transition(':increment', [
+        query(':enter, :leave', style({ position: 'absolute', width: '100%', top: 0, left: 0 }), { optional: true }),
+        group([
+          query(':leave', [
+            style({ opacity: 1, transform: 'translateX(0)' }),
+            animate('220ms ease-in-out', style({ opacity: 0, transform: 'translateX(-30px)' }))
+          ], { optional: true }),
+          query(':enter', [
+            style({ opacity: 0, transform: 'translateX(30px)' }),
+            animate('220ms ease-in-out', style({ opacity: 1, transform: 'translateX(0)' }))
+          ], { optional: true })
+        ])
+      ]),
+      transition(':decrement', [
+        query(':enter, :leave', style({ position: 'absolute', width: '100%', top: 0, left: 0 }), { optional: true }),
+        group([
+          query(':leave', [
+            style({ opacity: 1, transform: 'translateX(0)' }),
+            animate('220ms ease-in-out', style({ opacity: 0, transform: 'translateX(30px)' }))
+          ], { optional: true }),
+          query(':enter', [
+            style({ opacity: 0, transform: 'translateX(-30px)' }),
+            animate('220ms ease-in-out', style({ opacity: 1, transform: 'translateX(0)' }))
+          ], { optional: true })
+        ])
+      ])
+    ])
+  ]
 })
 export class AiParametricDialogComponent implements OnInit {
   form!: FormGroup;
   isGenerating = false;
+
+  // Wizard step management
+  currentStep = signal(0);
+  readonly totalSteps = 3;
+  readonly stepLabels = ['Perfil', 'Configuración', 'Sesiones'];
+  readonly stepIcons = ['person', 'tune', 'calendar_view_week'];
+  isLastStep = computed(() => this.currentStep() === this.totalSteps - 1);
+  isFirstStep = computed(() => this.currentStep() === 0);
+
+  // Active session tab in Step 3
+  activeSessionIndex = signal(0);
+
+  setActiveSession(index: number): void {
+    const total = this.form?.get('totalSessions')?.value || 1;
+    if (index >= 0 && index < total) {
+      this.activeSessionIndex.set(index);
+      this.cdr.markForCheck();
+    }
+  }
 
 
 
@@ -65,7 +117,7 @@ export class AiParametricDialogComponent implements OnInit {
         'Aun aprende la tecnica de movimientos basicos.',
         'Requiere supervision frecuente y evita ejercicios complejos.'
       ],
-      nextAction: 'Siguiente accion: priorizar tecnica, ejercicios guiados y volumen moderado.'
+
     },
     {
       value: 'Intermedio',
@@ -76,28 +128,25 @@ export class AiParametricDialogComponent implements OnInit {
         'Ejecuta correctamente la mayoria de los ejercicios comunes.',
         'Tolera mayor volumen e intensidad con supervision ocasional.'
       ],
-      nextAction: 'Siguiente accion: introducir variaciones, superseries y progresiones controladas.'
     },
     {
       value: 'Avanzado',
       title: 'Avanzado',
       purpose: 'Finalidad: exponer al usuario a ejercicios complejos y estimulos de alta exigencia de forma segura.',
       criteria: [
-        '2-3 anos o mas de entrenamiento constante.',
+        '2-3 años o mas de entrenamiento constante.',
         'Tecnica solida y consistente.',
         'Entrena de forma autonoma y maneja ejercicios complejos o de alta intensidad.'
       ],
-      nextAction: 'Siguiente accion: ampliar variedad con ejercicios complejos y alta intensidad.'
     }
   ];
 
-  trainingGoalOptions = [
-    { value: 'Hipertrofia', label: 'Hipertrofia', desc: 'Ganar masa muscular' },
-    { value: 'Pérdida de peso', label: 'Pérdida de peso', desc: 'Quemar grasa' },
-    { value: 'Resistencia', label: 'Resistencia', desc: 'Mayor resistencia muscular' },
-    { value: 'Potencia', label: 'Potencia', desc: 'Fuerza máxima explosiva' },
-    { value: 'Funcional', label: 'Funcional', desc: 'Movimientos naturales' },
-    { value: 'Cardiovascular', label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
+  trainingGoalOptions: { value: TrainingGoal; label: string; desc: string }[] = [
+    { value: TrainingGoal.HYPERTROPHY, label: 'Hipertrofia', desc: 'Ganar masa muscular' },
+    { value: TrainingGoal.WEIGHT_LOSS, label: 'Pérdida de peso', desc: 'Quemar grasa' },
+    { value: TrainingGoal.ENDURANCE, label: 'Resistencia', desc: 'Mayor resistencia muscular' },
+    { value: TrainingGoal.POWER, label: 'Potencia', desc: 'Fuerza máxima explosiva' },
+    { value: TrainingGoal.CARDIO, label: 'Cardiovascular', desc: 'Mejorar capacidad cardio' }
   ];
 
   equipmentOptions = [
@@ -106,33 +155,42 @@ export class AiParametricDialogComponent implements OnInit {
     { label: 'Kettlebell', value: 'Kettlebell' },
     { label: 'Mancuernas', value: 'Mancuernas' },
     { label: 'Máquina', value: 'Máquina' },
+    { label: 'Polea', value: 'Polea' },
     { label: 'Peso corporal', value: 'Peso corporal' },
-    { label: 'Anillas', value: 'Rings' }
+    { label: 'Suspensión', value: 'Rings' }
   ];
-
+  
   muscleGroupOptions = [
-    // Musculares
-    { label: 'Pectorales', value: 'Pectorales' },
-    { label: 'Dorsales', value: 'Dorsales' },
-    { label: 'Deltoides', value: 'Deltoides' },
-    { label: 'Bíceps', value: 'Bíceps' },
-    { label: 'Tríceps', value: 'Tríceps' },
-    { label: 'Cuádriceps', value: 'Cuádriceps' },
-    { label: 'Isquiotibiales', value: 'Isquiotibiales' },
-    { label: 'Glúteos', value: 'Glúteos' },
-    { label: 'Pantorrillas', value: 'Pantorrillas' },
-    { label: 'Trapecio', value: 'Trapecio' },
+    { label: 'Abdominales', value: 'Abdominales' },
+    { label: 'Abductores de cadera', value: 'Abductores de cadera' },
+    { label: 'Aductores de cadera', value: 'Aductores de cadera' },
     { label: 'Antebrazos', value: 'Antebrazos' },
-    { label: 'Core', value: 'Core' },
-    // Tipos / categorías
+    { label: 'Bíceps', value: 'Bíceps' },
+    { label: 'Cuádriceps', value: 'Cuádriceps' },
+    { label: 'Deltoides', value: 'Deltoides' },
+    { label: 'Dorsales', value: 'Dorsales' },
+    { label: 'Glúteos', value: 'Glúteos' },
+    { label: 'Isquiotibiales', value: 'Isquiotibiales' },
+    { label: 'Oblicuos', value: 'Oblicuos' },
+    { label: 'Pantorrilla', value: 'Pantorrilla' },
+    { label: 'Pectorales', value: 'Pectorales' },
+    { label: 'Trapecio', value: 'Trapecio' },
+    { label: 'Tríceps', value: 'Tríceps' },
+    { label: 'Cuerpo completo', value: 'Cuerpo completo' }
+  ];
+  
+  movementPatternOptions = [
     { label: 'Cardio', value: 'Cardio' },
+    { label: 'Carry', value: 'Carry' },
+    { label: 'Complex', value: 'Complex' },
+    { label: 'Conditioning', value: 'Conditioning' },
+    { label: 'Core', value: 'Core' },
+    { label: 'Hip (Hinge)', value: 'Bend' },
     { label: 'Mobility', value: 'Mobility' },
-    { label: 'Push', value: 'Push' },
-    { label: 'Pull', value: 'Pull' },
-    { label: 'Squat', value: 'Squat' },
     { label: 'Lunge', value: 'Lunge' },
-    { label: 'Hip', value: 'Bend' },
-    { label: 'Funcional', value: 'Funcional' }
+    { label: 'Pull', value: 'Pull' },
+    { label: 'Push', value: 'Push' },
+    { label: 'Squat', value: 'Squat' },
   ];
 
   // Purpose: store planner-supplied user context for AI requests.
@@ -150,7 +208,8 @@ export class AiParametricDialogComponent implements OnInit {
     private api: ExerciseApiService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
-    private authService: AuthService
+    private authService: AuthService,
+    private aiPlansService: AiPlansService
   ) {
     this.userId = data?.userId ?? null;
     this.userProfile = data?.userProfile ?? null;
@@ -161,13 +220,64 @@ export class AiParametricDialogComponent implements OnInit {
     this.initForm();
   }
 
+  // Wizard navigation
+  nextStep(): void {
+    if (this.currentStep() < this.totalSteps - 1 && this.isCurrentStepValid()) {
+      this.currentStep.update(s => s + 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  prevStep(): void {
+    if (this.currentStep() > 0) {
+      this.currentStep.update(s => s - 1);
+      this.cdr.markForCheck();
+    }
+  }
+
+  goToStep(step: number): void {
+    if (step >= 0 && step < this.totalSteps && step <= this.getMaxReachableStep()) {
+      this.currentStep.set(step);
+      this.cdr.markForCheck();
+    }
+  }
+
+  isCurrentStepValid(): boolean {
+    return this.isStepValid(this.currentStep());
+  }
+
+  isStepValid(step: number): boolean {
+    switch (step) {
+      case 0:
+        return this.form.get('difficulty')?.valid ?? false;
+      case 1: {
+        const goal = this.form.get('trainingGoal')?.valid ?? false;
+        const duration = this.form.get('sessionDuration')?.valid ?? false;
+        const exercises = this.form.get('expectedExercisesPerSession')?.valid ?? false;
+        const equipment = this.form.get('availableEquipment')?.valid ?? false;
+        return goal && duration && exercises && equipment;
+      }
+      case 2:
+        return (this.form.get('sessionBlueprint') as FormArray)?.valid ?? false;
+      default:
+        return false;
+    }
+  }
+
+  getMaxReachableStep(): number {
+    for (let i = 0; i < this.totalSteps; i++) {
+      if (!this.isStepValid(i)) return i;
+    }
+    return this.totalSteps - 1;
+  }
+
 
 
   private initForm() {
     this.form = this.fb.group({
       // General Data
       difficulty: ['Intermedio', Validators.required],
-      trainingGoal: ['Hipertrofia', Validators.required],
+      trainingGoal: [TrainingGoal.HYPERTROPHY, Validators.required],
 
       // Availability
       totalSessions: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
@@ -175,7 +285,7 @@ export class AiParametricDialogComponent implements OnInit {
       expectedExercisesPerSession: [8, [Validators.min(4), Validators.max(15)]],
 
       // Preferences
-      availableEquipment: [[]],
+      availableEquipment: [[], Validators.required],
 
       // Session Blueprint
       sessionBlueprint: this.fb.array([]),
@@ -193,15 +303,37 @@ export class AiParametricDialogComponent implements OnInit {
     this.updateSessionBlueprint();
   }
 
-  // Purpose: rebuild session blueprint while preserving existing muscle selections and supersets.
+  private readonly sessionTargetSelectionValidator = (control: AbstractControl): ValidationErrors | null => {
+    const targetType = control.get('targetType')?.value;
+    if (targetType === 'muscle') {
+      const selected = Array.isArray(control.get('selectedMuscleGroups')?.value)
+        ? control.get('selectedMuscleGroups')?.value as string[]
+        : [];
+      return selected.length > 0 ? null : { targetsRequired: true };
+    }
+    if (targetType === 'movement') {
+      const selected = Array.isArray(control.get('selectedMovementPatterns')?.value)
+        ? control.get('selectedMovementPatterns')?.value as string[]
+        : [];
+      return selected.length > 0 ? null : { targetsRequired: true };
+    }
+    return { targetsRequired: true };
+  };
+
+  // Purpose: rebuild session blueprint while preserving existing target selections and supersets.
   // Input/Output: reads totalSessions + current FormArray values, writes updated FormArray.
-  // Error handling: defaults to empty targets and true for includeSupersets when prior values are missing.
+  // Error handling: defaults to empty selections and true for includeSupersets when prior values are missing.
   // Standards Check: SRP OK | DRY OK | Tests Pending
   private updateSessionBlueprint() {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    const previousCount = sessionBlueprintArray.length;
     const existingValues = sessionBlueprintArray.controls.map((control) => ({
-      targets: Array.isArray(control.get('targets')?.value)
-        ? [...(control.get('targets')?.value as string[])]
+      targetType: control.get('targetType')?.value ?? 'muscle',
+      selectedMuscleGroups: Array.isArray(control.get('selectedMuscleGroups')?.value)
+        ? [...(control.get('selectedMuscleGroups')?.value as string[])]
+        : [],
+      selectedMovementPatterns: Array.isArray(control.get('selectedMovementPatterns')?.value)
+        ? [...(control.get('selectedMovementPatterns')?.value as string[])]
         : [],
       includeSupersets: control.get('includeSupersets')?.value ?? true
     }));
@@ -213,13 +345,27 @@ export class AiParametricDialogComponent implements OnInit {
     }
 
     for (let i = 0; i < totalSessions; i++) {
-      const existingTargets = existingValues[i]?.targets ?? [];
+      const existingTargetType = existingValues[i]?.targetType ?? 'muscle';
+      const existingMuscleGroups = existingValues[i]?.selectedMuscleGroups ?? [];
+      const existingMovementPatterns = existingValues[i]?.selectedMovementPatterns ?? [];
       const existingIncludeSupersets = existingValues[i]?.includeSupersets ?? true;
       sessionBlueprintArray.push(this.fb.group({
         name: [`Sesion ${i + 1}`, Validators.required],
-        targets: [existingTargets, Validators.required],
+        targetType: [existingTargetType],
+        selectedMuscleGroups: [existingMuscleGroups],
+        selectedMovementPatterns: [existingMovementPatterns],
         includeSupersets: [existingIncludeSupersets]
-      }));
+      }, { validators: this.sessionTargetSelectionValidator }));
+    }
+
+    // Clamp active session index when sessions are reduced
+    if (this.activeSessionIndex() >= totalSessions) {
+      this.activeSessionIndex.set(Math.max(0, totalSessions - 1));
+    }
+
+    // Auto-activate new session when sessions are added
+    if (totalSessions > previousCount) {
+      this.activeSessionIndex.set(totalSessions - 1);
     }
   }
 
@@ -232,9 +378,14 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('name') as FormControl;
   }
 
-  getSessionTargetsControl(index: number): FormControl {
+  getSessionMuscleGroupsControl(index: number): FormControl {
     const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
-    return sessionBlueprintArray.at(index).get('targets') as FormControl;
+    return sessionBlueprintArray.at(index).get('selectedMuscleGroups') as FormControl;
+  }
+
+  getSessionMovementPatternsControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('selectedMovementPatterns') as FormControl;
   }
 
   getSessionSupersetsControl(index: number): FormControl {
@@ -242,15 +393,67 @@ export class AiParametricDialogComponent implements OnInit {
     return sessionBlueprintArray.at(index).get('includeSupersets') as FormControl;
   }
 
-  removeTarget(sessionIndex: number, target: string) {
-    const control = this.getSessionTargetsControl(sessionIndex);
-    const current = control.value as string[];
-    control.setValue(current.filter(t => t !== target));
+  getSessionTargetTypeControl(index: number): FormControl {
+    const sessionBlueprintArray = this.form.get('sessionBlueprint') as FormArray;
+    return sessionBlueprintArray.at(index).get('targetType') as FormControl;
   }
 
-  getMuscleLabel(value: string): string {
-    const option = this.muscleGroupOptions.find(m => m.value === value);
+  onTargetTypeChange(sessionIndex: number): void {
+    const targetType = this.getSessionTargetTypeControl(sessionIndex).value;
+    if (targetType === 'muscle') {
+      this.getSessionMovementPatternsControl(sessionIndex).setValue([]);
+    } else if (targetType === 'movement') {
+      this.getSessionMuscleGroupsControl(sessionIndex).setValue([]);
+    }
+    this.cdr.markForCheck();
+  }
+
+  decrementTotalSessions(): void {
+    const control = this.form?.get('totalSessions');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.floor(current) : 1;
+    control.setValue(Math.max(1, Math.min(7, normalized - 1)));
+    this.cdr.markForCheck();
+  }
+
+  incrementTotalSessions(): void {
+    const control = this.form?.get('totalSessions');
+    if (!control) return;
+    const current = Number(control.value);
+    const normalized = Number.isFinite(current) ? Math.floor(current) : 1;
+    control.setValue(Math.max(1, Math.min(7, normalized + 1)));
+    this.cdr.markForCheck();
+  }
+
+  removeSelection(
+    sessionIndex: number,
+    controlName: 'selectedMuscleGroups' | 'selectedMovementPatterns',
+    target: string
+  ) {
+    const control = controlName === 'selectedMuscleGroups'
+      ? this.getSessionMuscleGroupsControl(sessionIndex)
+      : this.getSessionMovementPatternsControl(sessionIndex);
+    const current = control.value as string[];
+    control.setValue(current.filter(t => t !== target));
+    control.markAsDirty();
+    control.markAsTouched();
+  }
+
+  getTargetLabel(value: string): string {
+    const option = [...this.muscleGroupOptions, ...this.movementPatternOptions].find(target => target.value === value);
     return option?.label || value;
+  }
+
+  hasSessionSelections(index: number): boolean {
+    const targetType = this.getSessionTargetTypeControl(index).value;
+    if (targetType === 'muscle') {
+      return this.getSessionMuscleGroupsControl(index).value?.length > 0;
+    }
+    if (targetType === 'movement') {
+      return this.getSessionMovementPatternsControl(index).value?.length > 0;
+    }
+    return false;
   }
 
   isFormValid(): boolean {
@@ -262,16 +465,27 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   // Generate plan name from training goal
-  generatePlanName(trainingGoal: string): string {
-    const goalNames: { [key: string]: string } = {
-      'Hipertrofia': 'Plan de Ganancia Muscular',
-      'Pérdida de peso': 'Plan de Pérdida de Peso',
-      'Resistencia': 'Plan de Resistencia Muscular',
-      'Potencia': 'Plan de Fuerza y Potencia',
-      'Funcional': 'Plan Funcional',
-      'Cardiovascular': 'Plan Cardiovascular'
+  generatePlanName(trainingGoal: TrainingGoal): string {
+    const goalNames: Record<TrainingGoal, string> = {
+      [TrainingGoal.HYPERTROPHY]: 'Plan de Ganancia Muscular',
+      [TrainingGoal.WEIGHT_LOSS]: 'Plan de Pérdida de Peso',
+      [TrainingGoal.ENDURANCE]: 'Plan de Resistencia Muscular',
+      [TrainingGoal.POWER]: 'Plan de Fuerza y Potencia',
+      [TrainingGoal.CARDIO]: 'Plan Cardiovascular'
     };
-    return goalNames[trainingGoal] || `Plan de Entrenamiento - ${trainingGoal}`;
+    return goalNames[trainingGoal];
+  }
+
+  getSelectedGoalProfile(): TrainingGoalProfile | null {
+    const selectedGoal = this.form.get('trainingGoal')?.value as unknown;
+    if (!this.isTrainingGoal(selectedGoal)) {
+      return null;
+    }
+    return getGoalProfile(selectedGoal);
+  }
+
+  private isTrainingGoal(value: unknown): value is TrainingGoal {
+    return typeof value === 'string' && Object.values(TrainingGoal).includes(value as TrainingGoal);
   }
 
   /**
@@ -283,6 +497,39 @@ export class AiParametricDialogComponent implements OnInit {
   confirm() {
     if (!this.isFormValid()) return;
 
+    // Second line of defense: check quota before sending request
+    if (this.authService.isTrainer()) {
+      const trainerId = this.authService.getCurrentUserId();
+      if (trainerId) {
+        this.isGenerating = true;
+        this.cdr.markForCheck();
+        this.aiPlansService.getTrainerQuota(trainerId).subscribe(quota => {
+          if (quota.limitReached) {
+            this.isGenerating = false;
+            this.cdr.markForCheck();
+            this.snackBar.open(
+              `Has alcanzado el límite de ${quota.limit} planes IA permitidos.`,
+              'Cerrar',
+              { duration: 5000 }
+            );
+            return;
+          }
+          this.executeGeneration();
+        });
+        return;
+      }
+    }
+
+    this.executeGeneration();
+  }
+
+  /**
+   * Purpose: execute the AI plan generation request after validation and quota check.
+   * Input/Output: uses form values + user context, closes dialog with {started:true}.
+   * Error handling: snackbar on API failure.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  private executeGeneration() {
     const formValue = this.form.value;
     const requestStartMs = Date.now();
 
@@ -383,11 +630,20 @@ export class AiParametricDialogComponent implements OnInit {
   }
 
   private buildSessionBlueprint(formValue: any): { name: string; targets: string[]; includeSupersets: boolean }[] {
-    return formValue.sessionBlueprint.map((session: any) => ({
-      name: session.name,
-      targets: session.targets,
-      includeSupersets: session.includeSupersets ?? true
-    }));
+    return formValue.sessionBlueprint.map((session: any) => {
+      const targetType = session.targetType ?? 'muscle';
+      let targets: string[];
+      if (targetType === 'muscle') {
+        targets = Array.isArray(session.selectedMuscleGroups) ? session.selectedMuscleGroups : [];
+      } else {
+        targets = Array.isArray(session.selectedMovementPatterns) ? session.selectedMovementPatterns : [];
+      }
+      return {
+        name: session.name,
+        targets,
+        includeSupersets: session.includeSupersets ?? true
+      };
+    });
   }
 
   // Get form field error messages

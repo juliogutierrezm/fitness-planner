@@ -1,22 +1,23 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatTableDataSource } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
-import { finalize } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { finalize, map, shareReplay, take, tap } from 'rxjs/operators';
 import { ExerciseApiService } from '../../exercise-api.service';
 import { AuthService } from '../../services/auth.service';
 import { Exercise, ExerciseFilters, FilterOptions, InlineEditCatalogs, PaginatorState, EXERCISE_DIFFICULTY_OPTIONS, EXERCISE_MUSCLE_TYPE_OPTIONS } from '../../shared/models';
-import { FeedbackConfig, ExerciseMessages, ErrorMapper, DevLogger } from '../../shared/feedback-utils';
+import { FeedbackConfig, ExerciseMessages, DevLogger } from '../../shared/feedback-utils';
 import { ExerciseFiltersComponent } from './components/exercise-filters/exercise-filters.component';
 import { ExerciseTableComponent } from './components/exercise-table/exercise-table.component';
 import { ExerciseVideoDialogComponent } from './components/exercise-video-dialog/exercise-video-dialog.component';
 import { ExerciseEditDialogComponent } from './components/exercise-edit-dialog/exercise-edit-dialog.component';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
 import { InlineEditOptionsService } from './components/exercise-table/inline-edit-options.service';
+import { getThumbnailSource } from '../../shared/video-utils';
 
 @Component({
   selector: 'app-exercise-manager',
@@ -35,10 +36,10 @@ import { InlineEditOptionsService } from './components/exercise-table/inline-edi
   styleUrls: ['./exercise-manager.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ExerciseManagerComponent implements OnInit {
+export class ExerciseManagerComponent implements OnInit, OnDestroy {
   loading = false;
-  dataSource = new MatTableDataSource<Exercise>();
-  exercises: Exercise[] = [];
+  exercises$!: Observable<Exercise[]>;
+  filteredExercises$!: Observable<Exercise[]>;
 
   // Current filters data
   currentFilters: ExerciseFilters = {
@@ -66,12 +67,15 @@ export class ExerciseManagerComponent implements OnInit {
 
   // Persistence key
   private readonly STORAGE_KEY = 'exercise-manager-filters';
+  private readonly MEDIA_REFRESH_INTERVAL_MS = 2000;
+  private readonly MEDIA_REFRESH_MAX_ATTEMPTS = 15;
+  private mediaRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
+  private exercisesSnapshot: Exercise[] = [];
 
   constructor(
     private api: ExerciseApiService,
     private authService: AuthService,
     private dialog: MatDialog,
-    private router: Router,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef,
     private inlineOptionsService: InlineEditOptionsService
@@ -81,20 +85,25 @@ export class ExerciseManagerComponent implements OnInit {
     return this.authService.isGymAdmin();
   }
 
-  /**
-   * Purpose: determine if current user can modify exercises (create/edit/delete).
-   * Only users belonging to the System Cognito group have modification permissions.
-   * Input: none. Output: boolean.
-   * Error handling: returns false when user lacks System group.
-   * Standards Check: SRP OK | DRY OK | Tests Pending.
-   */
+  get currentUserId(): string | null {
+    return this.authService.getCurrentUserId();
+  }
+
+  get currentCompanyId(): string | null {
+    return this.authService.getCurrentCompanyId();
+  }
+
   get canModifyExercises(): boolean {
-    return this.authService.isSystem();
+    return Boolean(this.currentUserId);
   }
 
   ngOnInit(): void {
     this.loadFiltersFromStorage();
     this.loadExercises();
+  }
+
+  ngOnDestroy(): void {
+    this.stopMediaRefreshPolling();
   }
 
   private loadFiltersFromStorage(): void {
@@ -125,12 +134,12 @@ export class ExerciseManagerComponent implements OnInit {
     }
   }
 
-  private populateFilterOptions(): void {
+  private populateFilterOptions(exercises: Exercise[]): void {
     const categories = new Set<string>();
     const muscleGroups = new Set<string>();
     const equipmentTypes = new Set<string>();
 
-    this.exercises.forEach(ex => {
+    exercises.forEach(ex => {
       const category = this.getFieldValue(ex, 'category');
       const muscleGroup = this.getFieldValue(ex, 'muscle_group');
       const equipmentType = this.getFieldValue(ex, 'equipment_type');
@@ -159,31 +168,24 @@ export class ExerciseManagerComponent implements OnInit {
       case 'muscle_group':
         return exercise.muscle_group || exercise.muscle;
       case 'exercise_type':
-        return exercise.exercise_type || exercise.category;
+        return exercise.exercise_type || '';
       default:
         return (exercise as any)[field];
     }
   }
 
-  loadExercises(): void {
+  loadExercises(onLoaded?: (exercises: Exercise[]) => void): void {
     const startTime = Date.now();
     this.loading = true;
+    this.cdr.markForCheck();
 
-    this.api.getExerciseLibrary().pipe(
-      finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck(); // Ensure UI updates with OnPush strategy
-      })
-    ).subscribe({
-      next: (res) => {
-        this.exercises = res.items;
+    this.exercises$ = this.api.getAllExercises().pipe(
+      tap((exercises) => {
+        this.exercisesSnapshot = [...exercises];
+        this.populateFilterOptions(exercises);
 
-        // Populate filter options from data
-        this.populateFilterOptions();
-
-        // Build inline edit catalogs from backend data/cache
         const catalogs = this.inlineOptionsService.buildCatalogs(
-          this.exercises,
+          exercises,
           EXERCISE_DIFFICULTY_OPTIONS
         );
         this.inlineCatalogs = {
@@ -191,32 +193,44 @@ export class ExerciseManagerComponent implements OnInit {
           exerciseTypeOptions: [...EXERCISE_MUSCLE_TYPE_OPTIONS]
         };
 
-        // Apply combined filtering
-        this.applyCombinedFilter();
-
-        // Log operation success following DEVELOPER.md Section O
         const elapsedMs = Date.now() - startTime;
         DevLogger.logOperation('loadExercises', {
-          count: res.items.length,
+          count: exercises.length,
           elapsedMs
         }, true);
 
-        console.log('📚 Biblioteca de ejercicios cargada:', res.count, 'ejercicios');
-      },
-      error: (err) => {
-        DevLogger.logError('loadExercises', err);
-        const errorMsg = ErrorMapper.mapHttpError(err);
-        this.snackBar.open(errorMsg, 'Cerrar', FeedbackConfig.errorConfig());
-      }
-    });
+        console.log('📚 Ejercicios combinados cargados:', exercises.length);
+      }),
+      finalize(() => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }),
+      shareReplay(1)
+    );
+
+    this.rebuildFilteredExercises();
+
+    if (onLoaded) {
+      this.exercises$.pipe(take(1)).subscribe({
+        next: onLoaded,
+        error: () => {
+          // Errors are already handled in the source observable.
+        }
+      });
+    }
   }
 
   onFiltersChanged(filters: ExerciseFilters): void {
-    this.currentFilters = filters;
-    this.applyCombinedFilter();
+    this.currentFilters = { ...filters };
+    this.saveFiltersToStorage();
+    this.rebuildFilteredExercises();
   }
 
   onCreateNewClicked(): void {
+    if (!this.canModifyExercises) {
+      return;
+    }
+
     this.openEditDialog(null);
   }
 
@@ -225,11 +239,60 @@ export class ExerciseManagerComponent implements OnInit {
   }
 
   onEditExercise(exercise: Exercise): void {
+    if (!this.canEditExercise(exercise)) {
+      return;
+    }
+
     this.openEditDialog(exercise);
   }
 
-  onViewDetails(exercise: Exercise): void {
-    this.router.navigate(['/exercise-detail', exercise.id]);
+  /**
+   * Purpose: delete a custom exercise after user confirmation.
+   * Input: Exercise to delete. Output: void.
+   * Error handling: shows snackbar on error, reloads list on success.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  onDeleteExercise(exercise: Exercise): void {
+    if (!this.canEditExercise(exercise)) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Eliminar Ejercicio',
+        message: `¿Estás seguro de que deseas eliminar "${exercise.name_es || exercise.name}"? Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        icon: 'delete'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+
+      this.loading = true;
+      this.cdr.markForCheck();
+
+      this.api.deleteExercise(exercise.id).pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (response) => {
+          if (response) {
+            this.snackBar.open('Ejercicio eliminado correctamente.', 'Cerrar', FeedbackConfig.successConfig());
+            this.loadExercises();
+          } else {
+            this.snackBar.open('Error al eliminar el ejercicio.', 'Cerrar', FeedbackConfig.errorConfig());
+          }
+        },
+        error: (err) => {
+          console.error('Error deleting exercise:', err);
+          this.snackBar.open('Error al eliminar el ejercicio.', 'Cerrar', FeedbackConfig.errorConfig());
+        }
+      });
+    });
   }
 
   onOpenVideo(exercise: Exercise): void {
@@ -241,9 +304,9 @@ export class ExerciseManagerComponent implements OnInit {
     this.savePaginatorState();
   }
 
-  private applyCombinedFilter(): void {
-    // Combine all filters and apply to data source
-    const filteredData = this.exercises.filter(exercise => {
+  private rebuildFilteredExercises(): void {
+    this.filteredExercises$ = this.exercises$.pipe(
+      map(exercises => exercises.filter(exercise => {
       // Text search on name_es only
       const matchesSearch = !this.currentFilters.searchValue.trim() ||
         (this.getFieldValue(exercise, 'name_es') || '').toLowerCase()
@@ -271,10 +334,8 @@ export class ExerciseManagerComponent implements OnInit {
 
 
       return matchesSearch && matchesCategory && matchesMuscleGroup && matchesEquipmentType && matchesDifficulty && matchesGroupType;
-    });
-
-    this.dataSource.data = filteredData;
-    this.saveFiltersToStorage();
+    }))
+    );
   }
 
   private savePaginatorState(): void {
@@ -292,40 +353,112 @@ export class ExerciseManagerComponent implements OnInit {
       data: exercise,
       width: '600px'
     }).componentInstance.viewDetailsClicked.subscribe(selectedExercise => {
-      this.openEditDialog(selectedExercise);
+      if (this.canEditExercise(selectedExercise)) {
+        this.openEditDialog(selectedExercise);
+      }
     });
+  }
+
+  private canEditExercise(exercise: Exercise | null | undefined): boolean {
+    if (!exercise) return false;
+    if (Boolean(this.currentUserId) && exercise.trainerId === this.currentUserId) return true;
+    if (this.isGymAdmin && Boolean(this.currentCompanyId) && exercise.companyId === this.currentCompanyId) return true;
+    return false;
   }
 
   private openEditDialog(exercise: Exercise | null): void {
     const dialogRef = this.dialog.open(ExerciseEditDialogComponent, {
-      data: exercise,
-      width: '800px'
+      data: { exercise, filterOptions: this.filterOptions },
+      width: '960px',
+      maxWidth: '96vw'
     });
 
-    dialogRef.componentInstance.exerciseSaved.subscribe(result => {
-      if (exercise) {
-        // Update mode
-        if (result.ok) {
-          // Merge updated fields into local exercise
-          const index = this.exercises.findIndex(ex => ex.id === exercise.id);
-          if (index !== -1) {
-            this.exercises[index] = { ...this.exercises[index], ...result.updated };
-            this.applyCombinedFilter(); // Refresh the table
-            this.cdr.markForCheck(); // Ensure UI updates with OnPush strategy
-          }
-          this.snackBar.open(ExerciseMessages.UPDATED_SUCCESS, 'Cerrar', FeedbackConfig.successConfig());
-        } else {
-          this.snackBar.open(ExerciseMessages.SAVE_ERROR, 'Cerrar', FeedbackConfig.errorConfig());
-        }
+    let saveHandled = false;
+    dialogRef.componentInstance.exerciseSaved.subscribe((event?: {
+      exerciseId?: string;
+      shouldPollForThumbnail?: boolean;
+    }) => {
+      saveHandled = true;
+      this.loadExercises();
+      if (event?.shouldPollForThumbnail && event.exerciseId) {
+        this.startMediaRefreshPolling(event.exerciseId);
       } else {
-        // Create mode
-        this.loadExercises(); // Refresh to get the new exercise
-        this.snackBar.open(ExerciseMessages.CREATED_SUCCESS, 'Cerrar', FeedbackConfig.successConfig());
+        this.stopMediaRefreshPolling();
       }
     });
 
-    dialogRef.afterClosed().subscribe(() => {
-      // Dialog closed without save - no action needed
+    dialogRef.afterClosed().subscribe((result?: {
+      saved?: boolean;
+      exerciseId?: string;
+      shouldPollForThumbnail?: boolean;
+    }) => {
+      if (result?.saved && !saveHandled) {
+        this.loadExercises();
+        if (result.shouldPollForThumbnail && result.exerciseId) {
+          this.startMediaRefreshPolling(result.exerciseId);
+        }
+      }
+
+      if (!result?.saved) {
+        return;
+      }
+
+      const message = exercise
+        ? ExerciseMessages.UPDATED_SUCCESS
+        : ExerciseMessages.CREATED_SUCCESS;
+      this.snackBar.open(message, 'Cerrar', FeedbackConfig.successConfig());
     });
+  }
+
+  private startMediaRefreshPolling(exerciseId: string): void {
+    this.stopMediaRefreshPolling();
+
+    let attempts = 0;
+    this.mediaRefreshIntervalId = setInterval(() => {
+      attempts += 1;
+      this.api.getExerciseById(exerciseId, true).pipe(take(1)).subscribe({
+        next: (refreshedExercise) => {
+          if (refreshedExercise) {
+            this.replaceExerciseInMemory(refreshedExercise);
+          }
+
+          const hasThumbnail = Boolean(refreshedExercise && getThumbnailSource(refreshedExercise));
+          if (hasThumbnail || attempts >= this.MEDIA_REFRESH_MAX_ATTEMPTS) {
+            this.stopMediaRefreshPolling();
+          }
+        },
+        error: () => {
+          if (attempts >= this.MEDIA_REFRESH_MAX_ATTEMPTS) {
+            this.stopMediaRefreshPolling();
+          }
+        }
+      });
+    }, this.MEDIA_REFRESH_INTERVAL_MS);
+  }
+
+  private replaceExerciseInMemory(updatedExercise: Exercise): void {
+    if (!this.exercisesSnapshot.length) {
+      return;
+    }
+
+    const exerciseIndex = this.exercisesSnapshot.findIndex(ex => ex.id === updatedExercise.id);
+    if (exerciseIndex === -1) {
+      return;
+    }
+
+    const nextExercises = [...this.exercisesSnapshot];
+    nextExercises[exerciseIndex] = { ...this.exercisesSnapshot[exerciseIndex], ...updatedExercise };
+
+    this.exercisesSnapshot = nextExercises;
+    this.exercises$ = of(nextExercises).pipe(shareReplay(1));
+    this.rebuildFilteredExercises();
+    this.cdr.markForCheck();
+  }
+
+  private stopMediaRefreshPolling(): void {
+    if (this.mediaRefreshIntervalId) {
+      clearInterval(this.mediaRefreshIntervalId);
+      this.mediaRefreshIntervalId = null;
+    }
   }
 }

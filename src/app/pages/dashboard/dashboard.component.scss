@@ -86,6 +86,15 @@
   mat-icon {
     color: var(--primary-600);
   }
+
+  &--warn {
+    background: rgba(255, 152, 0, 0.15);
+    color: #ffb74d;
+
+    mat-icon {
+      color: #ffb74d;
+    }
+  }
 }
 
 .refresh-button {

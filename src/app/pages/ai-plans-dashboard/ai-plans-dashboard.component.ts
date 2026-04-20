@@ -9,6 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AiPlansService, AiAggregateResponse, AiClientPlansSummary, AiPlanSummary } from '../../services/ai-plans.service';
 import { AuthService } from '../../services/auth.service';
 import { UserApiService, AppUser } from '../../user-api.service';
+import { AiPlanQuota } from '../../shared/ai-plan-limits';
 
 interface AiMetricCard {
   label: string;
@@ -38,6 +39,9 @@ export class AiPlansDashboardComponent implements OnInit {
   metrics: AiMetricCard[] = [];
   clients: AiClientPlansSummary[] = [];
   scopeLabel = 'IA';
+
+  /** Trainer AI plan quota (only loaded for trainer role). */
+  quota: AiPlanQuota | null = null;
 
   constructor(
     private aiPlansService: AiPlansService,
@@ -89,6 +93,11 @@ export class AiPlansDashboardComponent implements OnInit {
         this.cdr.markForCheck();
         return;
       }
+      // Load quota for trainer
+      this.aiPlansService.getTrainerQuota(trainerId).subscribe(q => {
+        this.quota = q;
+        this.cdr.markForCheck();
+      });
       this.aiPlansService.getByTrainer(trainerId).subscribe(response => {
         this.handleResponse(response);
       });

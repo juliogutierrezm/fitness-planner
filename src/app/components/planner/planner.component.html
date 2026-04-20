@@ -17,7 +17,7 @@
     <button mat-mini-fab (click)="goBack()" matTooltip="Volver a la lista de planes">
       <mat-icon>arrow_back</mat-icon>
     </button>
-            <button
+        <button
           *ngIf="!isTemplateMode"
           mat-fab extended
           color="primary"
@@ -35,7 +35,7 @@
         <mat-icon>person</mat-icon>
         {{ getPlannerHeaderLabel() }}
       </mat-card-title>
-      <mat-card-subtitle>Puedes crear tus planes con IA</mat-card-subtitle>
+      <mat-card-subtitle>Crea o edita planes de entrenamiento</mat-card-subtitle>
       <div class="actions-right">
         <ng-container *ngIf="!isEditMode">
           <mat-progress-spinner
@@ -43,13 +43,27 @@
             mode="indeterminate"
             diameter="24"
           ></mat-progress-spinner>
+          <span
+            *ngIf="!isUserLoading && !isTemplateMode && aiPlanQuota"
+            class="ai-quota-badge"
+            [class.limit-reached]="aiPlanQuota.limitReached"
+            [matTooltip]="aiPlanQuota.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota.limit + ' planes IA'
+              : aiPlanQuota.remaining + ' planes IA restantes'"
+          >
+            {{ aiPlanQuota.used }}/{{ aiPlanQuota.limit }}
+          </span>
           <button class="ia-button"
             *ngIf="!isUserLoading && !isTemplateMode"
             mat-fab extended
             color="accent"
             (click)="openAIDialog()"
-            [disabled]="!userProfile?.id"
-            [matTooltip]="userProfile?.id ? 'Generar plan con IA' : 'Debe cargar un usuario antes de generar un plan con IA.'"
+            [disabled]="!userProfile?.id || aiPlanQuota?.limitReached"
+            [matTooltip]="aiPlanQuota?.limitReached
+              ? 'Has alcanzado el límite de ' + aiPlanQuota!.limit + ' planes IA permitidos'
+              : userProfile?.id
+                ? 'Generar plan con IA'
+                : 'Debe cargar un usuario antes de generar un plan con IA.'"
           >
           <mat-icon>auto_awesome</mat-icon>
             Generar plan IA
@@ -62,8 +76,8 @@
           [matTooltip]="isTemplateMode ? (isEditMode ? 'Guardar cambios de plantilla' : 'Crear plantilla') : 'Guardar el plan actual'"
           [disabled]="isSavingPlan || isSavingTemplate || isInitialLoading"
         >
-          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'list_alt' : 'list_alt') }}</mat-icon>
-          {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Crear plan') }}
+          <mat-icon>{{ isTemplateMode ? (isEditMode ? 'style' : 'style') : (isEditMode ? 'library_books' : 'library_books') }}</mat-icon>
+          {{ isTemplateMode ? (isEditMode ? 'Actualizar plantilla' : 'Crear plantilla') : (isEditMode ? 'Actualizar plan' : 'Guardar plan') }}
         </button>
       </div>
     </mat-card-header>
@@ -141,16 +155,37 @@
     <ng-template matExpansionPanelContent>
       <div class="progressions-body">
         <div class="progressions-controls">
-          <mat-form-field appearance="outline" class="compact-field progressions-total">
-            <mat-label>Total de semanas</mat-label>
-            <input
-              matInput
-              type="number"
-              min="1"
-              [(ngModel)]="progressions.totalWeeks"
-              (ngModelChange)="onTotalWeeksChange($event)"
-            />
-          </mat-form-field>
+          <div class="progressions-total">
+            <label class="compact-stepper__label" for="totalWeeksInput">Total de semanas</label>
+            <div class="compact-stepper" role="group" aria-label="Control de total de semanas">
+              <button
+                type="button"
+                class="compact-stepper__btn"
+                (click)="decrementTotalWeeks()"
+                matTooltip="Reducir semanas"
+                aria-label="Reducir semanas"
+              >
+                −
+              </button>
+              <input
+                id="totalWeeksInput"
+                class="compact-stepper__input"
+                type="number"
+                min="1"
+                [(ngModel)]="progressions.totalWeeks"
+                (ngModelChange)="onTotalWeeksChange($event)"
+              />
+              <button
+                type="button"
+                class="compact-stepper__btn"
+                (click)="incrementTotalWeeks()"
+                matTooltip="Aumentar semanas"
+                aria-label="Aumentar semanas"
+              >
+                +
+              </button>
+            </div>
+          </div>
           <span class="progressions-hint">Guia textual semanal (no afecta el plan base).</span>
         </div>
 
@@ -181,76 +216,101 @@
   <!-- Filtros y Sesiones -->
   <div class="filters-and-sessions-row">
     <div class="filters-section">
-      <div class="filters-header">
-        <h3 class="filters-title">Filtro de ejercicios</h3>
-        <button mat-stroked-button color="primary" class="clear-filters" (click)="clearFilters()">
-          <mat-icon>filter_alt_off</mat-icon>
-          Limpiar filtros
-        </button>
+      <div class="filters-content-row">
+        <div class="filters-left-column">
+          <div class="filters-header">
+            <h3 class="filters-title">Filtro de ejercicios</h3>
+            <button
+              mat-mini-fab
+              type="button"
+              class="clear-filters"
+              (click)="clearFilters()"
+              matTooltip="Limpiar filtros"
+              aria-label="Limpiar filtros"
+            >
+              <mat-icon>filter_alt_off</mat-icon>
+            </button>
+          </div>
+          <div class="filters-fields">
+            <mat-form-field appearance="outline" class="search-field compact-field">
+              <mat-label>Nombre</mat-label>
+              <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="compact-field">
+              <mat-label>Categoría</mat-label>
+              <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
+                <mat-option value="">Todas</mat-option>
+                <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ getUiLabel(cat) }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="compact-field">
+              <mat-label>Grupo Muscular</mat-label>
+              <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ getUiLabel(mg) }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="compact-field">
+              <mat-label>Tipo de Equipo</mat-label>
+              <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
+                <mat-option value="">Todos</mat-option>
+                <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ getUiLabel(et) }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="compact-field">
+              <mat-label>Dificultad</mat-label>
+              <mat-select [(ngModel)]="currentFilters.difficultyFilter" (selectionChange)="onFilterChange()">
+                <mat-option value="">Todas</mat-option>
+                <mat-option *ngFor="let diff of filterOptions.difficultyOptions" [value]="diff">{{ diff }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <form [formGroup]="form" class="sessions-wrapper-inline">
+          <div class="field-sessions-inline">
+            <label class="compact-stepper__label" for="sessionCountInput">Sesiones</label>
+            <div class="compact-stepper" role="group" aria-label="Control de sesiones">
+              <button
+                type="button"
+                class="compact-stepper__btn"
+                (click)="decrementSessionCount()"
+                matTooltip="Reducir sesiones"
+                aria-label="Reducir sesiones"
+              >
+                −
+              </button>
+              <input
+                id="sessionCountInput"
+                class="compact-stepper__input"
+                type="number"
+                formControlName="sessionCount"
+                min="1"
+              />
+              <button
+                type="button"
+                class="compact-stepper__btn"
+                (click)="incrementSessionCount()"
+                matTooltip="Aumentar sesiones"
+                aria-label="Aumentar sesiones"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
-      <div class="filters-row">
-      <mat-form-field appearance="outline" class="search-field compact-field">
-        <mat-label>Nombre</mat-label>
-        <input matInput [(ngModel)]="currentFilters.searchValue" (keyup)="onFilterChange()">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Categoría</mat-label>
-        <mat-select [(ngModel)]="currentFilters.categoryFilter" (selectionChange)="onFilterChange()">
-          <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let cat of filterOptions.categoryOptions" [value]="cat">{{ cat }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Grupo Muscular</mat-label>
-        <mat-select [(ngModel)]="currentFilters.muscleGroupFilter" (selectionChange)="onFilterChange()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let mg of filterOptions.muscleGroupOptions" [value]="mg">{{ mg }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Tipo de Equipo</mat-label>
-        <mat-select [(ngModel)]="currentFilters.equipmentTypeFilter" (selectionChange)="onFilterChange()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let et of filterOptions.equipmentTypeOptions" [value]="et">{{ et }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Dificultad</mat-label>
-        <mat-select [(ngModel)]="currentFilters.difficultyFilter" (selectionChange)="onFilterChange()">
-          <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let diff of filterOptions.difficultyOptions" [value]="diff">{{ diff }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-<!--       <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Tipo de Grupo</mat-label>
-        <mat-select [(ngModel)]="currentFilters.groupTypeFilter" (selectionChange)="onFilterChange()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let gt of filterOptions.groupTypeOptions" [value]="gt">{{ gt }}</mat-option>
-        </mat-select>
-      </mat-form-field> -->
     </div>
   </div>
 
-  <!-- Campo de sesiones (compacto) -->
-  <form [formGroup]="form" class="sessions-wrapper-inline">
-    <mat-form-field appearance="outline" class="field-sessions-inline compact-field">
-      <mat-label>Sesiones</mat-label>
-      <input matInput type="number" formControlName="sessionCount" min="1"/>
-      <mat-icon matSuffix>event_available</mat-icon>
-    </mat-form-field>
-  </form>
-</div>
-
-
 
   <!-- Body -->
-  <div class="planner-body">
+  <div class="planner-body" cdkDropListGroup>
     <div class="visually-hidden" aria-live="polite">{{ liveMessage }}</div>
     <!-- Columna izquierda: Ejercicios y Planes anteriores -->
     <div class="left-column">
@@ -271,18 +331,18 @@
 
         <div cdkDropList id="exerciseList" [cdkDropListData]="filteredExercises" [cdkDropListConnectedTo]="exerciseListConnectedTo" class="list" (cdkDropListDropped)="drop($event)">
           <div class="empty" *ngIf="filteredExercises.length === 0">No hay resultados</div>
-          <cdk-virtual-scroll-viewport itemSize="36" class="vs">
-          <div *cdkVirtualFor="let ex of filteredExercises; trackBy: trackByExercise"
-                 cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragMoved)="onDragMoved($event)">
+          <div class="vs exercise-scroll-container" (scroll)="onExerciseListScroll($event)">
+          <div *ngFor="let ex of visibleExercises; trackBy: trackByExercise"
+                 cdkDrag [cdkDragData]="ex" class="list-item" (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
               <div class="exercise-name">
                 {{ ex.name_es || 'Nombre no disponible' }}
               </div>
               <div class="row">
-                <small>({{ ex.equipment_type || 'Equipo no definido' }})</small>
+                <small>({{ getExerciseEquipmentDisplay(ex.equipment_type) }})</small>
                 <div class="actions">
                   <button mat-mini-fab 
                     (click)="openExercisePreview(ex)" 
-                    (mouseenter)="onVideoHover(ex, $event)"
+                    (mouseenter)="onVideoHover(ex, $event, 'library')"
                     (mouseleave)="onVideoLeave()"
                     [matTooltip]="'Vista previa'">
                     <mat-icon>play_circle</mat-icon>
@@ -302,7 +362,10 @@
                 </div>
               </ng-container>
             </div>
-          </cdk-virtual-scroll-viewport>
+            <div *ngIf="visibleExercises.length < filteredExercises.length" class="load-more-hint">
+              Mostrando {{ visibleExercises.length }} de {{ filteredExercises.length }} — desplaza para ver más
+            </div>
+          </div>
         </div>
 
       </aside>
@@ -344,7 +407,18 @@
         class="session-card"
         cdkDrag
         [cdkDragData]="s"
+        (cdkDragStarted)="onDragStarted()"
+        (cdkDragEnded)="onDragEnded()"
       >
+        <ng-template cdkDragPreview>
+          <div class="session-drag-preview">
+            <mat-icon>drag_indicator</mat-icon>
+            <div class="drag-preview__content">
+              <span class="drag-preview__title">{{ s.name }}</span>
+              <span class="drag-preview__meta">{{ s.items.length }} ejercicios</span>
+            </div>
+          </div>
+        </ng-template>
         <div
           cdkDropList
           [id]="'session-' + s.id"
@@ -385,7 +459,18 @@
                   <div class="planner-grid planner-row exercise-row"
                        cdkDrag
                        [cdkDragData]="item"
+                       (cdkDragStarted)="onDragStarted()"
+                       (cdkDragEnded)="onDragEnded()"
                        (cdkDragMoved)="onDragMoved($event)">
+                    <ng-template cdkDragPreview>
+                      <div class="plan-item-drag-preview">
+                        <mat-icon>fitness_center</mat-icon>
+                        <div class="drag-preview__content">
+                          <span class="drag-preview__title">{{ getDisplayName(item) }}</span>
+                          <span class="drag-preview__meta">{{ item.sets || '-' }} x {{ item.reps || '-' }}</span>
+                        </div>
+                      </div>
+                    </ng-template>
                     <div class="planner-cell control-cell">
                       <mat-checkbox
                         [(ngModel)]="item.selected"
@@ -431,7 +516,7 @@
                     <div class="planner-cell actions-cell ">
                       <button mat-mini-fab 
                         (click)="openExercisePreview(item)" 
-                        (mouseenter)="onVideoHover(item, $event)"
+                        (mouseenter)="onVideoHover(item, $event, 'row')"
                         (mouseleave)="onVideoLeave()"
                         [matTooltip]="'Vista previa'">
                         <mat-icon>play_circle</mat-icon>
@@ -446,7 +531,16 @@
 
                 <ng-container *ngIf="item.isGroup">
                   <!-- Superserie block rendered inline -->
-                  <div class="superserie-wrapper" cdkDrag [cdkDragData]="item" (cdkDragMoved)="onDragMoved($event)">
+                  <div class="superserie-wrapper" cdkDrag [cdkDragData]="item" (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
+                    <ng-template cdkDragPreview>
+                      <div class="plan-item-drag-preview plan-item-drag-preview--group">
+                        <mat-icon>offline_bolt</mat-icon>
+                        <div class="drag-preview__content">
+                          <span class="drag-preview__title">Superserie</span>
+                          <span class="drag-preview__meta">{{ item.children?.length || 0 }} ejercicios</span>
+                        </div>
+                      </div>
+                    </ng-template>
                     <div class="planner-grid planner-row superserie-header">
                       <div class="planner-cell control-cell trash-icon">
                         <button mat-mini-fab color="warn" (click)="ungroupGroup(s, i)" matTooltip="Desagrupar superserie">
@@ -522,7 +616,7 @@
                         <div class="planner-cell actions-cell">
                           <button mat-mini-fab 
                             (click)="openExercisePreview(child)" 
-                            (mouseenter)="onVideoHover(child, $event)"
+                            (mouseenter)="onVideoHover(child, $event, 'row')"
                             (mouseleave)="onVideoLeave()"
                             [matTooltip]="'Vista previa'">
                             <mat-icon>play_circle</mat-icon>

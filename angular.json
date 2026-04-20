@@ -17,7 +17,11 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/fitness-planner",
+            "outputPath": {
+              "base": "dist/fitness-planner",
+              "browser": "",
+              "server": ""
+            },
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -40,15 +44,20 @@
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": [],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            }
+            "scripts": []
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                },
+                {
+                  "replace": "src/aws-exports.ts",
+                  "with": "src/aws/aws-exports.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -57,10 +66,11 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kB",
-                  "maximumError": "15kB"
+                  "maximumWarning": "26kb",
+                  "maximumError": "28kb"
                 }
               ],
+              "optimization": true,
               "outputHashing": "all"
             },
             "development": {
@@ -78,8 +88,7 @@
               "buildTarget": "fitness-planner:build:production"
             },
             "development": {
-              "buildTarget": "fitness-planner:build:development",
-              "proxyConfig": "proxy.conf.json"
+              "buildTarget": "fitness-planner:build:development"
             }
           },
           "defaultConfiguration": "development"

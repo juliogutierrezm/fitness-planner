@@ -25,10 +25,9 @@
         </div>
 
         <!-- Description -->
-        <div class="field-group" *ngIf="exercise.description_es || exercise.description_en">
+        <div class="field-group" *ngIf="exercise.description_es">
           <h3>Descripción</h3>
           <div class="field" *ngIf="exercise.description_es"><strong>ES:</strong> {{ exercise.description_es }}</div>
-          <div class="field" *ngIf="exercise.description_en"><strong>EN:</strong> {{ exercise.description_en }}</div>
         </div>
 
         <!-- Technical Info -->
@@ -39,16 +38,21 @@
         </div>
 
         <!-- Media -->
-        <div class="field-group" *ngIf="exercise.preview_url || exercise.youtube_url">
+        <div class="field-group" *ngIf="getResolvedVideoSource() as video">
           <h3>Multimedia</h3>
-          <video *ngIf="exercise.preview_url" [src]="exercise.preview_url" controls style="max-width: 100%;"></video>
-          <div class="field" *ngIf="exercise.youtube_url"><strong>YouTube:</strong> <a [href]="exercise.youtube_url" target="_blank">{{ exercise.youtube_url }}</a></div>
+          <video *ngIf="video.type === 'S3'" [src]="getCacheBustedUrl(video.url)" controls style="max-width: 100%;"></video>
+          <iframe
+            *ngIf="video.type === 'YOUTUBE' && sanitizeYoutubeUrl(video.url)"
+            [src]="sanitizeYoutubeUrl(video.url)"
+            style="width: 100%; min-height: 320px;"
+            frameborder="0"
+            allowfullscreen>
+          </iframe>
         </div>
 
         <!-- Metadata -->
         <div class="field-group">
           <h3>Metadatos</h3>
-          <div class="field"><strong>Funcional:</strong> {{ exercise.functional ? 'Sí' : 'No' }}</div>
           <div class="field"><strong>Proceso Status:</strong> {{ exercise.process_status || 'N/A' }}</div>
           <div class="field"><strong>Creado:</strong> {{ exercise.created_at ? (exercise.created_at | date:'short') : 'N/A' }}</div>
           <div class="field"><strong>Actualizado:</strong> {{ exercise.updated_at ? (exercise.updated_at | date:'short') : 'N/A' }}</div>

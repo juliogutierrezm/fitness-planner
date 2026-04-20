@@ -50,10 +50,10 @@ export class LoginComponent {
 
   async submit(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'LoginComponent.submit.start' });
+    void 0;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      console.debug('[AuthDebug]', { op: 'LoginComponent.submit.invalidForm' });
+      void 0;
       return;
     }
 
@@ -65,28 +65,25 @@ export class LoginComponent {
 
     try {
       const result = await this.authService.signInUser(email, password);
-      console.debug('[AuthDebug]', { op: 'LoginComponent.submit.result', result });
+      void 0;
       if (result.nextStep) {
         this.showNextStepNotice(result.nextStep);
         const target = this.authService.getAuthFlowRoute(result.nextStep);
-        console.debug('[AuthDebug]', { op: 'LoginComponent.submit.navigateNextStep', target });
+        void 0;
         const navigated = await this.router.navigate([target]);
-        console.debug('[AuthDebug]', { op: 'LoginComponent.submit.navigateNextStep.result', target, navigated });
+        void 0;
         return;
       }
 
-      console.debug('[AuthDebug]', { op: 'LoginComponent.submit.navigateDashboard' });
+      void 0;
       const navigated = await this.router.navigate(['/dashboard']);
-      console.debug('[AuthDebug]', { op: 'LoginComponent.submit.navigateDashboard.result', navigated });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', { op: 'LoginComponent.submit.error', error });
       this.error = mapCognitoError(error, 'No pudimos iniciar sesión. Intenta de nuevo.');
     } finally {
       this.loading = false;
-      console.debug('[AuthDebug]', {
-        op: 'LoginComponent.submit.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
@@ -96,35 +93,29 @@ export class LoginComponent {
 
   async goToSignup(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'LoginComponent.goToSignup.start' });
+    void 0;
     try {
       const navigated = await this.router.navigate(['/signup']);
-      console.debug('[AuthDebug]', { op: 'LoginComponent.goToSignup.result', navigated });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', { op: 'LoginComponent.goToSignup.error', error });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'LoginComponent.goToSignup.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
   async goToForgotPassword(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'LoginComponent.goToForgotPassword.start' });
+    void 0;
     try {
       const navigated = await this.router.navigate(['/forgot-password']);
-      console.debug('[AuthDebug]', { op: 'LoginComponent.goToForgotPassword.result', navigated });
+      void 0;
     } catch (error) {
       console.error('[AuthDebug]', { op: 'LoginComponent.goToForgotPassword.error', error });
       throw error;
     } finally {
-      console.debug('[AuthDebug]', {
-        op: 'LoginComponent.goToForgotPassword.end',
-        elapsedMs: Date.now() - startedAt
-      });
+      void 0;
     }
   }
 
@@ -140,3 +131,4 @@ export class LoginComponent {
     }
   }
 }
+

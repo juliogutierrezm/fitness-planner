@@ -1,7 +1,8 @@
-export const environment = {
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
   production: false,
-  apiBase: 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev',
-  apiUrl: 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev',
+  apiBase: 'https://4e3slegwi9.execute-api.us-east-1.amazonaws.com/dev',
   cognito: {
     domain: 'fitness-planner-dev-auth.auth.us-east-1.amazoncognito.com',
     userPoolId: 'us-east-1_8jk4VBnTQ',

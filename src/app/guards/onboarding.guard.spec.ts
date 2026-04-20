@@ -1,23 +1,26 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import { PLATFORM_ID } from '@angular/core';
 import { OnboardingGuard } from './onboarding.guard';
 import { AuthService } from '../services/auth.service';
 
 describe('OnboardingGuard', () => {
   let guard: OnboardingGuard;
+  let authStatusSubject: BehaviorSubject<string>;
   let authService: {
-    isAuthenticated$: any;
-    hasPlannerGroups: jasmine.Spy;
+    authStatus$: any;
     isClientOnly: jasmine.Spy;
+    resolveEntryTarget: jasmine.Spy;
   };
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
+    authStatusSubject = new BehaviorSubject<string>('authenticated');
     authService = {
-      isAuthenticated$: of(true),
-      hasPlannerGroups: jasmine.createSpy('hasPlannerGroups').and.returnValue(false),
-      isClientOnly: jasmine.createSpy('isClientOnly').and.returnValue(false)
+      authStatus$: authStatusSubject.asObservable(),
+      isClientOnly: jasmine.createSpy('isClientOnly').and.returnValue(false),
+      resolveEntryTarget: jasmine.createSpy('resolveEntryTarget').and.returnValue('/onboarding')
     };
     router = jasmine.createSpyObj('Router', ['navigate']);
 
@@ -25,7 +28,8 @@ describe('OnboardingGuard', () => {
       providers: [
         OnboardingGuard,
         { provide: AuthService, useValue: authService },
-        { provide: Router, useValue: router }
+        { provide: Router, useValue: router },
+        { provide: PLATFORM_ID, useValue: 'browser' }
       ]
     });
 
@@ -33,8 +37,7 @@ describe('OnboardingGuard', () => {
   });
 
   it('redirects to login when not authenticated', async () => {
-    authService.isAuthenticated$ = of(false);
-    authService.isClientOnly.and.returnValue(false);
+    authStatusSubject.next('unauthenticated');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -43,9 +46,9 @@ describe('OnboardingGuard', () => {
   });
 
   it('allows onboarding when required', async () => {
-    authService.isAuthenticated$ = of(true);
-    authService.hasPlannerGroups.and.returnValue(false);
+    authStatusSubject.next('authenticated');
     authService.isClientOnly.and.returnValue(false);
+    authService.resolveEntryTarget.and.returnValue('/onboarding');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -53,10 +56,10 @@ describe('OnboardingGuard', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('redirects to dashboard when user already has planner groups', async () => {
-    authService.isAuthenticated$ = of(true);
-    authService.hasPlannerGroups.and.returnValue(true);
+  it('redirects to dashboard when user is already initialized', async () => {
+    authStatusSubject.next('authenticated');
     authService.isClientOnly.and.returnValue(false);
+    authService.resolveEntryTarget.and.returnValue('/dashboard');
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
@@ -65,13 +68,30 @@ describe('OnboardingGuard', () => {
   });
 
   it('redirects to unauthorized when user is client-only', async () => {
-    authService.isAuthenticated$ = of(true);
-    authService.hasPlannerGroups.and.returnValue(false);
+    authStatusSubject.next('authenticated');
     authService.isClientOnly.and.returnValue(true);
 
     const result = await firstValueFrom(guard.canActivate({} as any, {} as any));
 
     expect(result).toBe(false);
     expect(router.navigate).toHaveBeenCalledWith(['/unauthorized']);
+  });
+
+  it('allows through on SSR (server platform)', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        OnboardingGuard,
+        { provide: AuthService, useValue: authService },
+        { provide: Router, useValue: router },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+    const ssrGuard = TestBed.inject(OnboardingGuard);
+
+    const result = await firstValueFrom(ssrGuard.canActivate({} as any, {} as any));
+
+    expect(result).toBe(true);
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

@@ -69,20 +69,12 @@ export class ForceNewPasswordComponent implements OnInit {
       this.form.get('familyName')?.setValidators([Validators.required]);
     }
     this.form.updateValueAndValidity();
-    console.debug('[AuthDebug]', {
-      op: 'ForceNewPasswordComponent.ngOnInit',
-      email: this.email,
-      requiresGivenName: this.requiresGivenName,
-      requiresFamilyName: this.requiresFamilyName
-    });
   }
 
   async submit(): Promise<void> {
     const startedAt = Date.now();
-    console.debug('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.start', email: this.email });
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      console.debug('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.invalidForm' });
       return;
     }
 
@@ -103,28 +95,17 @@ export class ForceNewPasswordComponent implements OnInit {
       }
 
       const result = await this.authService.confirmNewPassword(password, userAttributes);
-      console.debug('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.result', result });
       if (result.nextStep) {
         this.error = 'No pudimos completar la autenticación. Intenta de nuevo.';
-        console.debug('[AuthDebug]', {
-          op: 'ForceNewPasswordComponent.submit.unexpectedNextStep',
-          nextStep: result.nextStep
-        });
         return;
       }
 
-      console.debug('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.navigateDashboard' });
       const navigated = await this.router.navigate(['/dashboard']);
-      console.debug('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.navigateDashboard.result', navigated });
+      void 0;
     } catch (error) {
-      console.error('[AuthDebug]', { op: 'ForceNewPasswordComponent.submit.error', error });
       this.error = mapCognitoError(error, 'No pudimos actualizar la contraseña. Intenta de nuevo.');
     } finally {
       this.loading = false;
-      console.debug('[AuthDebug]', {
-        op: 'ForceNewPasswordComponent.submit.end',
-        elapsedMs: Date.now() - startedAt
-      });
     }
   }
 
@@ -137,3 +118,4 @@ export class ForceNewPasswordComponent implements OnInit {
   }
 
 }
+

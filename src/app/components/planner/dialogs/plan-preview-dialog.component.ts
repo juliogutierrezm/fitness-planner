@@ -11,17 +11,12 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatCheckboxModule, WorkoutPlanViewComponent],
   template: `
-    <div class="dialog-container">
+    <div class="dialog-container plan-preview-dialog">
       <div class="dialog-header">
         <h2 mat-dialog-title>Previsualización del plan</h2>
         <button mat-icon-button (click)="close()" aria-label="Cerrar">
           <mat-icon>close</mat-icon>
         </button>
-      </div>
-      <div class="dialog-progressions">
-        <mat-checkbox [checked]="data.plan?.progressions?.showProgressions === true" disabled>
-          Mostrar progresiones al cliente
-        </mat-checkbox>
       </div>
       <div class="dialog-content">
         <app-workout-plan-view [plan]="data.plan"></app-workout-plan-view>
@@ -48,12 +43,14 @@ import { WorkoutPlanViewComponent } from '../../workout-plan-view/workout-plan-v
     }
     .dialog-content {
       flex: 1;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
     }
-    .dialog-progressions {
-      display: flex;
-      align-items: center;
-      margin-bottom: 12px;
+    .plan-preview-dialog app-workout-plan-view {
+      display: block;
+      width: 100%;
+      min-width: 0;
     }
     .dialog-actions {
       display: flex;

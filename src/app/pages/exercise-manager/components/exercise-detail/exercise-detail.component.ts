@@ -1,5 +1,6 @@
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +10,7 @@ import { finalize } from 'rxjs/operators';
 import { ExerciseApiService } from '../../../../exercise-api.service';
 import { Exercise } from '../../../../shared/models';
 import { ErrorMapper, DevLogger } from '../../../../shared/feedback-utils';
+import { buildYoutubeEmbedUrl, getVideoSource } from '../../../../shared/video-utils';
 
 @Component({
   selector: 'app-exercise-detail',
@@ -21,10 +23,12 @@ export class ExerciseDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private api = inject(ExerciseApiService);
   private cdr = inject(ChangeDetectorRef);
+  private sanitizer = inject(DomSanitizer);
 
   exercise: Exercise | null = null;
   loading = true;
   error = '';
+  mediaCacheToken = Date.now();
 
   ngOnInit(): void {
     const id = this.route.snapshot.params['id'];
@@ -39,17 +43,16 @@ export class ExerciseDetailComponent implements OnInit {
   private loadExercise(id: string): void {
     const startTime = Date.now();
 
-    // For now, since getExerciseLibrary doesn't have by ID, we can load all and find by ID
-    this.api.getExerciseLibrary().pipe(
+    this.api.getExerciseById(id).pipe(
       finalize(() => {
         this.loading = false;
         this.cdr.markForCheck(); // Ensure UI updates with OnPush strategy
       })
     ).subscribe({
-      next: (response) => {
-        const exercise = response.items.find(ex => ex.id === id);
+      next: (exercise) => {
         if (exercise) {
           this.exercise = exercise;
+          this.mediaCacheToken = Date.now();
           // Log operation success following DEVELOPER.md Section O
           const elapsedMs = Date.now() - startTime;
           DevLogger.logOperation('loadExerciseDetail', { exerciseId: id, elapsedMs }, true);
@@ -66,5 +69,25 @@ export class ExerciseDetailComponent implements OnInit {
 
   goBack(): void {
     window.history.back();
+  }
+
+  getResolvedVideoSource() {
+    return getVideoSource(this.exercise);
+  }
+
+  sanitizeYoutubeUrl(url: string): SafeResourceUrl | null {
+    const embedUrl = buildYoutubeEmbedUrl(url);
+    return embedUrl
+      ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl)
+      : null;
+  }
+
+  getCacheBustedUrl(url: string | null | undefined): string | null {
+    if (!url) {
+      return null;
+    }
+
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}t=${this.mediaCacheToken}`;
   }
 }

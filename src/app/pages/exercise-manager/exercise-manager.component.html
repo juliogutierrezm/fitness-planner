@@ -5,40 +5,48 @@
         <p>Cargando ejercicios...</p>
     </div>
 
-    <!-- Content (hidden while loading) -->
-    <div *ngIf="!loading">
-        <mat-card class="header-card">
-            <mat-card-header>
-              <mat-card-title>
-                <mat-icon>fitness_center</mat-icon>
-                Ejercicios
-              </mat-card-title>
-              <mat-card-subtitle>Biblioteca y gestión de ejercicios disponibles</mat-card-subtitle>
-            </mat-card-header>
-        </mat-card>
+    <mat-card class="header-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>fitness_center</mat-icon>
+            Ejercicios
+          </mat-card-title>
+          <mat-card-subtitle>Biblioteca y gestión de ejercicios disponibles</mat-card-subtitle>
+        </mat-card-header>
+    </mat-card>
 
-        <mat-card>
-            <!-- Filters Component -->
-            <app-exercise-filters
-              [currentFilters]="currentFilters"
-              [filterOptions]="filterOptions"
-              [canModify]="canModifyExercises"
-              (filtersChanged)="onFiltersChanged($event)"
-              (createNewClicked)="onCreateNewClicked()"
-              (refreshClicked)="onRefreshClicked()">
-            </app-exercise-filters>
+    <mat-card>
+        <!-- Filters Component -->
+        <app-exercise-filters
+          [currentFilters]="currentFilters"
+          [filterOptions]="filterOptions"
+          [isLoading]="loading"
+          [canModify]="canModifyExercises"
+          (filtersChanged)="onFiltersChanged($event)"
+          (createNewClicked)="onCreateNewClicked()"
+          (refreshClicked)="onRefreshClicked()">
+        </app-exercise-filters>
 
-            <!-- Table Component -->
-            <app-exercise-table
-              [dataSource]="dataSource"
-              [inlineCatalogs]="inlineCatalogs"
-              [initialPaginatorState]="paginatorState"
-              [canModify]="canModifyExercises"
-              (editExercise)="onEditExercise($event)"
-              (viewDetails)="onViewDetails($event)"
-              (openVideoPreview)="onOpenVideo($event)"
-              (paginatorChanged)="onPaginatorChanged($event)">
-            </app-exercise-table>
-        </mat-card>
-    </div>
+        <ng-container *ngIf="filteredExercises$ | async as exercises">
+          <app-exercise-table
+            *ngIf="exercises.length; else emptyState"
+            [exercises]="exercises"
+            [inlineCatalogs]="inlineCatalogs"
+            [initialPaginatorState]="paginatorState"
+            [currentUserId]="currentUserId"
+            [isAdmin]="isGymAdmin"
+            [currentCompanyId]="currentCompanyId"
+            (editExercise)="onEditExercise($event)"
+            (deleteExercise)="onDeleteExercise($event)"
+            (openVideoPreview)="onOpenVideo($event)"
+            (paginatorChanged)="onPaginatorChanged($event)">
+          </app-exercise-table>
+        </ng-container>
+
+        <ng-template #emptyState>
+          <div class="empty-state">
+            No hay ejercicios disponibles.
+          </div>
+        </ng-template>
+    </mat-card>
 </div>

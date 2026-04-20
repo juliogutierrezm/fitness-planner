@@ -136,4 +136,16 @@ export class WorkoutPlanViewComponent implements OnChanges, OnInit {
   getEquipmentLabel(item: PlanItem): string {
     return getPlanItemEquipmentLabel(item);
   }
+
+  trackBySession(_index: number, session: Session): number {
+    return session.id;
+  }
+
+  trackByItem(_index: number, item: PlanItem): string {
+    return item.id;
+  }
+
+  trackByWeek(_index: number, week: ProgressionWeek): number {
+    return week.week;
+  }
 }

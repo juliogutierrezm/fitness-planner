@@ -24,7 +24,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { WorkoutPlanViewComponent } from '../../components/workout-plan-view/workout-plan-view.component';
 import { UserDisplayNamePipe } from '../../shared/user-display-name.pipe';
-import { getTemplateDisplayName } from '../../shared/shared-utils';
+import { getPlanKey, getTemplateDisplayName } from '../../shared/shared-utils';
 
 @Component({
   selector: 'app-templates',
@@ -217,6 +217,10 @@ export class TemplatesComponent implements OnInit {
       return;
     }
 
+    console.info('[Templates] assigning template', {
+      userId,
+      templateId
+    });
     this.templateAssignment.assignTemplateToUser({
       userId,
       snackBar: this.snackBar,
@@ -261,12 +265,7 @@ export class TemplatesComponent implements OnInit {
   }
 
   getPlanId(p: any): string {
-    if (p?.planId) { return p.planId; }
-    if (p?.id) { return p.id; }
-    if (p?.SK && typeof p.SK === 'string' && p.SK.startsWith('PLAN#')) {
-      return p.SK.substring(5);
-    }
-    return '';
+    return getPlanKey(p);
   }
 
   // No pin functionality on the general list view.
@@ -381,6 +380,10 @@ export class TemplatesComponent implements OnInit {
       this.openUserSelectDialog(templateId);
       return;
     }
+    console.info('[Templates] assigning template', {
+      userId: this.selectedUserId,
+      templateId
+    });
     this.templateAssignment.assignTemplateToUser({
       userId: this.selectedUserId,
       snackBar: this.snackBar,

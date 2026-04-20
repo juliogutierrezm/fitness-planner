@@ -4,6 +4,12 @@
   padding: 1rem;
 }
 
+:host-context(.plan-preview-dialog) .plan-container {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .progressions-section {
   margin: 1.5rem 0;
   padding: 1rem;
@@ -64,8 +70,15 @@
 
 .session-table {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
   margin-top: 0.75rem;
+}
+
+.session-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .session-table th,

@@ -80,6 +80,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   @ViewChild('trainerSelectDialog') trainerSelectDialog?: TemplateRef<any>;
   deletingUserId: string | null = null;
   togglingStatusUserId: string | null = null;
+  resendingCodeUserId: string | null = null;
   selectedTabIndex = 0;
   searchTerm = '';
   private destroy$ = new Subject<void>();
@@ -494,6 +495,54 @@ export class UsersComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('activateUser failed', { userId: u.id, error });
           this.snack.open('No se pudo activar', 'Cerrar', { duration: 2500 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Purpose: resend a user's verification code from the admin UI.
+   * Input: user entity. Output: triggers resend endpoint after confirmation.
+   * Error handling: logs failures and surfaces a friendly snackbar.
+   * Standards Check: SRP OK | DRY OK | Tests Pending.
+   */
+  resendVerificationCode(u: AppUser): void {
+    if (!u?.id || this.resendingCodeUserId) return;
+
+    const fullName = `${u.givenName || ''} ${u.familyName || ''}`.trim();
+    const label = fullName || u.email || 'este usuario';
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Reenviar código',
+        message: `¿Deseas reenviar el código de verificación a ${label}?`,
+        confirmLabel: 'Reenviar código',
+        cancelLabel: 'Cancelar',
+        icon: 'forward_to_inbox'
+      }
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.resendingCodeUserId = u.id!;
+      this.cdr.markForCheck();
+      this.api.resendVerificationCode(u.id!).pipe(
+        finalize(() => {
+          this.resendingCodeUserId = null;
+          this.cdr.markForCheck();
+        })
+      ).subscribe({
+        next: (res) => {
+          if (res !== null) {
+            this.snack.open('Código reenviado correctamente', 'Cerrar', { duration: 1800 });
+          } else {
+            console.error('resendVerificationCode failed', { userId: u.id, error: 'null response' });
+            this.snack.open('No se pudo reenviar el código', 'Cerrar', { duration: 2500 });
+          }
+        },
+        error: (error) => {
+          console.error('resendVerificationCode failed', { userId: u.id, error });
+          this.snack.open('No se pudo reenviar el código', 'Cerrar', { duration: 2500 });
         }
       });
     });

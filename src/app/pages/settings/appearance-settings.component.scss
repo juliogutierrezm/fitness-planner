@@ -238,6 +238,25 @@
     }
   }
 
+  .naming-panel {
+    .naming-copy {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.72);
+    }
+
+    .session-naming-toggle {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-radius: 12px;
+      overflow: hidden;
+
+      @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+
   .preview-card {
     border-radius: 16px;
 

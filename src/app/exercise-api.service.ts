@@ -1,9 +1,9 @@
 // src/app/shared/exercise-api.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, forkJoin } from 'rxjs';
-import { catchError, tap, switchMap } from 'rxjs/operators';
-import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep } from './shared/models';
+import { Observable, of, forkJoin, throwError } from 'rxjs';
+import { catchError, map, tap, switchMap, shareReplay } from 'rxjs/operators';
+import { Exercise, Session, AiPlanRequest, PollingResponse, AiStep, VideoSource } from './shared/models';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
 import { UserApiService } from './user-api.service';
@@ -16,14 +16,11 @@ const ALLOWED_FIELDS = [
   "category",
   "equipment_type",
   "muscle_group",
-  "secondary_muscles",
   "exercise_type",
-  "training_goal",
   "common_mistakes",
   "tips",
-  "functional",
   "description_es",
-  "aliases"
+  "video"
 ];
 
 // Protected fields that must be excluded from update payloads
@@ -51,6 +48,10 @@ export class ExerciseApiService {
   private exerciseLibUrl = `${this.apiBase}/exercise/library`;
   private planUrl     = `${this.apiBase}/workoutPlans`;
 
+  // ─── Exercise cache ───
+  private exerciseCache$: Observable<Exercise[]> | null = null;
+  private exerciseByIdCache = new Map<string, Exercise>();
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -60,6 +61,57 @@ export class ExerciseApiService {
   private getSessionsKey(): string {
     const userId = this.authService.getCurrentUserId();
     return userId ? `fp_sessions_${userId}` : 'fp_sessions_anonymous';
+  }
+
+  private buildLegacyVideoSource(exercise: Partial<Exercise> & Record<string, any>): VideoSource | null {
+    if (Object.prototype.hasOwnProperty.call(exercise, 'video')) {
+      return exercise.video ?? null;
+    }
+
+    const youtubeUrl = exercise.youtube_url || exercise.video?.youtubeUrl;
+    if (youtubeUrl) {
+      return {
+        type: 'YOUTUBE',
+        youtubeUrl,
+        thumbnailUrl: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl
+      };
+    }
+
+    const previewUrl = exercise.preview_url || exercise.previewUrl || exercise.video?.previewUrl;
+    if (previewUrl) {
+      return {
+        type: 'S3',
+        previewUrl,
+        thumbnailUrl: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl
+      };
+    }
+
+    return null;
+  }
+
+  private normalizeExercise(exercise: Partial<Exercise> & Record<string, any>): Exercise {
+    const id = exercise.id || exercise.exerciseId || '';
+    const nameEs = exercise.name_es || exercise.name || exercise.name_en || '';
+    const nameEn = exercise.name_en || exercise.name || exercise.name_es || '';
+
+    return {
+      ...exercise,
+      id,
+      exerciseId: exercise.exerciseId || id,
+      name: exercise.name || nameEs || nameEn || id,
+      name_es: nameEs,
+      name_en: nameEn,
+      equipment: exercise.equipment || exercise.equipment_type || '',
+      equipment_type: exercise.equipment_type || exercise.equipment || '',
+      muscle: exercise.muscle || exercise.muscle_group || '',
+      muscle_group: exercise.muscle_group || exercise.muscle || '',
+      preview_url: exercise.preview_url || exercise.previewUrl || exercise.video?.previewUrl,
+      previewUrl: exercise.previewUrl || exercise.preview_url || exercise.video?.previewUrl,
+      thumbnail: exercise.thumbnail || exercise.thumbnailUrl || exercise.video?.thumbnailUrl,
+      thumbnailUrl: exercise.thumbnailUrl || exercise.thumbnail || exercise.video?.thumbnailUrl,
+      youtube_url: exercise.youtube_url || exercise.video?.youtubeUrl,
+      video: this.buildLegacyVideoSource(exercise)
+    } as Exercise;
   }
 
   // =============== EXERCISES CRUD ===============
@@ -82,6 +134,10 @@ export class ExerciseApiService {
 
   getExerciseLibrary(): Observable<ExerciseLibraryResponse> {
     return this.http.get<ExerciseLibraryResponse>(this.exerciseLibUrl).pipe(
+      map(res => ({
+        ...res,
+        items: (res.items || []).map(item => this.normalizeExercise(item as any))
+      })),
       tap(res => console.log('📋 Biblioteca de ejercicios obtenida:', res.count, 'ejercicios')),
       catchError(err => {
         console.error('❌ Error al obtener biblioteca de ejercicios:', err);
@@ -90,11 +146,53 @@ export class ExerciseApiService {
     );
   }
 
+  getAllExercises(): Observable<Exercise[]> {
+    if (!this.exerciseCache$) {
+      this.exerciseCache$ = this.http.get<ExerciseLibraryResponse>(this.exerciseUrl).pipe(
+        map(res => (res.items || []).map(item => this.normalizeExercise(item as any))),
+        tap(exercises => {
+          console.log('📋 Ejercicios combinados obtenidos:', exercises.length);
+          this.exerciseByIdCache.clear();
+          exercises.forEach(ex => this.exerciseByIdCache.set(ex.id, ex));
+        }),
+        catchError(err => {
+          console.error('❌ Error al obtener ejercicios combinados:', err);
+          this.exerciseCache$ = null;
+          return of([]);
+        }),
+        shareReplay(1)
+      );
+    }
+    return this.exerciseCache$;
+  }
+
+  /**
+   * Invalidate the exercise cache so the next getAllExercises() call
+   * fetches fresh data from the backend. Use as a fallback only.
+   */
+  invalidateExerciseCache(): void {
+    this.exerciseCache$ = null;
+    this.exerciseByIdCache.clear();
+  }
+
   updateExerciseLibraryItem(id: string, exercise: Exercise): Observable<{ok: boolean, updated: Partial<Exercise>}> {
     const payload = this.sanitizeExerciseUpdatePayload(exercise);
     const url = `${this.exerciseLibUrl}/${encodeURIComponent(id)}`;
+    console.log('🌐 REQUEST BODY:', JSON.stringify(payload, null, 2));
+    console.log('🌐 REQUEST URL:', url);
+    console.log('🌐 UPDATE URL:', url);
     return this.http.put<{ok: boolean, updated: Partial<Exercise>}>(url, payload).pipe(
-      tap(res => console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated)),
+      tap(res => {
+        console.log('✏️ Ejercicio de libreria actualizado:', res.ok ? 'Éxito' : 'Falló', res.updated);
+        if (res.ok) {
+          // Update ID cache entry and invalidate list cache
+          const cached = this.exerciseByIdCache.get(id);
+          if (cached) {
+            this.exerciseByIdCache.set(id, { ...cached, ...res.updated });
+          }
+          this.exerciseCache$ = null;
+        }
+      }),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio de libreria:', err);
         return of({ ok: false, updated: {} });
@@ -103,59 +201,73 @@ export class ExerciseApiService {
   }
 
   getExercises(): Observable<Exercise[]> {
-    return this.http.get<Exercise[]>(this.exerciseUrl).pipe(
-      tap(exs => console.log('📋 Ejercicios obtenidos:', exs)),
-      catchError(err => {
-        console.error('❌ Error al obtener ejercicios:', err);
-        return of([]);
-      })
-    );
+    return this.getAllExercises();
   }
 
   // Lambda-based exercise creation
-  createExercise(exerciseData: any): Observable<any> {
-    // Generate unique ID for new exercise
-    const generatedId = `${sanitizeName(exerciseData.name_es)}_${Date.now()}`;
-    console.info('Generated Exercise ID:', generatedId);
+  createExercise(exerciseData: {
+    id?: string;
+    name_en: string;
+    name_es?: string;
+    equipment_type: string;
+    muscle_group: string;
+    category: string;
+    description_es?: string;
+    exercise_type?: string;
+    difficulty?: string;
+    tips?: string[];
+    common_mistakes?: string[];
+    video?: VideoSource | null;
+  }): Observable<any> {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      console.error('❌ Usuario no autenticado');
+      return of(null);
+    }
 
-    // Transform exercise data to match Lambda expectations
+    // Generate ID from name_en
+    const id = exerciseData.id || `${sanitizeName(exerciseData.name_en)}_${Date.now()}`;
+
+    // Build payload - NEVER use legacy fields (preview_url, s3_key, thumbnail)
     const payload: any = {
-      id: generatedId,
+      id,
       name_en: exerciseData.name_en,
-      name_es: exerciseData.name_es || '',
+      name_es: exerciseData.name_es || exerciseData.name_en,
       equipment_type: exerciseData.equipment_type,
       muscle_group: exerciseData.muscle_group,
       category: exerciseData.category,
-      description_en: exerciseData.description_en || '',
-      description_es: exerciseData.description_es || '',
-      exercise_type: exerciseData.exercise_type || '',
-      difficulty: exerciseData.difficulty || '',
-      movement_pattern: exerciseData.movement_pattern || '',
-      training_goal: exerciseData.training_goal || '',
-      functional: exerciseData.functional || false,
-      preview_url: exerciseData.preview_url || '',
-      s3_key: exerciseData.s3_key || '',
-      thumbnail: exerciseData.thumbnail || ''
+      difficulty: exerciseData.difficulty || ''
     };
 
+    if (exerciseData.description_es?.trim()) payload.description_es = exerciseData.description_es.trim();
+    if (exerciseData.exercise_type?.trim()) payload.exercise_type = exerciseData.exercise_type.trim();
+
     // Handle arrays
-    if (exerciseData.aliases && Array.isArray(exerciseData.aliases)) {
-      payload.aliases = exerciseData.aliases;
-    }
-    if (exerciseData.secondary_muscles && Array.isArray(exerciseData.secondary_muscles)) {
-      payload.secondary_muscles = exerciseData.secondary_muscles;
-    }
-    if (exerciseData.tips && Array.isArray(exerciseData.tips)) {
-      payload.tips = exerciseData.tips;
-    }
-    if (exerciseData.common_mistakes && Array.isArray(exerciseData.common_mistakes)) {
-      payload.common_mistakes = exerciseData.common_mistakes;
+    if (exerciseData.tips?.length) payload.tips = exerciseData.tips;
+    if (exerciseData.common_mistakes?.length) payload.common_mistakes = exerciseData.common_mistakes;
+
+    // Owner resolution
+    payload.trainerId = user.id;
+    if (user.companyId && user.companyId !== 'INDEPENDENT') {
+      payload.companyId = user.companyId;
     }
 
+    // Video - only if provided
+    if (Object.prototype.hasOwnProperty.call(exerciseData, 'video')) {
+      payload.video = exerciseData.video;
+    }
+
+    console.log('🌐 REQUEST BODY:', JSON.stringify(payload, null, 2));
+    console.log('🌐 REQUEST URL:', this.exerciseUrl);
+
     return this.http.post(`${this.apiBase}/exercise`, payload).pipe(
-      tap(() => console.log('✅ Ejercicio creado via Lambda:', generatedId)),
+      tap(() => {
+        console.log('✅ Ejercicio creado:', id);
+        // Invalidate list cache so next getAll fetches fresh data
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
-        console.error('❌ Error al crear ejercicio via Lambda:', err);
+        console.error('❌ Error al crear ejercicio:', err);
         return of(null);
       })
     );
@@ -178,9 +290,60 @@ export class ExerciseApiService {
     );
   }
 
+  // Get a single exercise by ID — returns from cache when available
+  getExerciseById(id: string, forceRefresh = false): Observable<Exercise | null> {
+    if (!forceRefresh) {
+      const cached = this.exerciseByIdCache.get(id);
+      if (cached) {
+        return of(cached);
+      }
+    }
+
+    const url = `${this.exerciseUrl}/${encodeURIComponent(id)}`;
+    return this.http.get<Exercise>(url).pipe(
+      map(ex => ex ? this.normalizeExercise(ex as any) : null),
+      tap(ex => {
+        console.log('📋 Ejercicio obtenido:', ex?.id);
+        if (ex) {
+          this.exerciseByIdCache.set(ex.id, ex);
+        }
+      }),
+      catchError(err => {
+        console.error('❌ Error al obtener ejercicio por ID:', err);
+        return of(null);
+      })
+    );
+  }
+
+  // Check video processing status
+  getVideoStatus(s3Key: string): Observable<{ ready: boolean; previewUrl?: string; thumbnailUrl?: string }> {
+    const params = encodeURIComponent(s3Key);
+    return this.http.get<{ ready: boolean; previewUrl?: string; thumbnailUrl?: string }>(
+      `${this.apiBase}/video-status?s3_key=${params}`
+    ).pipe(
+      tap(res => console.log('🎬 Video status:', res)),
+      catchError(err => {
+        console.error('❌ Error checking video status:', err);
+        return of({ ready: false });
+      })
+    );
+  }
+
   updateExercise(ex: Exercise): Observable<any> {
-    return this.http.put(this.exerciseUrl, ex).pipe(
-      tap(() => console.log('✏️ Ejercicio actualizado:', ex)),
+    const updateUrl = `${this.exerciseUrl}/${encodeURIComponent(ex.id)}`;
+
+    // ✅ USAR MISMO SANITIZE QUE LIBRARY
+    const payload = this.sanitizeExerciseUpdatePayload(ex);
+
+    console.log('🌐 CLEAN UPDATE PAYLOAD:', JSON.stringify(payload, null, 2));
+
+    return this.http.put(updateUrl, payload).pipe(
+      tap(() => {
+        console.log('✏️ Ejercicio actualizado:', payload);
+        // Invalidate both caches so next fetch gets fresh data
+        this.exerciseByIdCache.delete(ex.id);
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
         console.error('❌ Error al actualizar ejercicio:', err);
         return of(null);
@@ -189,8 +352,13 @@ export class ExerciseApiService {
   }
 
   deleteExercise(id: string): Observable<any> {
-    return this.http.delete(`${this.exerciseUrl}?id=${id}`).pipe(
-      tap(() => console.log(`🗑️ Ejercicio eliminado ${id}`)),
+    return this.http.delete(`${this.apiBase}/exercise/${encodeURIComponent(id)}`).pipe(
+      tap(() => {
+        console.log(`🗑️ Ejercicio eliminado ${id}`);
+        // Remove from ID cache and invalidate list cache
+        this.exerciseByIdCache.delete(id);
+        this.exerciseCache$ = null;
+      }),
       catchError(err => {
         console.error('❌ Error al eliminar ejercicio:', err);
         return of(null);
@@ -292,17 +460,28 @@ export class ExerciseApiService {
 
   getWorkoutPlanById(planId: string): Observable<any> {
     const userId = this.authService.getCurrentUserId();
+    console.log('🧠 [getWorkoutPlanById] Loading planId:', planId);
+    console.log('👤 [getWorkoutPlanById] Current userId:', userId);
+    console.log('🔐 [getWorkoutPlanById] canAccessUserData:', userId ? this.authService.canAccessUserData(userId) : 'N/A (no userId)');
+    console.log('🌐 [getWorkoutPlanById] Full URL:', `${this.planUrl}/${planId}`);
     // Check permissions
     if (!userId || !this.authService.canAccessUserData(userId)) {
-      console.error('❌ No tienes permisos para acceder a estos datos');
+      console.error('❌ [getWorkoutPlanById] BLOCKED — No userId or no permission. userId:', userId, '→ returning null WITHOUT making HTTP request');
       return of(null);
     }
 
+    console.log('✅ [getWorkoutPlanById] Permission OK, making HTTP GET...');
     return this.http.get<any>(`${this.planUrl}/${planId}`).pipe(
-      tap(plan => console.log(`📦 Plan obtenido ${planId}:`, plan)),
+      tap(plan => console.log(`📦 [getWorkoutPlanById] Plan obtenido ${planId}:`, plan)),
       catchError(err => {
-        console.error(`❌ Error al obtener el plan ${planId}:`, err);
-        return of(null);
+        console.error(`❌ [getWorkoutPlanById] HTTP Error for plan ${planId}:`, {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url,
+          error: err.error
+        });
+        return throwError(() => err);
       })
     );
   }
@@ -392,8 +571,8 @@ generatePlanFromAI(params: AiPlanRequest): Observable<{ executionId: string }> {
 }
 
 // Polling method for plan generation status - uses userId
-pollPlanGeneration(userId: string): Observable<any> {
-  return this.http.get(
+pollPlanGeneration(userId: string): Observable<PollingResponse> {
+  return this.http.get<PollingResponse>(
     `${this.apiBase}/generatePlanFromAI/${userId}`
   );
 }
@@ -401,8 +580,8 @@ pollPlanGeneration(userId: string): Observable<any> {
 pollPlanByExecution(
   userId: string,
   executionId: string
-): Observable<any> {
-  return this.http.get(
+): Observable<PollingResponse> {
+  return this.http.get<PollingResponse>(
     `${this.apiBase}/generatePlanFromAI/${userId}/${executionId}`
   );
 }

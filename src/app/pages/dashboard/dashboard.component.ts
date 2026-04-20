@@ -113,9 +113,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getModeLabel(mode: DashboardMode): string {
-    if (mode === 'GYM_ADMIN') return 'Dueño de gimnasio';
+    if (mode === 'GYM_ADMIN') return 'Administrador';
     if (mode === 'INDEPENDENT_TRAINER') return 'Entrenador independiente';
-    return 'Entrenador del gym';
+    return 'Entrenador';
   }
 
   private loadViewModel() {

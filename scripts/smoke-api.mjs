@@ -2,7 +2,7 @@
 // Usage:
 //   node scripts/smoke-api.mjs
 // Env vars:
-//   API_BASE=https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev
+//   API_BASE=https://4e3slegwi9.execute-api.us-east-1.amazonaws.com/dev
 //   ID_TOKEN=eyJ... (Cognito ID token; optional)
 //   TEST_USER_ID=USER-ID (optional)
 //   WRITE_TESTS=true (enables POST/PUT/DELETE)
@@ -11,7 +11,7 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 
-const API_BASE = process.env.API_BASE || 'https://k2ok2k1ft9.execute-api.us-east-1.amazonaws.com/dev';
+const API_BASE = process.env.API_BASE || 'https://4e3slegwi9.execute-api.us-east-1.amazonaws.com/dev';
 let ID_TOKEN = process.env.ID_TOKEN || '';
 const TEST_USER_ID = process.env.TEST_USER_ID || '';
 const WRITE = /^true$/i.test(process.env.WRITE_TESTS || '');

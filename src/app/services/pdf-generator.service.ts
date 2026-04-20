@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { ThemeService, ThemeConfig } from './theme.service';
 import { SupportedLocale, detectUserLocale, getLocalizedExerciseName, getPdfLabels } from '../shared/locale.utils';
 import { Session, PlanItem } from '../shared/models';
+import { getVideoSource } from '../shared/video-utils';
 import { PlanProgressions } from '../components/planner/models/planner-plan.model';
 import jsPDF from 'jspdf';
 
@@ -399,8 +400,9 @@ export class PdfGeneratorService {
     this.pdf.text(item.rest ? `${item.rest}s` : '-', cols.rest, this.currentY + 4);
     this.pdf.text(item.weight ? String(item.weight) : '-', cols.weight, this.currentY + 4);
 
-    // Video link - always show "VER VIDEO" text
-    if (item.youtube_url) {
+    // Video link — S3 first, YouTube fallback
+    const resolvedVideo = getVideoSource(item);
+    if (resolvedVideo) {
       const accentColor = this.hexToRgb(this.theme.accentColor);
       const videoText = 'VER VIDEO';
       this.pdf.setTextColor(accentColor.r, accentColor.g, accentColor.b);
@@ -409,7 +411,7 @@ export class PdfGeneratorService {
       
       // Add clickable link
       const textWidth = this.pdf.getTextWidth(videoText);
-      this.pdf.link(cols.video, this.currentY, textWidth + 2, rowHeight, { url: item.youtube_url });
+      this.pdf.link(cols.video, this.currentY, textWidth + 2, rowHeight, { url: resolvedVideo.url });
       
       // Reset styles
       this.pdf.setFont('helvetica', 'normal');

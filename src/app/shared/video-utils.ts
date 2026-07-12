@@ -24,7 +24,7 @@ export function extractYoutubeId(url: string | null | undefined): string {
   const safeUrl = nonEmpty(url);
   if (!safeUrl) return '';
 
-  const regExp = /(?:youtube\.com.*(?:v=|embed\/)|youtu\.be\/)([^?&/]+)/;
+  const regExp = /(?:youtube\.com.*(?:v=|embed\/|shorts\/)|youtu\.be\/)([^?&/]+)/;
   const match = safeUrl.match(regExp);
   return match ? match[1] : '';
 }

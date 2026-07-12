@@ -20,6 +20,14 @@ const ALLOWED_FIELDS = [
   "common_mistakes",
   "tips",
   "description_es",
+  "description_en",
+  "training_goal",
+  "plane_of_motion",
+  "movement_pattern",
+  "secondary_muscles",
+  "equipment_specific",
+  "functional",
+  "aliases",
   "video"
 ];
 
@@ -213,10 +221,18 @@ export class ExerciseApiService {
     muscle_group: string;
     category: string;
     description_es?: string;
+    description_en?: string;
+    training_goal?: string;
+    plane_of_motion?: string;
+    movement_pattern?: string;
     exercise_type?: string;
     difficulty?: string;
     tips?: string[];
     common_mistakes?: string[];
+    secondary_muscles?: string[];
+    equipment_specific?: string[];
+    functional?: boolean;
+    aliases?: string[];
     video?: VideoSource | null;
   }): Observable<any> {
     const user = this.authService.getCurrentUser();
@@ -240,11 +256,19 @@ export class ExerciseApiService {
     };
 
     if (exerciseData.description_es?.trim()) payload.description_es = exerciseData.description_es.trim();
+    if (exerciseData.description_en?.trim()) payload.description_en = exerciseData.description_en.trim();
+    if (exerciseData.training_goal?.trim()) payload.training_goal = exerciseData.training_goal.trim();
+    if (exerciseData.plane_of_motion?.trim()) payload.plane_of_motion = exerciseData.plane_of_motion.trim();
+    if (exerciseData.movement_pattern?.trim()) payload.movement_pattern = exerciseData.movement_pattern.trim();
     if (exerciseData.exercise_type?.trim()) payload.exercise_type = exerciseData.exercise_type.trim();
 
     // Handle arrays
     if (exerciseData.tips?.length) payload.tips = exerciseData.tips;
     if (exerciseData.common_mistakes?.length) payload.common_mistakes = exerciseData.common_mistakes;
+    if (exerciseData.secondary_muscles?.length) payload.secondary_muscles = exerciseData.secondary_muscles;
+    if (exerciseData.equipment_specific?.length) payload.equipment_specific = exerciseData.equipment_specific;
+    if (exerciseData.aliases?.length) payload.aliases = exerciseData.aliases;
+    if (exerciseData.functional === true) payload.functional = true;
 
     // Owner resolution
     payload.trainerId = user.id;

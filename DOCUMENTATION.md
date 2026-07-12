@@ -1,6 +1,6 @@
 # Fitness Planner - Documentacion Tecnica del Repositorio
 
-Ultima actualizacion: 2026-04-08
+Ultima actualizacion: 2026-05-10
 
 ## 1) Contexto del proyecto
 Fitness Planner es una aplicacion Angular 19 para gestion de entrenamiento fisico con:
@@ -138,7 +138,6 @@ Privadas principales (dentro de `LayoutComponent`):
 - `/users/:id`
 - `/clients/:id/body-metrics`
 - `/settings/appearance`
-- `/user-plans-dialog`
 
 Fallbacks:
 - `/` (empty path) redirige a `/dashboard`
@@ -490,8 +489,10 @@ fitness-planner/
 ```
 
 ## 14) Estado de pruebas (unitarias)
-Specs presentes actualmente (18 archivos):
+Specs presentes actualmente (25 archivos):
 - `src/app/app.component.spec.ts`
+- `src/app/exercise-api.service.spec.ts`
+- `src/app/user-api.service.spec.ts`
 - `src/app/services/client-body-metrics.service.spec.ts`
 - `src/app/services/auth.service.spec.ts`
 - `src/app/guards/system.guard.spec.ts`
@@ -501,6 +502,11 @@ Specs presentes actualmente (18 archivos):
 - `src/app/guards/role.guard.spec.ts`
 - `src/app/pages/templates/templates.component.spec.ts`
 - `src/app/pages/dashboard/dashboard.component.spec.ts`
+- `src/app/pages/users/users.component.spec.ts`
+- `src/app/pages/user-detail/user-detail.component.spec.ts`
+- `src/app/pages/exercise-manager/exercise-manager.component.spec.ts`
+- `src/app/pages/exercise-manager/components/exercise-edit-dialog/exercise-edit-dialog.component.spec.ts`
+- `src/app/pages/exercise-manager/components/exercise-table/exercise-table.component.spec.ts`
 - `src/app/components/workout-plan-view/workout-plan-view.component.spec.ts`
 - `src/app/components/planner/planner.component.spec.ts`
 - `src/app/components/planner/ai/ai-parametric-dialog.component.spec.ts`
@@ -509,6 +515,8 @@ Specs presentes actualmente (18 archivos):
 - `src/app/components/planner/services/planner-exercise-filter.service.spec.ts`
 - `src/app/components/planner/services/planner-drag-drop.service.spec.ts`
 - `src/app/shared/ai-generation-progress.component.spec.ts`
+
+Conteo verificado con inventario actual del repositorio en rama `feat/compact-planner-ui`.
 
 Cobertura funcional existe en modulos clave, pero no cubre toda la superficie del producto.
 

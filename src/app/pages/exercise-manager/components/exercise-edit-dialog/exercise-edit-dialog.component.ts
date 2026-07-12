@@ -1,44 +1,31 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Inject, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { Inject } from '@angular/core';
 import { Observable, Subscription, interval } from 'rxjs';
 import { finalize, switchMap, takeWhile } from 'rxjs/operators';
-import { MatRadioModule } from '@angular/material/radio';
 import { ExerciseApiService } from '../../../../exercise-api.service';
 import { Exercise, FilterOptions, VideoSource } from '../../../../shared/models';
 import { sanitizeName } from '../../../../shared/shared-utils';
-import { buildYoutubeEmbedUrl, buildYoutubeThumbnailUrl, getS3PreviewUrl, getThumbnailSource, getYoutubeUrl } from '../../../../shared/video-utils';
+import { buildYoutubeEmbedUrl, getS3PreviewUrl, getThumbnailSource, getYoutubeUrl } from '../../../../shared/video-utils';
 
 export interface ExerciseEditDialogData {
   exercise: Exercise | null;
   filterOptions: FilterOptions;
 }
 
-type VideoSelectorType = 'S3' | 'YOUTUBE' | 'NONE';
-type SaveMode = 'full' | 'quick';
-
-const ALLOWED_FIELDS = [
-  'name_es',
-  'difficulty',
-  'category',
-  'equipment_type',
-  'muscle_group',
-  'exercise_type',
-  'common_mistakes',
-  'tips',
-  'description_es'
-];
+type VideoMode = 'NONE' | 'YOUTUBE' | 'S3';
 
 @Component({
   selector: 'app-exercise-edit-dialog',
@@ -52,9 +39,10 @@ const ALLOWED_FIELDS = [
     ReactiveFormsModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
+    MatRadioModule,
     MatSnackBarModule,
     MatIconModule,
-    MatRadioModule
+    MatTabsModule
   ],
   templateUrl: './exercise-edit-dialog.component.html',
   styleUrl: './exercise-edit-dialog.component.scss',
@@ -70,7 +58,6 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   saving = false;
   loadingExercise = false;
   refreshingExercise = false;
-  currentStep: 1 | 2 = 1;
   private exerciseId: string | null = null;
 
   categoryOptions: string[];
@@ -93,9 +80,8 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
 
   private exercise: Exercise | null;
   private pollingSubscription: Subscription | null = null;
-  private videoTypeSubscription: Subscription | null = null;
+  private videoModeSubscription: Subscription | null = null;
   private readonly POLLING_INTERVAL_MS = 3000;
-  private readonly STEP_ONE_FIELDS = ['name_es', 'category', 'difficulty', 'equipment_type', 'muscle_group', 'exercise_type'] as const;
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: ExerciseEditDialogData,
@@ -115,11 +101,11 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     this.difficultyOptions = data.filterOptions.difficultyOptions;
 
     this.editForm = this.createForm();
+    this.videoModeSubscription = this.editForm.get('videoMode')?.valueChanges.subscribe((mode: VideoMode) => {
+      this.handleVideoModeChange(mode);
+    }) || null;
     this.editForm.updateValueAndValidity();
     this.cdr.markForCheck();
-    this.videoTypeSubscription = this.editForm.get('videoType')?.valueChanges.subscribe((type: VideoSelectorType) => {
-      this.handleVideoTypeChange(type);
-    }) || null;
   }
 
   ngOnInit(): void {
@@ -138,33 +124,17 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     }
   }
 
-  get selectedVideoType(): VideoSelectorType {
-    return (this.editForm.get('videoType')?.value || 'NONE') as VideoSelectorType;
-  }
-
-  get isVideoValid(): boolean {
-    if (this.selectedVideoType === 'NONE') {
-      return true;
-    }
-
-    if (this.selectedVideoType === 'YOUTUBE') {
-      return Boolean(buildYoutubeEmbedUrl(this.editForm.get('youtubeUrl')?.value));
-    }
-
-    return Boolean(this.selectedVideoFile || this.getExistingS3PreviewUrl() || this.videoState.previewUrl);
-  }
-
-  get isStepOneValid(): boolean {
-    return this.STEP_ONE_FIELDS.every(field => this.editForm.get(field)?.valid) && this.isVideoValid;
-  }
-
   get isActionDisabled(): boolean {
     return this.loadingExercise || this.saving || this.refreshingExercise || this.videoState.uploading || this.videoState.processing;
   }
 
+  get selectedVideoMode(): VideoMode {
+    return (this.editForm.get('videoMode')?.value || 'NONE') as VideoMode;
+  }
+
   ngOnDestroy(): void {
     this.stopPolling();
-    this.videoTypeSubscription?.unsubscribe();
+    this.videoModeSubscription?.unsubscribe();
     this.revokeSelectedVideoPreviewUrl();
   }
 
@@ -190,34 +160,27 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       return;
     }
 
-    if (this.selectedVideoType !== 'S3') {
-      this.editForm.patchValue({ videoType: 'S3' });
-    }
-
     this.uploadError = '';
     this.clearS3Selection(false);
     this.selectedVideoFile = file;
     this.selectedVideoFileName = file.name;
     this.selectedVideoPreviewUrl = URL.createObjectURL(file);
+    this.editForm.patchValue({ videoFileSelected: true }, { emitEvent: false });
+    this.editForm.get('videoFileSelected')?.updateValueAndValidity({ emitEvent: false });
     this.cdr.markForCheck();
   }
 
-  onQuickSave(): void {
-    if (!this.isStepOneValid || this.isActionDisabled) {
-      this.markStepOneTouched();
-      return;
-    }
-
-    this.saveExercise('quick');
-  }
-
   onSave(): void {
-    if (!this.isStepOneValid || this.isActionDisabled) {
-      this.markStepOneTouched();
+    if (this.editForm.invalid || this.isActionDisabled) {
+      this.editForm.markAllAsTouched();
+      if (this.editForm.invalid) {
+        this.snackBar.open('Complete los campos obligatorios para crear el ejercicio.', 'Cerrar', { duration: 3500 });
+      }
+      this.cdr.markForCheck();
       return;
     }
 
-    this.saveExercise('full');
+    this.saveExercise();
   }
 
   onClose(): void {
@@ -225,22 +188,8 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     this.dialogRef.close();
   }
 
-  goToStep(step: 1 | 2): void {
-    if (step === 2 && !this.isStepOneValid) {
-      this.markStepOneTouched();
-      return;
-    }
-
-    this.currentStep = step;
-    this.cdr.markForCheck();
-  }
-
-  goToOptionalStep(): void {
-    this.goToStep(2);
-  }
-
   getYoutubePreviewUrl(): SafeResourceUrl | null {
-    if (this.selectedVideoType !== 'YOUTUBE') {
+    if (this.selectedVideoMode !== 'YOUTUBE') {
       return null;
     }
 
@@ -249,15 +198,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   }
 
   getExistingS3PreviewUrl(): string | null {
-    if (this.selectedVideoType !== 'S3') {
-      return null;
-    }
-
     return this.videoState.previewUrl || getS3PreviewUrl(this.exercise);
-  }
-
-  isFieldEditable(field: string): boolean {
-    return ALLOWED_FIELDS.includes(field);
   }
 
   private getExerciseId(exercise: Partial<Exercise> | null | undefined): string | null {
@@ -308,31 +249,32 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     this.cdr.detectChanges();
   }
 
-  private saveExercise(saveMode: SaveMode): void {
+  private saveExercise(): void {
     const formValue = this.editForm.getRawValue();
     this.exerciseId = this.isCreationMode
-      ? `${sanitizeName((formValue.name_es?.trim() || formValue.name_en?.trim() || ''))}_${Date.now()}`
+      ? `${sanitizeName((formValue.name_es?.trim() || ''))}_${Date.now()}`
       : this.getExerciseId(this.exercise);
 
-    if (this.selectedVideoType === 'S3' && this.selectedVideoFile) {
+    if (formValue.videoMode === 'S3' && this.selectedVideoFile) {
       if (this.isCreationMode) {
-        this.uploadVideoAndCreate(this.exerciseId!, formValue, saveMode);
+        this.uploadVideoAndCreate(this.exerciseId!, formValue);
         return;
       }
 
-      this.uploadVideoAndUpdateExisting(formValue, saveMode);
+      this.uploadVideoAndUpdateExisting(formValue);
       return;
     }
 
     if (this.isCreationMode) {
-      this.createExercise(this.exerciseId!, formValue, saveMode);
+      const youtubeVideo = this.buildYoutubeVideoPayload(formValue.youtubeUrl) || undefined;
+      this.createExercise(this.exerciseId!, formValue, youtubeVideo);
       return;
     }
 
-    this.persistExistingExercise(formValue, saveMode);
+    this.persistExistingExercise(formValue);
   }
 
-  private uploadVideoAndCreate(exerciseId: string, formValue: any, saveMode: SaveMode): void {
+  private uploadVideoAndCreate(exerciseId: string, formValue: any): void {
     this.saving = true;
     this.videoState.uploading = true;
     this.cdr.markForCheck();
@@ -363,13 +305,13 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
           if (response.preview_url) {
             this.videoState.previewUrl = response.preview_url || null;
             this.videoState.thumbnailUrl = response.thumbnail_url || null;
-            this.createExercise(exerciseId, formValue, saveMode, this.buildS3VideoPayload(response.preview_url, response.thumbnail_url));
+            this.createExercise(exerciseId, formValue, this.buildS3VideoPayload(response.preview_url, response.thumbnail_url, formValue.youtubeUrl));
             return;
           }
 
           this.videoState.processing = true;
           this.cdr.markForCheck();
-          this.pollAndCreate(response.s3_key, exerciseId, formValue, saveMode);
+          this.pollAndCreate(response.s3_key, exerciseId, formValue);
         } catch (err) {
           console.error('Error subiendo video:', err);
           this.handleUploadFailure('Error al subir el video');
@@ -382,7 +324,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     });
   }
 
-  private pollAndCreate(s3Key: string, exerciseId: string, formValue: any, saveMode: SaveMode): void {
+  private pollAndCreate(s3Key: string, exerciseId: string, formValue: any): void {
     this.stopPolling();
 
     this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
@@ -399,7 +341,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
         this.videoState.ready = true;
         this.videoState.previewUrl = status.previewUrl || null;
         this.videoState.thumbnailUrl = status.thumbnailUrl || null;
-        this.createExercise(exerciseId, formValue, saveMode, this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl));
+        this.createExercise(exerciseId, formValue, this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl, formValue.youtubeUrl));
       },
       error: (err) => {
         console.error('Polling error:', err);
@@ -414,20 +356,19 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
   private createExercise(
     exerciseId: string,
     formValue: any,
-    saveMode: SaveMode,
-    videoOverride?: VideoSource | null
+    videoOverride?: VideoSource
   ): void {
     this.saving = true;
     this.cdr.markForCheck();
     this.exerciseId = exerciseId;
 
-    const exerciseData = this.buildExercisePayload(formValue, saveMode, exerciseId, videoOverride);
+    const exerciseData = this.buildExercisePayload(formValue, exerciseId, videoOverride);
 
     this.api.createExercise(exerciseData).subscribe({
       next: (response) => {
         this.saving = false;
         if (response) {
-          const shouldPollForThumbnail = !!(this.selectedVideoType === 'S3' && this.selectedVideoFile && exerciseData.video?.type === 'S3' && !exerciseData.video.thumbnailUrl);
+          const shouldPollForThumbnail = !!(this.selectedVideoFile && exerciseData.video?.type === 'S3' && !exerciseData.video.thumbnailUrl);
           this.exerciseSaved.emit({
             response,
             exerciseId: exerciseData.id,
@@ -452,11 +393,11 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     });
   }
 
-  private uploadVideoAndUpdateExisting(formValue: any, saveMode: SaveMode): void {
+  private uploadVideoAndUpdateExisting(formValue: any): void {
     const exerciseId = this.getExerciseId(this.exercise);
     const file = this.selectedVideoFile;
     if (!exerciseId || !file) {
-      this.persistExistingExercise(formValue, saveMode);
+      this.persistExistingExercise(formValue);
       return;
     }
 
@@ -488,13 +429,13 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
           if (response.preview_url) {
             this.videoState.previewUrl = response.preview_url || null;
             this.videoState.thumbnailUrl = response.thumbnail_url || null;
-            this.persistExistingExercise(formValue, saveMode, this.buildS3VideoPayload(response.preview_url, response.thumbnail_url), response.s3_key || null);
+            this.persistExistingExercise(formValue, this.buildS3VideoPayload(response.preview_url, response.thumbnail_url, formValue.youtubeUrl), response.s3_key || null);
             return;
           }
 
           this.videoState.processing = true;
           this.cdr.markForCheck();
-          this.pollAndUpdateExisting(response.s3_key, formValue, saveMode);
+          this.pollAndUpdateExisting(response.s3_key, formValue);
         } catch (err) {
           console.error('Error subiendo video en edición:', err);
           this.handleUploadFailure('Error al subir el video');
@@ -507,7 +448,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     });
   }
 
-  private pollAndUpdateExisting(s3Key: string, formValue: any, saveMode: SaveMode): void {
+  private pollAndUpdateExisting(s3Key: string, formValue: any): void {
     this.stopPolling();
 
     this.pollingSubscription = interval(this.POLLING_INTERVAL_MS).pipe(
@@ -524,7 +465,7 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
         this.videoState.ready = true;
         this.videoState.previewUrl = status.previewUrl || null;
         this.videoState.thumbnailUrl = status.thumbnailUrl || null;
-        this.persistExistingExercise(formValue, saveMode, this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl), s3Key);
+        this.persistExistingExercise(formValue, this.buildS3VideoPayload(status.previewUrl, status.thumbnailUrl, formValue.youtubeUrl), s3Key);
       },
       error: (err) => {
         console.error('Polling error en edición:', err);
@@ -538,15 +479,14 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
 
   private persistExistingExercise(
     formValue: any,
-    saveMode: SaveMode,
-    videoOverride?: VideoSource | null,
+    videoOverride?: VideoSource,
     uploadedS3Key?: string | null
   ): void {
     this.saving = true;
     this.cdr.markForCheck();
     this.exerciseId = this.getExerciseId(this.exercise) || this.exerciseId;
 
-    const updatedExercise = this.buildExercisePayload(formValue, saveMode, this.exerciseId!, videoOverride);
+    const updatedExercise = this.buildExercisePayload(formValue, this.exerciseId!, videoOverride);
 
     if (updatedExercise.video?.type === 'S3' && (uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key)) {
       (updatedExercise as any).s3_key = uploadedS3Key || this.videoState.s3Key || this.exercise?.s3_key;
@@ -600,57 +540,15 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     return !!response;
   }
 
-  private resolveInitialVideoType(exercise: Exercise | null): VideoSelectorType {
-    if (getS3PreviewUrl(exercise)) {
-      return 'S3';
-    }
-
-    if (getYoutubeUrl(exercise)) {
-      return 'YOUTUBE';
-    }
-
-    return 'NONE';
-  }
-
-  private handleVideoTypeChange(type: VideoSelectorType): void {
-    this.uploadError = '';
-    this.stopPolling();
-    this.videoState.uploading = false;
-    this.videoState.processing = false;
-    this.videoState.ready = false;
-
-    if (type === 'NONE') {
-      this.clearS3Selection();
-      this.clearS3State();
-      this.editForm.patchValue({ youtubeUrl: '' }, { emitEvent: false });
-      this.cdr.markForCheck();
-      return;
-    }
-
-    if (type === 'YOUTUBE') {
-      this.clearS3Selection();
-      this.clearS3State();
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.editForm.patchValue({ youtubeUrl: '' }, { emitEvent: false });
-    this.cdr.markForCheck();
-  }
-
   private clearS3Selection(markForCheck = true): void {
     this.selectedVideoFile = null;
     this.selectedVideoFileName = null;
     this.revokeSelectedVideoPreviewUrl();
+    this.editForm?.patchValue({ videoFileSelected: false }, { emitEvent: false });
+    this.editForm?.get('videoFileSelected')?.updateValueAndValidity({ emitEvent: false });
     if (markForCheck) {
       this.cdr.markForCheck();
     }
-  }
-
-  private clearS3State(): void {
-    this.videoState.previewUrl = null;
-    this.videoState.thumbnailUrl = null;
-    this.videoState.s3Key = null;
   }
 
   private revokeSelectedVideoPreviewUrl(): void {
@@ -675,25 +573,81 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     this.cdr.markForCheck();
   }
 
-  private markStepOneTouched(): void {
-    this.STEP_ONE_FIELDS.forEach(field => this.editForm.get(field)?.markAsTouched());
-  }
-
   private createForm(): FormGroup {
     return this.fb.group({
       name_es: ['', Validators.required],
-      name_en: [''],
       category: ['', Validators.required],
-      difficulty: ['', Validators.required],
       equipment_type: ['', Validators.required],
+      difficulty: ['', Validators.required],
       muscle_group: ['', Validators.required],
-      videoType: ['NONE'],
-      youtubeUrl: [''],
       exercise_type: ['', Validators.required],
       description_es: [''],
+      description_en: [''],
+      training_goal: [''],
       tips: [''],
-      common_mistakes: ['']
+      common_mistakes: [''],
+      plane_of_motion: [''],
+      movement_pattern: [''],
+      secondary_muscles: [''],
+      equipment_specific: [''],
+      aliases: [''],
+      videoMode: ['NONE' as VideoMode],
+      youtubeUrl: [''],
+      videoFileSelected: [false]
     });
+  }
+
+  private requiredYoutubeUrlValidator(control: AbstractControl): ValidationErrors | null {
+    const value = typeof control.value === 'string' ? control.value.trim() : '';
+    if (!value) {
+      return { required: true };
+    }
+
+    return buildYoutubeEmbedUrl(value) ? null : { youtubeUrl: true };
+  }
+
+  private handleVideoModeChange(mode: VideoMode): void {
+    const youtubeControl = this.editForm.get('youtubeUrl');
+    const videoFileControl = this.editForm.get('videoFileSelected');
+    this.uploadError = '';
+
+    if (mode === 'YOUTUBE') {
+      this.clearS3Selection(false);
+      if (!this.cleanOptionalString(youtubeControl?.value)) {
+        youtubeControl?.patchValue(getYoutubeUrl(this.exercise) || '', { emitEvent: false });
+      }
+      youtubeControl?.setValidators([this.requiredYoutubeUrlValidator]);
+      videoFileControl?.clearValidators();
+    } else if (mode === 'S3') {
+      youtubeControl?.patchValue('', { emitEvent: false });
+      youtubeControl?.clearValidators();
+      if (this.getExistingS3PreviewUrl()) {
+        videoFileControl?.clearValidators();
+      } else {
+        videoFileControl?.setValidators([Validators.requiredTrue]);
+      }
+    } else {
+      youtubeControl?.patchValue('', { emitEvent: false });
+      youtubeControl?.clearValidators();
+      videoFileControl?.clearValidators();
+      this.clearS3Selection(false);
+    }
+
+    youtubeControl?.updateValueAndValidity({ emitEvent: false });
+    videoFileControl?.updateValueAndValidity({ emitEvent: false });
+    this.cdr.markForCheck();
+  }
+
+  private resolveInitialVideoMode(exercise: Exercise | null): VideoMode {
+    if (getS3PreviewUrl(exercise)) {
+      return 'S3';
+    }
+
+    if (getYoutubeUrl(exercise)) {
+      return 'YOUTUBE';
+    }
+
+    return 'NONE';
   }
 
   private patchExerciseIntoForm(exercise: Exercise | null): void {
@@ -701,35 +655,40 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
       return;
     }
 
-    const videoType = this.resolveInitialVideoType(exercise);
+    const youtubeUrl = getYoutubeUrl(exercise) || '';
+    const videoMode = this.resolveInitialVideoMode(exercise);
     this.uploadError = '';
     this.stopPolling();
     this.videoState.uploading = false;
     this.videoState.processing = false;
     this.videoState.ready = false;
     this.clearS3Selection(false);
-    this.videoState.previewUrl = videoType === 'S3' ? getS3PreviewUrl(exercise) : null;
-    this.videoState.thumbnailUrl = videoType === 'S3'
-      ? getThumbnailSource(exercise)
-      : videoType === 'YOUTUBE'
-        ? buildYoutubeThumbnailUrl(getYoutubeUrl(exercise) || '')
-        : null;
+    this.videoState.previewUrl = getS3PreviewUrl(exercise);
+    this.videoState.thumbnailUrl = getThumbnailSource(exercise);
     this.videoState.s3Key = exercise.s3_key || null;
 
     this.editForm.patchValue({
       name_es: exercise.name_es || exercise.name || '',
-      name_en: exercise.name_en || '',
       category: exercise.category || '',
       difficulty: exercise.difficulty || '',
       equipment_type: exercise.equipment_type || '',
       muscle_group: exercise.muscle_group || '',
-      videoType,
-      youtubeUrl: videoType === 'YOUTUBE' ? (getYoutubeUrl(exercise) || '') : '',
       exercise_type: exercise.exercise_type || '',
       description_es: exercise.description_es || '',
+      description_en: exercise.description_en || '',
+      training_goal: exercise.training_goal || '',
       tips: this.joinMultiline(exercise.tips || []),
-      common_mistakes: this.joinMultiline(exercise.common_mistakes || [])
+      common_mistakes: this.joinMultiline(exercise.common_mistakes || []),
+      plane_of_motion: exercise.plane_of_motion || '',
+      movement_pattern: exercise.movement_pattern || '',
+      secondary_muscles: this.joinMultiline(exercise.secondary_muscles || []),
+      equipment_specific: this.joinMultiline(exercise.equipment_specific || []),
+      aliases: this.joinMultiline(exercise.aliases || []),
+      videoMode,
+      youtubeUrl
     }, { emitEvent: false });
+
+    this.handleVideoModeChange(videoMode);
 
     this.cdr.markForCheck();
   }
@@ -759,111 +718,133 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     return this.cleanArray((value || '').split('\n'));
   }
 
-  private buildYoutubeVideoPayload(youtubeUrl: string | null | undefined): VideoSource | null {
+  private buildYoutubeVideoPayload(youtubeUrl: string | null | undefined): VideoSource | undefined {
     const resolvedYoutubeUrl = this.cleanOptionalString(youtubeUrl);
     if (!resolvedYoutubeUrl) {
-      return null;
+      return undefined;
     }
 
     return {
       type: 'YOUTUBE',
       youtubeUrl: resolvedYoutubeUrl,
-      thumbnailUrl: buildYoutubeThumbnailUrl(resolvedYoutubeUrl) || undefined
+      url: resolvedYoutubeUrl
     };
   }
 
-  private buildS3VideoPayload(previewUrl: string | null | undefined, thumbnailUrl: string | null | undefined): VideoSource | null {
+  private buildS3VideoPayload(
+    previewUrl: string | null | undefined,
+    thumbnailUrl: string | null | undefined,
+    youtubeUrl?: string | null
+  ): VideoSource | undefined {
     const resolvedPreviewUrl = this.cleanOptionalString(previewUrl);
     const resolvedThumbnailUrl = this.cleanOptionalString(thumbnailUrl);
 
     if (!resolvedPreviewUrl) {
-      return null;
+      return undefined;
     }
 
-    return {
+    const payload: VideoSource = {
       type: 'S3',
       previewUrl: resolvedPreviewUrl,
       thumbnailUrl: resolvedThumbnailUrl
     };
+
+    const resolvedYoutubeUrl = this.cleanOptionalString(youtubeUrl);
+    if (resolvedYoutubeUrl) {
+      payload.youtubeUrl = resolvedYoutubeUrl;
+    }
+
+    return payload;
   }
 
-  private buildVideoPayloadFromSelection(): VideoSource | null {
-    if (this.selectedVideoType === 'NONE') {
-      return null;
+  private buildVideoPayload(formValue: any, videoOverride?: VideoSource): VideoSource | undefined {
+    if (videoOverride) {
+      return videoOverride;
     }
 
-    if (this.selectedVideoType === 'YOUTUBE') {
-      return this.buildYoutubeVideoPayload(this.editForm.get('youtubeUrl')?.value);
+    if (formValue.videoMode === 'YOUTUBE') {
+      const youtubeUrl = this.cleanOptionalString(formValue.youtubeUrl);
+      if (!this.isCreationMode && youtubeUrl && youtubeUrl === getYoutubeUrl(this.exercise) && this.exercise?.video) {
+        return this.exercise.video;
+      }
+
+      return this.buildYoutubeVideoPayload(formValue.youtubeUrl);
     }
 
-    return this.buildS3VideoPayload(
-      this.videoState.previewUrl || getS3PreviewUrl(this.exercise),
-      this.videoState.thumbnailUrl || getThumbnailSource(this.exercise)
-    );
+    if (formValue.videoMode === 'S3') {
+      if (!this.isCreationMode && getS3PreviewUrl(this.exercise)) {
+        return this.exercise?.video
+          || this.buildS3VideoPayload(getS3PreviewUrl(this.exercise), getThumbnailSource(this.exercise), getYoutubeUrl(this.exercise));
+      }
+
+      return undefined;
+    }
+
+    if (!this.isCreationMode) {
+      return this.exercise?.video
+        || this.buildS3VideoPayload(getS3PreviewUrl(this.exercise), getThumbnailSource(this.exercise), getYoutubeUrl(this.exercise))
+        || this.buildYoutubeVideoPayload(getYoutubeUrl(this.exercise));
+    }
+
+    return undefined;
   }
 
   private buildExercisePayload(
     formValue: any,
-    saveMode: SaveMode,
     exerciseId: string,
-    videoOverride?: VideoSource | null
+    videoOverride?: VideoSource
   ): any {
     const nameEs = this.cleanOptionalString(formValue.name_es) || '';
-    const requiredPayload: Record<string, any> = {
+    const payload: Record<string, any> = {
+      ...(this.isCreationMode ? {} : this.exercise),
       id: exerciseId,
       name_es: nameEs,
-      name_en: this.cleanOptionalString(formValue.name_en) || nameEs,
+      name_en: this.cleanOptionalString((this.exercise as any)?.name_en) || nameEs,
       category: this.cleanOptionalString(formValue.category) || '',
       difficulty: this.cleanOptionalString(formValue.difficulty) || '',
       equipment_type: this.cleanOptionalString(formValue.equipment_type) || '',
       muscle_group: this.cleanOptionalString(formValue.muscle_group) || '',
       exercise_type: this.cleanOptionalString(formValue.exercise_type) || '',
-      video: videoOverride !== undefined ? videoOverride : this.buildVideoPayloadFromSelection()
+      description_es: this.cleanOptionalString(formValue.description_es),
+      description_en: this.cleanOptionalString(formValue.description_en),
+      training_goal: this.cleanOptionalString(formValue.training_goal),
+      tips: this.parseMultilineToOptionalArray(formValue.tips),
+      common_mistakes: this.parseMultilineToOptionalArray(formValue.common_mistakes),
+      plane_of_motion: this.cleanOptionalString(formValue.plane_of_motion),
+      movement_pattern: this.cleanOptionalString(formValue.movement_pattern),
+      secondary_muscles: this.parseMultilineToOptionalArray(formValue.secondary_muscles),
+      equipment_specific: this.parseMultilineToOptionalArray(formValue.equipment_specific),
+      aliases: this.parseMultilineToOptionalArray(formValue.aliases)
     };
 
-    const optionalPayload = saveMode === 'full'
-      ? {
-          description_es: this.cleanOptionalString(formValue.description_es),
-          tips: this.parseMultilineToOptionalArray(formValue.tips),
-          common_mistakes: this.parseMultilineToOptionalArray(formValue.common_mistakes)
-        }
-      : this.buildExistingOptionalPayload();
-
-    const basePayload = this.isCreationMode
-      ? requiredPayload
-      : { ...this.exercise, ...requiredPayload };
-
-    const payload = {
-      ...basePayload,
-      ...optionalPayload
-    };
-
-    return this.buildCleanExercisePayload(payload);
-  }
-
-  private buildExistingOptionalPayload(): Record<string, any> {
-    if (this.isCreationMode || !this.exercise) {
-      return {};
+    const video = this.buildVideoPayload(formValue, videoOverride);
+    if (video) {
+      payload['video'] = video;
+    } else if (!this.isCreationMode && Object.prototype.hasOwnProperty.call(payload, 'video')) {
+      delete payload['video'];
     }
 
-    return {
-      description_es: this.cleanOptionalString(this.exercise.description_es),
-      tips: this.cleanArray(Array.isArray(this.exercise.tips) ? this.exercise.tips : []),
-      common_mistakes: this.cleanArray(Array.isArray(this.exercise.common_mistakes) ? this.exercise.common_mistakes : [])
-    };
+    return this.buildCleanExercisePayload(payload);
   }
 
   private buildCleanExercisePayload<T extends Record<string, any>>(exerciseData: T): T {
     const payload: Record<string, any> = { ...exerciseData };
     const optionalKeys = [
       'description_es',
+      'description_en',
+      'training_goal',
       'tips',
-      'common_mistakes'
+      'common_mistakes',
+      'plane_of_motion',
+      'movement_pattern',
+      'secondary_muscles',
+      'equipment_specific',
+      'aliases'
     ];
 
     optionalKeys.forEach(key => {
       const value = payload[key];
-      if (value === undefined || value === null) {
+      if (value === undefined || value === null || value === false) {
         delete payload[key];
         return;
       }
@@ -888,8 +869,9 @@ export class ExerciseEditDialogComponent implements OnDestroy, OnInit {
     delete payload['thumbnailUrl'];
     delete payload['preview_url'];
     delete payload['s3_key'];
-    delete payload['videoType'];
-    delete payload['videoUrl'];
+    delete payload['videoMode'];
+    delete payload['videoFileSelected'];
+    delete payload['functional'];
     delete payload['youtubeUrl'];
     delete payload['youtube_url'];
     delete payload['thumbnail'];

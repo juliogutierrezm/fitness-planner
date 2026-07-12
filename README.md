@@ -145,16 +145,6 @@ API_BASE=<url> ID_TOKEN=<token> TEST_USER_ID=<id> node scripts/smoke-api.mjs
 - [DEVELOPER..md](DEVELOPER..md) - Developer standards and practices
 - [AGENT_RULES.md](AGENT_RULES.md) - AI agent rules and code generation policy
 
-# Run tests in watch mode
-npm test -- --watch
-
-# Build for production (SPA static output)
-npm run build
-
-# Serve in development
-npm run start
-```
-
 ## Testing
 
 ### Unit Tests

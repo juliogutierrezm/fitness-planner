@@ -78,6 +78,40 @@ describe('ExerciseApiService', () => {
     req.flush({ ok: true });
   });
 
+  it('passes supported optional exercise fields when creating', () => {
+    service.createExercise({
+      id: 'exercise-optional',
+      name_en: 'Squat',
+      name_es: 'Sentadilla',
+      equipment_type: 'Bodyweight',
+      muscle_group: 'Legs',
+      category: 'Strength',
+      description_en: 'Squat description',
+      training_goal: 'Strength',
+      plane_of_motion: 'Sagittal',
+      movement_pattern: 'Squat',
+      secondary_muscles: ['Glutes'],
+      equipment_specific: ['Mat'],
+      aliases: ['Air squat'],
+      functional: true
+    }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBase}/exercise`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(jasmine.objectContaining({
+      description_en: 'Squat description',
+      training_goal: 'Strength',
+      plane_of_motion: 'Sagittal',
+      movement_pattern: 'Squat',
+      secondary_muscles: ['Glutes'],
+      equipment_specific: ['Mat'],
+      aliases: ['Air squat'],
+      functional: true
+    }));
+    expect(Object.prototype.hasOwnProperty.call(req.request.body, 'video')).toBeFalse();
+    req.flush({ ok: true });
+  });
+
   it('normalizes exercise responses that use exerciseId instead of id', () => {
     let result: any;
 

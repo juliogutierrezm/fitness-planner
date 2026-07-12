@@ -15,8 +15,16 @@ export interface Exercise {
   difficulty?: string;
   group_type?: string;
   description_es?: string;
+  description_en?: string;
+  training_goal?: string;
   common_mistakes?: string[];
   tips?: string[];
+  plane_of_motion?: string;
+  movement_pattern?: string;
+  secondary_muscles?: string[];
+  equipment_specific?: string[];
+  functional?: boolean;
+  aliases?: string[];
   preview_url?: string;
   youtube_url?: string;
   thumbnail?: string;
